@@ -17,6 +17,13 @@ namespace {
 
 QByteArray keyBytes(const SigningPublicKey &key) { return toBytes(key); }
 
+AccessChanges accessChanges(const std::vector<SignedOp> &ops) {
+    AccessChanges message;
+    for (const SignedOp &op : ops)
+        message.ops.emplace_back(op.payload, op.signature);
+    return message;
+}
+
 } // namespace
 
 void Network::receive(const PeerId &id, std::uint64_t generation, const QByteArray &bytes) {
@@ -36,8 +43,8 @@ void Network::receive(const PeerId &id, std::uint64_t generation, const QByteArr
             return;
         }
         peerAuthenticated(id, *peer);
-    } else if (const auto *manifests = std::get_if<Manifests>(&*message)) {
-        handleManifests(*manifests);
+    } else if (const auto *changes = std::get_if<AccessChanges>(&*message)) {
+        handleAccess(*changes);
     } else if (const auto *personal = std::get_if<Personal>(&*message)) {
         handlePersonal(*peer, *personal);
     } else if (const auto *update = std::get_if<BoardUpdate>(&*message)) {
@@ -70,7 +77,7 @@ bool Network::handleHello(Peer &peer, const Hello &hello) {
 void Network::peerAuthenticated(const PeerId &id, Peer &peer) {
     if (const std::optional<QString> item = requestedItemName(peer))
         emit joinRequested(peer.user->name, *item);
-    offerManifests(peer);
+    offerAccess(peer);
     for (const QUuid &board : syncableBoards(peer))
         peer.dirtyBoards.insert(board);
     peer.presenceDirty = true;
@@ -78,27 +85,25 @@ void Network::peerAuthenticated(const PeerId &id, Peer &peer) {
     emit peersChanged();
 }
 
-// Manifests of the space go to anyone holding its capability (they reveal names and
-// members, not content); a user's own devices get everything, including capabilities.
-void Network::offerManifests(Peer &peer) {
+// A space's signed access changes go to anyone holding its capability (they reveal names
+// and roles, not content), so they spread even when the people who signed them are
+// offline; a user's own devices get everything, including capabilities.
+void Network::offerAccess(Peer &peer) {
     const Space &space = *spaces_.at(peer.space);
     Workspace &workspace = library_.workspace();
     if (space.kind == SpaceKind::Personal) {
-        queue(peer, Manifests{workspace.allManifests()});
+        queue(peer, accessChanges(workspace.allOps()));
         queue(peer,
               Personal{workspace.exportPersonal(), library_.identityStore().exportContacts()});
     } else if (space.kind == SpaceKind::Project) {
-        queue(peer, Manifests{workspace.manifestsForProject(space.id)});
+        queue(peer, accessChanges(workspace.opsForProject(space.id)));
     } else {
-        queue(peer, Manifests{workspace.manifestsForBoard(space.id)});
+        queue(peer, accessChanges(workspace.opsForBoard(space.id)));
     }
 }
 
-void Network::handleManifests(const Manifests &message) {
-    bool changed = false;
-    for (const SignedManifest &manifest : message.manifests)
-        changed |= library_.workspace().acceptManifest(manifest.payload, manifest.signature);
-    if (changed)
+void Network::handleAccess(const AccessChanges &message) {
+    if (library_.workspace().acceptOps(message.ops))
         library_.workspaceUpdated(); // also re-evaluates spaces and boards via workspaceChanged
 }
 
@@ -155,14 +160,14 @@ std::vector<QUuid> Network::syncableBoards(const Peer &peer) const {
     return result;
 }
 
-// Membership or projects changed: open or close spaces, re-offer manifests and send any
+// Access or projects changed: open or close spaces, re-offer access changes and send any
 // boards that became shared.
 void Network::workspaceChanged() {
     reconcileSpaces();
     for (auto &[id, peer] : peers_) {
         if (!peer->ready || !peer->user)
             continue;
-        offerManifests(*peer);
+        offerAccess(*peer);
         for (const QUuid &board : syncableBoards(*peer))
             if (!peer->sentState.contains(board))
                 peer->dirtyBoards.insert(board);
@@ -237,14 +242,17 @@ std::optional<QString> Network::requestedItemName(const Peer &peer) const {
     const Workspace &workspace = library_.workspace();
     if (!peer.user || space.kind == SpaceKind::Personal)
         return std::nullopt;
-    const std::optional<SignedManifest> &manifest =
-        space.kind == SpaceKind::Project
-            ? (workspace.hasProject(space.id) ? workspace.project(space.id).manifest : std::nullopt)
-            : (workspace.hasBoard(space.id) ? workspace.board(space.id).manifest : std::nullopt);
-    if (!manifest || manifest->manifest.admin != workspace.user() ||
-        manifest->manifest.includes(peer.user->userKey))
+    const QByteArray me = workspace.user();
+    const QByteArray them = peer.user->userKey;
+    if (space.kind == SpaceKind::Project) {
+        if (workspace.projectRole(space.id, me) < Role::Owner ||
+            workspace.mayAccessProject(them, space.id))
+            return std::nullopt;
+        return workspace.project(space.id).name();
+    }
+    if (workspace.boardRole(space.id, me) < Role::Owner || workspace.mayAccessBoard(them, space.id))
         return std::nullopt;
-    return manifest->manifest.name;
+    return workspace.board(space.id).name();
 }
 
 QVariantList Network::joinRequests(const QString &itemId) const {
@@ -268,6 +276,26 @@ int Network::joinRequestCount() const {
         if (peer->ready && requestedItemName(*peer))
             requests.insert({spaces_.at(peer->space)->id, peer->user->userKey});
     return static_cast<int>(requests.size());
+}
+
+QVariantList Network::allJoinRequests() const {
+    QVariantList result;
+    std::set<std::pair<QUuid, QByteArray>> seen;
+    for (const auto &[id, peer] : peers_) {
+        if (!peer->ready)
+            continue;
+        const std::optional<QString> item = requestedItemName(*peer);
+        const Space &space = *spaces_.at(peer->space);
+        if (!item || !seen.insert({space.id, peer->user->userKey}).second)
+            continue;
+        result.append(QVariantMap{{"itemId", space.id.toString(QUuid::WithoutBraces)},
+                                  {"itemName", *item},
+                                  {"board", space.kind == SpaceKind::Board},
+                                  {"key", QString::fromLatin1(peer->user->userKey.toHex())},
+                                  {"name", peer->user->name},
+                                  {"fingerprint", formatFingerprint(peer->user->userKey)}});
+    }
+    return result;
 }
 
 } // namespace peerchalk::sync

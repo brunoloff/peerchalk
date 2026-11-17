@@ -53,14 +53,14 @@ std::optional<QString> trailingName(const QByteArray &bytes, qsizetype offset) {
 
 } // namespace
 
-// Invite payload: kind byte (0 project, 1 board), id, capability, admin key, name.
+// Invite payload: kind byte (0 project, 1 board), id, capability, creator key, name.
 QString encodeInvite(const Invite &invite) {
     if (invite.id.isNull() || invite.capability.size() != capabilitySize ||
-        invite.admin.size() != signingKeySize)
-        throw std::invalid_argument("An invite needs an id, a capability and an admin key");
+        invite.creator.size() != signingKeySize)
+        throw std::invalid_argument("An invite needs an id, a capability and a creator key");
     const char kind = invite.kind == Invite::Kind::Board ? 1 : 0;
     const QByteArray bytes = QByteArray(1, kind) + invite.id.toRfc4122() + invite.capability +
-                             invite.admin + nameBytes(invite.name);
+                             invite.creator + nameBytes(invite.name);
     return invitePrefix + QString::fromLatin1(bytes.toBase64(base64Options));
 }
 

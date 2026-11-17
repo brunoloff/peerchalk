@@ -42,11 +42,12 @@ TEST(Messages, PresenceAndProfileRoundTrip) {
     EXPECT_EQ(profile.colorIndex, 2);
 }
 
-TEST(Messages, ManifestsAndPersonalRoundTrip) {
-    const Manifests manifests =
-        roundTrip<Manifests>(Manifests{{{{}, QByteArray("payload"), QByteArray("signature")}}});
-    ASSERT_EQ(manifests.manifests.size(), 1U);
-    EXPECT_EQ(manifests.manifests.front().payload, QByteArray("payload"));
+TEST(Messages, AccessChangesAndPersonalRoundTrip) {
+    const AccessChanges changes =
+        roundTrip<AccessChanges>(AccessChanges{{{QByteArray("payload"), QByteArray("signature")}}});
+    ASSERT_EQ(changes.ops.size(), 1U);
+    EXPECT_EQ(changes.ops.front().first, QByteArray("payload"));
+    EXPECT_EQ(changes.ops.front().second, QByteArray("signature"));
     const Personal personal =
         roundTrip<Personal>(Personal{{{"projects", QJsonArray()}}, {{"contacts", QJsonArray()}}});
     EXPECT_TRUE(personal.workspace.contains("projects"));

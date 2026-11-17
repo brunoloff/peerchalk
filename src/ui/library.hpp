@@ -107,12 +107,20 @@ class Library : public QObject {
     // The live document for C++ users such as sync; throws for unknown boards.
     BoardDocument &document(const QUuid &boardId);
 
-    // People who may be members: you, the current members and your contacts, each
-    // {key, name, fingerprint, member, admin, you}.
+    // Your role ("admin", "owner", "member" or "none") on a project or board itself.
+    Q_INVOKABLE QString projectRole(const QString &projectId);
+    Q_INVOKABLE QString boardRole(const QString &boardId);
+    // The people with a role, then your other contacts (who can be added), each
+    // {key, name, fingerprint, role, you}.
     Q_INVOKABLE QVariantList projectPeople(const QString &projectId);
     Q_INVOKABLE QVariantList boardPeople(const QString &boardId);
-    Q_INVOKABLE void setProjectMember(const QString &projectId, const QString &keyHex, bool member);
-    Q_INVOKABLE void setBoardMember(const QString &boardId, const QString &keyHex, bool member);
+    // role: "member", "owner" or "none" (remove), as your own role allows.
+    Q_INVOKABLE void setProjectRole(const QString &projectId, const QString &keyHex,
+                                    const QString &role);
+    Q_INVOKABLE void setBoardRole(const QString &boardId, const QString &keyHex,
+                                  const QString &role);
+    Q_INVOKABLE void transferProjectAdmin(const QString &projectId, const QString &keyHex);
+    Q_INVOKABLE void transferBoardAdmin(const QString &boardId, const QString &keyHex);
     // Lets in someone who asked to join (see Network.joinRequests): adds them to your
     // known people, unverified, if needed, and makes them a member.
     Q_INVOKABLE void admitToProject(const QString &projectId, const QString &keyHex,
@@ -152,9 +160,8 @@ class Library : public QObject {
   private:
     // Runs action, reporting a thrown error through errorOccurred; returns success.
     bool attempt(const std::function<void()> &action);
-    [[nodiscard]] QVariantList people(const Manifest &manifest);
-    [[nodiscard]] std::vector<Member> withMember(std::vector<Member> members, const QString &keyHex,
-                                                 bool member) const;
+    [[nodiscard]] QVariantList people(const AccessState &state);
+    [[nodiscard]] QString nameOf(const QByteArray &key, const AccessState &state) const;
     void closeRemovedBoards();
     // Adds someone to your known people unless they are already there.
     void ensureContact(const QString &keyHex, const QString &name);

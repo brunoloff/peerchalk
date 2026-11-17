@@ -37,12 +37,23 @@ Run the app with `bin/peerchalk`.
 
 ## Sharing and access
 
-Each project and each board has one admin, its creator. The admin sends an invite code;
-when someone opens it they appear as a join request, which the admin approves (or the
-admin ticks people from their known people, added with contact codes, in advance); a
-board can be shared on its own or belong to several projects, whose members can then
-open it. Who has access is recorded in a manifest the admin signs, so peers accept only
-the admin's changes, and having an invite code alone gives no board contents.
+Projects are collections of boards, and projects and boards each have an admin,
+owners and members (an admin is also an owner, an owner also a member):
+
+- The admin (at first the creator) makes people owners or members, changes or removes
+  their role, renames or deletes the item, and can hand the admin role to someone else,
+  becoming an owner.
+- Owners send invites and add or remove members, but cannot change owners.
+- Members of a project are members of every board in it; every member of a board can
+  draw on it. Project owners add boards they own to the project; owners of both, or the
+  project admin, take a board out again. A board can be in several projects.
+
+An invite code only lets someone ask: when they open it they appear under Requests for
+the owners, who approve them (or add people from their known people in advance). Every
+change to who has access is signed by the person who made it, and peers replay these
+changes and keep only those the signer's role allowed. Anyone who has them passes them
+on, so the admin does not need to be online for new members to be let in. Having an
+invite code alone gives no board contents.
 
 A person (user key) can use several devices (device keys): "Link another device" on the
 identity screen gives a secret code that a new installation pastes on its welcome screen.
@@ -73,9 +84,9 @@ PEERCHALK_DATA_DIR=/tmp/peerchalk-ana bin/peerchalk &
 PEERCHALK_DATA_DIR=/tmp/peerchalk-ben bin/peerchalk &
 ```
 
-Create a project in one, copy the invite from "Members & invite" and join with it in
+Create a project in one, copy the invite from "People & invite" and join with it in
 the other. Within about ten seconds the first one shows "1 asking to join"; approve it
-there (comparing fingerprints if you like) and the boards start syncing.
+under Requests (comparing fingerprints if you like) and the boards start syncing.
 
 ## Data on this device
 
@@ -87,7 +98,7 @@ PeerChalk keeps its data in the platform's app data folder (on Linux
   keychain is planned.
 - `profile.json`, `contacts.json`: your name and colour, and the people you know with how
   you verified them.
-- `workspace.json`: projects and boards with their signed manifests and discovery
+- `workspace.json`: projects and boards with their signed access changes and discovery
   secrets (readable only by you).
 - `boards/<id>.yrs`: each board's Yrs document.
 
@@ -96,7 +107,7 @@ PeerChalk keeps its data in the platform's app data folder (on Linux
 - `src/board/`: the board model in plain C++: strokes, their binary encoding and
   triangle meshes, input filtering for pressure-sensitive drawing, the pan/zoom viewport
   and background grid, and the Yrs-backed board with eraser and per-user undo.
-- `src/library/`: identities, signed manifests and access rules, the workspace of
+- `src/library/`: identities, the signed access log and its rules, the workspace of
   projects and boards on disk, and the invite and contact codes people exchange.
 - `src/sync/`: the p2pdc network service and PeerChalk's sync protocol.
 - `src/ui/`: the Qt Quick items (canvas, minimap, board previews), the `Library` QML

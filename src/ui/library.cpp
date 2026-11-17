@@ -106,7 +106,7 @@ void Library::refreshProjects() {
              {"name", project.name()},
              {"colorIndex", project.colorIndex},
              {"boardCount", static_cast<int>(workspace_.boardsInProject(project.id).size())},
-             {"admin", project.admin == workspace_.user()},
+             {"admin", workspace_.projectRole(project.id, workspace_.user()) == Role::Admin},
              {"pending", !workspace_.mayAccessProject(workspace_.user(), project.id)}});
     }
     projects_->setRows(std::move(rows));
@@ -130,7 +130,7 @@ void Library::refreshBoards() {
         rows.append({{"boardId", idText(board->id)},
                      {"name", board->name()},
                      {"edited", board->edited},
-                     {"admin", board->admin == workspace_.user()},
+                     {"admin", workspace_.boardRole(board->id, workspace_.user()) >= Role::Owner},
                      {"pending", !workspace_.mayAccessBoard(workspace_.user(), board->id)}});
     }
     boards_->setRows(std::move(rows));
@@ -179,7 +179,7 @@ QString Library::currentProjectName() const {
 
 bool Library::currentProjectIsAdmin() const {
     const QUuid id = QUuid::fromString(currentProject_);
-    return workspace_.hasProject(id) && workspace_.project(id).admin == workspace_.user();
+    return workspace_.projectRole(id, workspace_.user()) == Role::Admin;
 }
 
 bool Library::currentProjectPending() const {
@@ -219,7 +219,7 @@ void Library::copyToClipboard(const QString &text) { QGuiApplication::clipboard(
 
 QString Library::createProject(const QString &name) {
     QString id;
-    if (attempt([&] { id = idText(workspace_.createProject(name)); })) {
+    if (attempt([&] { id = idText(workspace_.createProject(name, identity_.displayName())); })) {
         currentProject_ = id;
         workspaceUpdated();
     }
@@ -264,8 +264,7 @@ void Library::removeProject(const QString &projectId) {
 }
 
 bool Library::isProjectAdmin(const QString &projectId) {
-    const QUuid id = QUuid::fromString(projectId);
-    return workspace_.hasProject(id) && workspace_.project(id).admin == workspace_.user();
+    return workspace_.projectRole(QUuid::fromString(projectId), workspace_.user()) == Role::Admin;
 }
 
 QString Library::createBoard(const QString &name) {
@@ -274,7 +273,7 @@ QString Library::createBoard(const QString &name) {
     attempt([&] {
         const std::optional<QUuid> project =
             shared ? std::nullopt : std::optional<QUuid>(parseId(currentProject_));
-        id = idText(workspace_.createBoard(name, project));
+        id = idText(workspace_.createBoard(name, project, identity_.displayName()));
     });
     if (!id.isEmpty())
         workspaceUpdated();
@@ -292,8 +291,7 @@ void Library::removeBoard(const QString &boardId) {
 }
 
 bool Library::isBoardAdmin(const QString &boardId) {
-    const QUuid id = QUuid::fromString(boardId);
-    return workspace_.hasBoard(id) && workspace_.board(id).admin == workspace_.user();
+    return workspace_.boardRole(QUuid::fromString(boardId), workspace_.user()) == Role::Admin;
 }
 
 QString Library::boardName(const QString &boardId) {

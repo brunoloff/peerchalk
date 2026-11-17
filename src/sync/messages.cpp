@@ -10,7 +10,7 @@ namespace {
 
 enum Type : char {
     HelloType = 1,
-    ManifestsType = 2,
+    AccessType = 2,
     PersonalType = 3,
     BoardType = 4,
     PresenceType = 5,
@@ -49,12 +49,11 @@ struct Encoder {
                                 {"name", hello.displayName},
                                 {"color", hello.colorIndex}});
     }
-    QByteArray operator()(const Manifests &message) const {
-        QJsonArray manifests;
-        for (const SignedManifest &manifest : message.manifests)
-            manifests.append(QJsonObject{{"payload", base64(manifest.payload)},
-                                         {"signature", base64(manifest.signature)}});
-        return json(ManifestsType, {{"manifests", manifests}});
+    QByteArray operator()(const AccessChanges &message) const {
+        QJsonArray ops;
+        for (const auto &[payload, signature] : message.ops)
+            ops.append(QJsonObject{{"payload", base64(payload)}, {"signature", base64(signature)}});
+        return json(AccessType, {{"ops", ops}});
     }
     QByteArray operator()(const Personal &personal) const {
         return json(PersonalType,
@@ -85,14 +84,14 @@ std::optional<Message> decodeHello(const QJsonObject &object) {
                  object[QStringLiteral("color")].toInt()};
 }
 
-std::optional<Message> decodeManifests(const QJsonObject &object) {
-    Manifests message;
-    for (const QJsonValue &value : object[QStringLiteral("manifests")].toArray()) {
+std::optional<Message> decodeAccess(const QJsonObject &object) {
+    AccessChanges message;
+    for (const QJsonValue &value : object[QStringLiteral("ops")].toArray()) {
         const auto payload = fromBase64(value[QStringLiteral("payload")]);
         const auto signature = fromBase64(value[QStringLiteral("signature")]);
         if (!payload || !signature)
             return std::nullopt;
-        message.manifests.push_back({{}, *payload, *signature});
+        message.ops.emplace_back(*payload, *signature);
     }
     return message;
 }
@@ -131,8 +130,8 @@ std::optional<Message> decode(const QByteArray &bytes) {
     switch (type) {
     case HelloType:
         return decodeHello(*object);
-    case ManifestsType:
-        return decodeManifests(*object);
+    case AccessType:
+        return decodeAccess(*object);
     case PersonalType:
         return Personal{(*object)[QStringLiteral("workspace")].toObject(),
                         (*object)[QStringLiteral("contacts")].toObject()};

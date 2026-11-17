@@ -12,12 +12,18 @@ RowLayout {
         return isShared ? 0 : Library.projectPeople(Library.currentProjectId).filter(p => p.member).length;
     }
 
+    readonly property string myRole: {
+        Library.workspaceChanged; // re-evaluate when roles change
+        return isShared ? "none" : Library.projectRole(Library.currentProjectId);
+    }
+    readonly property bool canManage: myRole === "owner" || myRole === "admin"
     readonly property int requestCount: {
         Network.joinRequestCount; // re-evaluate when requests change
-        return isShared || !Library.currentProjectIsAdmin ? 0 : Network.joinRequests(Library.currentProjectId).length;
+        return canManage ? Network.joinRequests(Library.currentProjectId).length : 0;
     }
 
     signal membersRequested()
+    signal requestsRequested()
     signal newBoardRequested()
     signal renameRequested()
     signal deleteRequested()
@@ -75,17 +81,17 @@ RowLayout {
         visible: header.requestCount > 0
         primary: true
         text: header.requestCount === 1 ? qsTr("1 asking to join") : qsTr("%1 asking to join").arg(header.requestCount)
-        onClicked: header.membersRequested()
+        onClicked: header.requestsRequested()
     }
 
     PaperButton {
         visible: !header.isShared && !Library.currentProjectPending
-        text: Library.currentProjectIsAdmin ? qsTr("Members & invite") : qsTr("Members")
+        text: header.canManage ? qsTr("People & invite") : qsTr("People")
         onClicked: header.membersRequested()
     }
 
     PaperButton {
-        visible: !Library.currentProjectPending
+        visible: !Library.currentProjectPending && (header.isShared || header.canManage)
         text: qsTr("New board")
         strong: true
         onClicked: header.newBoardRequested()

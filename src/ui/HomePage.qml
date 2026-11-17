@@ -34,6 +34,7 @@ Item {
             onCreateProjectRequested: newProjectDialog.ask("")
             onJoinProjectRequested: joinDialog.ask("")
             onIdentityRequested: home.openIdentity()
+            onRequestsRequested: requestsDialog.open()
         }
 
         Item {
@@ -57,6 +58,7 @@ Item {
                 ProjectHeader {
                     Layout.fillWidth: true
                     onMembersRequested: membersDialog.show(Library.currentProjectId, false)
+                    onRequestsRequested: requestsDialog.open()
                     onNewBoardRequested: newBoardDialog.ask(qsTr("Untitled board"))
                     onRenameRequested: renameProjectDialog.ask(Library.currentProjectName)
                     onDeleteRequested: deleteProjectDialog.open()
@@ -205,6 +207,10 @@ Item {
 
     MembersDialog {
         id: membersDialog
+    }
+
+    RequestsDialog {
+        id: requestsDialog
     }
 
     TextInputDialog {

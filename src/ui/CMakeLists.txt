@@ -22,7 +22,7 @@ qt_add_qml_module(peerchalk_ui URI PeerChalk VERSION 1.0
         BoardCard.qml IdentityPage.qml PageHeader.qml ProfileCard.qml PeopleCard.qml
         PersonRow.qml VerifyPanel.qml Avatar.qml PaperButton.qml TextInputDialog.qml
         ConfirmDialog.qml CodeDialog.qml Toast.qml MembersDialog.qml RemoteCursor.qml
-        NetworkStatus.qml)
+        NetworkStatus.qml PersonRoleRow.qml RequestsDialog.qml)
 target_include_directories(peerchalk_ui PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/..")
 # The generated QML type registrations include headers by file name.
 target_include_directories(peerchalk_ui PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../sync")

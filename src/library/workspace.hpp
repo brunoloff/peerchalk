@@ -1,7 +1,7 @@
 #pragma once
 
+#include "library/access_log.hpp"
 #include "library/codes.hpp"
-#include "library/manifest.hpp"
 
 #include <QByteArray>
 #include <QDateTime>
@@ -14,44 +14,48 @@
 
 namespace peerchalk {
 
-// A project this device knows. Until its signed manifest arrives from a peer (after
-// joining by invite) only the invite's details are known.
+// A project this device knows, with its signed access changes and their result. After
+// joining by invite, its changes arrive from peers; until then only the invite is known.
 struct ProjectEntry {
     QUuid id;
     QByteArray capability; // discovery secret of the project's members
-    QByteArray admin;      // trust anchor: the manifest must be signed by this key
+    QByteArray creator;    // trust anchor: the project's Create must be signed by this key
     QString inviteName;
     int colorIndex{0};
-    std::optional<SignedManifest> manifest;
+    std::vector<SignedOp> ops;
+    AccessState state;
 
-    [[nodiscard]] QString name() const;
-    [[nodiscard]] bool deleted() const { return manifest && manifest->manifest.deleted; }
+    [[nodiscard]] QString name() const { return state.exists ? state.name : inviteName; }
+    [[nodiscard]] bool deleted() const { return state.deleted; }
 };
 
 // A board this device knows: created here, joined by a board invite, or learned through
-// a project it belongs to (then without its own capability).
+// a project it belongs to (then without its own capability, and anchored by that project).
 struct BoardEntry {
     QUuid id;
     QByteArray capability; // empty when known only through projects
-    QByteArray admin;
+    QByteArray creator;    // empty when learned through a project
     QString inviteName;
-    std::optional<SignedManifest> manifest;
     QDateTime edited;
+    std::vector<SignedOp> ops;
+    AccessState state;
 
-    [[nodiscard]] QString name() const;
-    [[nodiscard]] bool deleted() const { return manifest && manifest->manifest.deleted; }
+    [[nodiscard]] QString name() const { return state.exists ? state.name : inviteName; }
+    [[nodiscard]] bool deleted() const { return state.deleted; }
 };
 
-// This device's projects and boards and who may access them. Each project and board has
-// one admin, whose signed manifest lists its members (and, for a board, the projects it
-// belongs to). A user may access a project if its manifest includes them, and a board if
-// its manifest includes them or it belongs to a project that includes both them and the
-// board's admin. Only the admin changes a manifest; changes bump its version.
+// This device's projects and boards and who may do what with them.
+//
+// Every project and board has an admin, owners and members (see access_log.hpp for who
+// may change what). A project is a collection of boards: its members are members of all
+// its boards; its owners add and remove boards they also own. A user may access a project
+// they have a role on, and a board they have a role on or that belongs to a project they
+// may access. All members of a board may edit it.
 //
 // Data lives in `directory`: workspace.json (owner-only; it holds capabilities) and
-// boards/<id>.yrs. A projects.json from earlier versions is migrated on first load.
-// Failures to read or write throw std::runtime_error; misuse (unknown ids, not admin,
-// empty names) throws std::invalid_argument. Changes are saved before returning.
+// boards/<id>.yrs. Files from earlier versions are migrated on first load. Failures to
+// read or write throw std::runtime_error; misuse (unknown ids, missing rights, empty
+// names) throws std::invalid_argument. Changes are saved before returning.
 class Workspace {
   public:
     Workspace(QString directory, QByteArray user, Signer signer);
@@ -67,46 +71,52 @@ class Workspace {
     // throws std::invalid_argument unless the workspace is empty.
     void resetUser(QByteArray user);
 
-    // Boards shown in a project, and boards shown in none of your projects: accessible
-    // ones, and ones you joined by invite (which may still await the admin).
-    [[nodiscard]] std::vector<QUuid> boardsInProject(const QUuid &projectId) const;
-    [[nodiscard]] std::vector<QUuid> sharedBoards() const;
+    // Roles held directly on a project or board (not through projects).
+    [[nodiscard]] Role projectRole(const QUuid &id, const QByteArray &user) const;
+    [[nodiscard]] Role boardRole(const QUuid &id, const QByteArray &user) const;
     [[nodiscard]] bool mayAccessProject(const QByteArray &user, const QUuid &projectId) const;
     [[nodiscard]] bool mayAccessBoard(const QByteArray &user, const QUuid &boardId) const;
+    // Boards shown in a project, and boards shown in none of your projects: accessible
+    // ones, and ones you joined by invite (which may still await approval).
+    [[nodiscard]] std::vector<QUuid> boardsInProject(const QUuid &projectId) const;
+    [[nodiscard]] std::vector<QUuid> sharedBoards() const;
 
-    QUuid createProject(const QString &name);
-    // Creates a board you administer, in the given project if any (you must be in it).
-    QUuid createBoard(const QString &name, const std::optional<QUuid> &projectId);
+    // displayName is recorded as yours in the new project's or board's changes.
+    QUuid createProject(const QString &name, const QString &displayName);
+    // A board you administer, added to the given project if any (you must own it).
+    QUuid createBoard(const QString &name, const std::optional<QUuid> &projectId,
+                      const QString &displayName);
     void renameProject(const QUuid &id, const QString &name);
     void renameBoard(const QUuid &id, const QString &name);
-    void setProjectMembers(const QUuid &id, std::vector<Member> members);
-    void setBoardMembers(const QUuid &id, std::vector<Member> members);
-    // Adds or removes a board you administer to or from a project you are in.
+    // Gives a user a role (Member or Owner) or removes them (None), as your role allows.
+    void setProjectRole(const QUuid &id, const QByteArray &user, const QString &name, Role role);
+    void setBoardRole(const QUuid &id, const QByteArray &user, const QString &name, Role role);
+    // Makes someone else the admin; you stay an owner.
+    void transferProjectAdmin(const QUuid &id, const QByteArray &user, const QString &name);
+    void transferBoardAdmin(const QUuid &id, const QByteArray &user, const QString &name);
     void setBoardInProject(const QUuid &boardId, const QUuid &projectId, bool included);
-    // As admin, publishes a deletion; otherwise forgets the project or board here.
+    // As admin, deletes for everyone; otherwise forgets the project or board here.
     void removeProject(const QUuid &id);
     void removeBoard(const QUuid &id);
 
-    // An invite that lets its receiver find the other members (admin only for projects
-    // and boards with their own capability).
+    // An invite that lets its receiver find the others and ask to join; for owners.
     [[nodiscard]] Invite inviteToProject(const QUuid &id) const;
     [[nodiscard]] Invite inviteToBoard(const QUuid &id) const;
     // Records an invite; throws std::invalid_argument if the item is already here.
     void join(const Invite &invite);
 
-    // Accepts a manifest a peer sent if it is valid and newer than the one held: for a
-    // known project or board it must be signed by that entry's admin; an unknown board is
-    // accepted when it belongs to a project you are in whose manifest includes the
-    // board's admin. Returns true when something changed.
-    bool acceptManifest(const QByteArray &payload, const QByteArray &signature);
-    // The signed manifests to offer a peer that reached you through `projectId` or
-    // `boardId`'s capability (or all of them, for your own devices).
-    [[nodiscard]] std::vector<SignedManifest> manifestsForProject(const QUuid &projectId) const;
-    [[nodiscard]] std::vector<SignedManifest> manifestsForBoard(const QUuid &boardId) const;
-    [[nodiscard]] std::vector<SignedManifest> allManifests() const;
+    // Takes in access changes from a peer: changes to known projects and boards, and to
+    // boards listed by a project you may access. Returns true when something changed.
+    bool acceptOps(const std::vector<std::pair<QByteArray, QByteArray>> &signedOps);
+    // The changes to offer a peer that reached you through a project's or board's
+    // capability (projects include their boards' changes), or all of them.
+    [[nodiscard]] std::vector<SignedOp> opsForProject(const QUuid &projectId) const;
+    [[nodiscard]] std::vector<SignedOp> opsForBoard(const QUuid &boardId) const;
+    [[nodiscard]] std::vector<SignedOp> allOps() const;
 
     // Everything about projects and boards, including capabilities, for your own devices;
-    // merging adds what is missing and newer manifests. Returns true when changed.
+    // merging adds what is missing. Returns true when changed. Throws std::runtime_error
+    // for malformed input.
     [[nodiscard]] QJsonObject exportPersonal() const;
     bool mergePersonal(const QJsonObject &personal);
 
@@ -116,13 +126,18 @@ class Workspace {
   private:
     ProjectEntry &findProject(const QUuid &id);
     BoardEntry &findBoard(const QUuid &id);
-    [[nodiscard]] Manifest adminManifest(const std::optional<SignedManifest> &current,
-                                         const QByteArray &admin) const;
-    void publish(std::optional<SignedManifest> &slot, const Manifest &manifest);
+    // Signs a change with the next clock after `clock`, adds it and recomputes.
+    void record(std::vector<SignedOp> &ops, quint64 clock, AccessOp op);
+    // Replays every entry: boards first, since projects check board roles.
+    void recompute();
+    bool addOp(const SignedOp &op);
+    bool learnBoard(const QUuid &boardId, const std::vector<SignedOp> &boardOps);
     [[nodiscard]] QString boardPath(const QUuid &id) const;
-    bool acceptBoardManifest(const SignedManifest &signedManifest);
     void load();
-    void migrateProjectsFile();
+    bool migrate();
+    // Re-creates a project or board you administered as signed changes.
+    void recreate(ResourceKind kind, const QUuid &id, const QString &name,
+                  const std::vector<std::pair<QByteArray, QString>> &members, bool deleted);
     void save() const;
 
     QString directory_;

@@ -38,9 +38,9 @@ namespace peerchalk::sync {
 // "space": devices holding its capability find each other through it and connect (the
 // lower device key dials). The first message on a connection is a Hello carrying the
 // device's certificate, which proves the user it acts for. Peers in a space then
-// exchange that space's signed manifests; board contents flow only for boards that both
-// users may access according to those manifests, as Yrs updates relative to what was
-// last sent. A user's own devices also exchange their workspace and contacts. Presence
+// exchange that space's signed access changes, which anyone passes on; board contents
+// flow only for boards that both users may access according to them, as Yrs updates relative to
+// what was last sent. A user's own devices also exchange their workspace and contacts. Presence
 // (which board is open, where the pointer is) goes to peers who may see that board.
 //
 // Everything runs on the Qt main thread, which is also the p2pdc executor.
@@ -52,8 +52,8 @@ class Network : public QObject {
     // The node is running and looking for peers.
     Q_PROPERTY(bool online READ online NOTIFY statusChanged)
     Q_PROPERTY(int connectedDevices READ connectedDevices NOTIFY peersChanged)
-    // People connected through an invite to a project or board you administer who are
-    // not members yet, across all of them.
+    // People connected through an invite to a project or board you own who have no
+    // access yet, across all of them.
     Q_PROPERTY(int joinRequestCount READ joinRequestCount NOTIFY requestsChanged)
 
   public:
@@ -71,9 +71,12 @@ class Network : public QObject {
     [[nodiscard]] bool online() const { return started_ && !stopping_; }
     [[nodiscard]] int connectedDevices() const;
     [[nodiscard]] int joinRequestCount() const;
-    // For a project or board you administer: connected people who are not members,
-    // {key, name, fingerprint}. They hold its invite; approving makes them members.
+    // For a project or board you own: connected people without access, {key, name,
+    // fingerprint}. They hold its invite; approving makes them members.
     Q_INVOKABLE QVariantList joinRequests(const QString &itemId) const;
+    // Every request across projects and boards you own: {itemId, itemName, board, key,
+    // name, fingerprint}.
+    Q_INVOKABLE QVariantList allJoinRequests() const;
 
     // Tells peers which board this device shows and where the pointer is (world
     // coordinates); an empty boardId means no board.
@@ -86,7 +89,7 @@ class Network : public QObject {
     void peersChanged();
     void presenceChanged();
     void requestsChanged();
-    // Someone not yet a member reached a project or board you administer.
+    // Someone without access reached a project or board you own.
     void joinRequested(const QString &name, const QString &itemName);
 
   private:
@@ -154,8 +157,8 @@ class Network : public QObject {
     void receive(const PeerId &id, std::uint64_t generation, const QByteArray &bytes);
     bool handleHello(Peer &peer, const Hello &hello);
     void peerAuthenticated(const PeerId &id, Peer &peer);
-    void offerManifests(Peer &peer);
-    void handleManifests(const Manifests &message);
+    void offerAccess(Peer &peer);
+    void handleAccess(const AccessChanges &message);
     void handlePersonal(const Peer &peer, const Personal &message);
     void handleBoardUpdate(const Peer &peer, const BoardUpdate &update);
     [[nodiscard]] bool syncable(const Peer &peer, const QUuid &board) const;
@@ -165,7 +168,7 @@ class Network : public QObject {
     void profileChanged();
     void sendPresence();
     [[nodiscard]] Presence presenceFor(const Peer &peer) const;
-    // The item a peer's space is about, if you administer it and the peer is not in it.
+    // The item a peer's space is about, if you own it and the peer has no access.
     [[nodiscard]] std::optional<QString> requestedItemName(const Peer &peer) const;
 
     Library &library_;

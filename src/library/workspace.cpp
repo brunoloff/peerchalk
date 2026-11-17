@@ -2,6 +2,7 @@
 
 #include "library/files.hpp"
 #include "library/secrets.hpp"
+#include "library/workspace_support.hpp"
 
 #include <QDir>
 
@@ -9,30 +10,19 @@
 #include <stdexcept>
 
 namespace peerchalk {
-namespace {
 
-constexpr int projectColorCount = 6;
-
-QString requireName(const QString &name) {
-    const QString trimmed = name.trimmed();
-    if (trimmed.isEmpty())
-        throw std::invalid_argument("Names cannot be empty");
-    return trimmed;
-}
-
-template <class Entry> auto findIn(std::vector<Entry> &entries, const QUuid &id) {
-    return std::ranges::find(entries, id, &Entry::id);
-}
-
-} // namespace
-
-QString ProjectEntry::name() const { return manifest ? manifest->manifest.name : inviteName; }
-
-QString BoardEntry::name() const { return manifest ? manifest->manifest.name : inviteName; }
+using namespace workspace_detail;
+using Action = AccessOp::Action;
 
 Workspace::Workspace(QString directory, QByteArray user, Signer signer)
     : directory_(std::move(directory)), user_(std::move(user)), signer_(std::move(signer)) {
     load();
+}
+
+void Workspace::resetUser(QByteArray user) {
+    if (!projects_.empty() || !boards_.empty())
+        throw std::invalid_argument("This device already has projects or boards");
+    user_ = std::move(user);
 }
 
 const ProjectEntry &Workspace::project(const QUuid &id) const {
@@ -47,12 +37,6 @@ const BoardEntry &Workspace::board(const QUuid &id) const {
     if (it == boards_.end())
         throw std::invalid_argument("Unknown board");
     return *it;
-}
-
-void Workspace::resetUser(QByteArray user) {
-    if (!projects_.empty() || !boards_.empty())
-        throw std::invalid_argument("This device already has projects or boards");
-    user_ = std::move(user);
 }
 
 bool Workspace::hasProject(const QUuid &id) const {
@@ -71,206 +55,131 @@ BoardEntry &Workspace::findBoard(const QUuid &id) {
     return const_cast<BoardEntry &>(std::as_const(*this).board(id));
 }
 
+Role Workspace::projectRole(const QUuid &id, const QByteArray &user) const {
+    if (!hasProject(id) || project(id).deleted())
+        return Role::None;
+    return project(id).state.role(user);
+}
+
+Role Workspace::boardRole(const QUuid &id, const QByteArray &user) const {
+    if (!hasBoard(id) || board(id).deleted())
+        return Role::None;
+    return board(id).state.role(user);
+}
+
+bool Workspace::mayAccessProject(const QByteArray &user, const QUuid &projectId) const {
+    return projectRole(projectId, user) >= Role::Member;
+}
+
+bool Workspace::mayAccessBoard(const QByteArray &user, const QUuid &boardId) const {
+    if (!hasBoard(boardId) || !board(boardId).state.exists || board(boardId).deleted())
+        return false;
+    if (boardRole(boardId, user) >= Role::Member)
+        return true;
+    return std::ranges::any_of(projects_, [&](const ProjectEntry &project) {
+        return mayAccessProject(user, project.id) &&
+               std::ranges::find(project.state.boards, boardId) != project.state.boards.end();
+    });
+}
+
 std::vector<QUuid> Workspace::boardsInProject(const QUuid &projectId) const {
     std::vector<QUuid> result;
-    if (!hasProject(projectId))
+    if (!hasProject(projectId) || project(projectId).deleted())
         return result;
-    const ProjectEntry &project = this->project(projectId);
-    if (!project.manifest || project.deleted())
-        return result;
-    for (const BoardEntry &board : boards_) {
-        if (!board.manifest || board.deleted())
-            continue;
-        const Manifest &manifest = board.manifest->manifest;
-        if (std::ranges::find(manifest.projects, projectId) != manifest.projects.end() &&
-            project.manifest->manifest.includes(manifest.admin))
-            result.push_back(board.id);
-    }
+    for (const QUuid &id : project(projectId).state.boards)
+        if (hasBoard(id) && board(id).state.exists && !board(id).deleted())
+            result.push_back(id);
     return result;
 }
 
 std::vector<QUuid> Workspace::sharedBoards() const {
     std::vector<QUuid> inProjects;
-    for (const ProjectEntry &project : projects_) {
+    for (const ProjectEntry &project : projects_)
         if (mayAccessProject(user_, project.id))
             std::ranges::copy(boardsInProject(project.id), std::back_inserter(inProjects));
-    }
     std::vector<QUuid> result;
     for (const BoardEntry &board : boards_) {
         const bool shown = std::ranges::find(inProjects, board.id) != inProjects.end();
-        // Boards joined by invite stay listed while their admin has yet to let you in.
+        // Boards joined by invite stay listed while their owners have yet to let you in.
         const bool joined = !board.capability.isEmpty();
-        if (!shown && !board.deleted() && (joined || mayAccessBoard(user_, board.id)))
+        if (!shown && !board.deleted() && (joined || boardRole(board.id, user_) >= Role::Member))
             result.push_back(board.id);
     }
     return result;
 }
 
-bool Workspace::mayAccessProject(const QByteArray &user, const QUuid &projectId) const {
-    if (!hasProject(projectId))
-        return false;
-    const ProjectEntry &project = this->project(projectId);
-    return project.manifest && !project.deleted() && project.manifest->manifest.includes(user);
-}
-
-bool Workspace::mayAccessBoard(const QByteArray &user, const QUuid &boardId) const {
-    if (!hasBoard(boardId))
-        return false;
-    const BoardEntry &board = this->board(boardId);
-    if (!board.manifest || board.deleted())
-        return false;
-    const Manifest &manifest = board.manifest->manifest;
-    if (manifest.includes(user))
-        return true;
-    return std::ranges::any_of(manifest.projects, [&](const QUuid &projectId) {
-        return mayAccessProject(user, projectId) &&
-               project(projectId).manifest->manifest.includes(manifest.admin);
-    });
-}
-
-Manifest Workspace::adminManifest(const std::optional<SignedManifest> &current,
-                                  const QByteArray &admin) const {
-    if (admin != user_ || !current)
-        throw std::invalid_argument("Only the admin can change this");
-    Manifest next = current->manifest;
-    ++next.version;
-    return next;
-}
-
-void Workspace::publish(std::optional<SignedManifest> &slot, const Manifest &manifest) {
-    slot = signManifest(manifest, signer_);
+void Workspace::record(std::vector<SignedOp> &ops, quint64 clock, AccessOp op) {
+    op.clock = clock + 1;
+    op.signer = user_;
+    ops.push_back(signOp(op, signer_));
+    recompute();
     save();
 }
 
-QUuid Workspace::createProject(const QString &name) {
-    ProjectEntry entry{QUuid::createUuid(),
-                       newCapability(),
-                       user_,
-                       requireName(name),
-                       static_cast<int>(projects_.size()) % projectColorCount,
-                       std::nullopt};
-    projects_.push_back(entry);
-    publish(projects_.back().manifest,
-            Manifest{ResourceKind::Project, entry.id, entry.inviteName, user_, 1, {}, {}, false});
-    return entry.id;
+// Every project's and board's state, replayed from its changes. Boards come first:
+// a project's SetBoard changes are checked against board roles.
+void Workspace::recompute() {
+    for (BoardEntry &board : boards_)
+        board.state = replay(board.ops, ResourceKind::Board, board.id, board.creator, {});
+    const BoardRoleLookup boardRoleLookup = [this](const QUuid &id, const QByteArray &creator,
+                                                   const QByteArray &user) {
+        if (!hasBoard(id) || board(id).creator != creator)
+            return Role::None;
+        return board(id).state.role(user);
+    };
+    for (ProjectEntry &project : projects_)
+        project.state = replay(project.ops, ResourceKind::Project, project.id, project.creator,
+                               boardRoleLookup);
 }
 
-QUuid Workspace::createBoard(const QString &name, const std::optional<QUuid> &projectId) {
-    std::vector<QUuid> projects;
-    if (projectId) {
-        if (!mayAccessProject(user_, *projectId))
-            throw std::invalid_argument("You are not in that project");
-        projects.push_back(*projectId);
-    }
-    const QDateTime now = QDateTime::currentDateTimeUtc();
-    BoardEntry entry{QUuid::createUuid(), newCapability(), user_,
-                     requireName(name),   std::nullopt,    now};
-    boards_.push_back(entry);
-    publish(
-        boards_.back().manifest,
-        Manifest{ResourceKind::Board, entry.id, entry.inviteName, user_, 1, {}, projects, false});
-    return entry.id;
+QUuid Workspace::createProject(const QString &name, const QString &displayName) {
+    const QUuid id = QUuid::createUuid();
+    projects_.push_back({id,
+                         newCapability(),
+                         user_,
+                         requireName(name),
+                         static_cast<int>(projects_.size()) % projectColorCount,
+                         {},
+                         {}});
+    AccessOp op = change(ResourceKind::Project, id, Action::Create);
+    op.name = projects_.back().inviteName;
+    op.signerName = displayName;
+    record(projects_.back().ops, 0, op);
+    return id;
+}
+
+QUuid Workspace::createBoard(const QString &name, const std::optional<QUuid> &projectId,
+                             const QString &displayName) {
+    if (projectId && projectRole(*projectId, user_) < Role::Owner)
+        throw std::invalid_argument("Only the project's owners can add boards to it");
+    const QUuid id = QUuid::createUuid();
+    boards_.push_back(
+        {id, newCapability(), user_, requireName(name), QDateTime::currentDateTimeUtc(), {}, {}});
+    AccessOp op = change(ResourceKind::Board, id, Action::Create);
+    op.name = boards_.back().inviteName;
+    op.signerName = displayName;
+    record(boards_.back().ops, 0, op);
+    if (projectId)
+        setBoardInProject(id, *projectId, true);
+    return id;
 }
 
 void Workspace::renameProject(const QUuid &id, const QString &name) {
     ProjectEntry &entry = findProject(id);
-    Manifest next = adminManifest(entry.manifest, entry.admin);
-    next.name = requireName(name);
-    publish(entry.manifest, next);
+    if (entry.state.role(user_) != Role::Admin)
+        throw std::invalid_argument("Only the project's admin can rename it");
+    AccessOp op = change(ResourceKind::Project, id, Action::Rename);
+    op.name = requireName(name);
+    record(entry.ops, entry.state.clock, op);
 }
 
 void Workspace::renameBoard(const QUuid &id, const QString &name) {
     BoardEntry &entry = findBoard(id);
-    Manifest next = adminManifest(entry.manifest, entry.admin);
-    next.name = requireName(name);
-    publish(entry.manifest, next);
-}
-
-void Workspace::setProjectMembers(const QUuid &id, std::vector<Member> members) {
-    ProjectEntry &entry = findProject(id);
-    Manifest next = adminManifest(entry.manifest, entry.admin);
-    std::erase_if(members, [&](const Member &m) { return m.key == entry.admin; });
-    next.members = std::move(members);
-    publish(entry.manifest, next);
-}
-
-void Workspace::setBoardMembers(const QUuid &id, std::vector<Member> members) {
-    BoardEntry &entry = findBoard(id);
-    Manifest next = adminManifest(entry.manifest, entry.admin);
-    std::erase_if(members, [&](const Member &m) { return m.key == entry.admin; });
-    next.members = std::move(members);
-    publish(entry.manifest, next);
-}
-
-void Workspace::setBoardInProject(const QUuid &boardId, const QUuid &projectId, bool included) {
-    BoardEntry &entry = findBoard(boardId);
-    Manifest next = adminManifest(entry.manifest, entry.admin);
-    std::erase(next.projects, projectId);
-    if (included) {
-        if (!mayAccessProject(user_, projectId))
-            throw std::invalid_argument("You are not in that project");
-        next.projects.push_back(projectId);
-    }
-    publish(entry.manifest, next);
-}
-
-void Workspace::removeProject(const QUuid &id) {
-    ProjectEntry &entry = findProject(id);
-    if (entry.admin == user_ && entry.manifest) {
-        Manifest next = adminManifest(entry.manifest, entry.admin);
-        next.deleted = true;
-        publish(entry.manifest, next);
-        return;
-    }
-    projects_.erase(findIn(projects_, id));
-    save();
-}
-
-void Workspace::removeBoard(const QUuid &id) {
-    BoardEntry &entry = findBoard(id);
-    removeFile(boardPath(id));
-    if (entry.admin == user_ && entry.manifest) {
-        Manifest next = adminManifest(entry.manifest, entry.admin);
-        next.deleted = true;
-        publish(entry.manifest, next);
-        return;
-    }
-    boards_.erase(findIn(boards_, id));
-    save();
-}
-
-Invite Workspace::inviteToProject(const QUuid &id) const {
-    const ProjectEntry &entry = project(id);
-    if (entry.admin != user_)
-        throw std::invalid_argument("Only the project's admin can invite people");
-    return {Invite::Kind::Project, id, entry.name(), entry.capability, entry.admin};
-}
-
-Invite Workspace::inviteToBoard(const QUuid &id) const {
-    const BoardEntry &entry = board(id);
-    if (entry.admin != user_ || entry.capability.isEmpty())
-        throw std::invalid_argument("Only the board's admin can invite people");
-    return {Invite::Kind::Board, id, entry.name(), entry.capability, entry.admin};
-}
-
-void Workspace::join(const Invite &invite) {
-    if (invite.capability.size() != capabilitySize || invite.admin.size() != signingKeySize)
-        throw std::invalid_argument("The invite is damaged");
-    if (invite.kind == Invite::Kind::Project) {
-        if (hasProject(invite.id))
-            throw std::invalid_argument("You are already in this project");
-        projects_.push_back({invite.id, invite.capability, invite.admin, requireName(invite.name),
-                             static_cast<int>(projects_.size()) % projectColorCount, std::nullopt});
-    } else if (hasBoard(invite.id)) {
-        BoardEntry &entry = findBoard(invite.id);
-        if (!entry.capability.isEmpty())
-            throw std::invalid_argument("You already have this board");
-        entry.capability = invite.capability; // known through a project; now invited directly
-    } else {
-        boards_.push_back({invite.id, invite.capability, invite.admin, requireName(invite.name),
-                           std::nullopt, QDateTime::currentDateTimeUtc()});
-    }
-    save();
+    if (entry.state.role(user_) != Role::Admin)
+        throw std::invalid_argument("Only the board's admin can rename it");
+    AccessOp op = change(ResourceKind::Board, id, Action::Rename);
+    op.name = requireName(name);
+    record(entry.ops, entry.state.clock, op);
 }
 
 QString Workspace::boardPath(const QUuid &id) const {

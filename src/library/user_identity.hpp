@@ -1,6 +1,6 @@
 #pragma once
 
-#include "library/manifest.hpp"
+#include "library/signatures.hpp"
 
 #include <QByteArray>
 #include <QString>

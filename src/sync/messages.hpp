@@ -1,6 +1,6 @@
 #pragma once
 
-#include "library/manifest.hpp"
+#include <utility>
 
 #include <QByteArray>
 #include <QJsonObject>
@@ -27,9 +27,10 @@ struct Hello {
     int colorIndex{0};
 };
 
-// Signed manifests the receiver may store if valid (see Workspace::acceptManifest).
-struct Manifests {
-    std::vector<SignedManifest> manifests; // manifest fields unverified until accepted
+// Signed access changes (payload, signature) the receiver checks and may store (see
+// Workspace::acceptOps). Anyone who has them passes them on.
+struct AccessChanges {
+    std::vector<std::pair<QByteArray, QByteArray>> ops;
 };
 
 // Between one user's devices only: the workspace (with capabilities) and contacts.
@@ -57,7 +58,7 @@ struct Presence {
     bool cursorVisible{false};
 };
 
-using Message = std::variant<Hello, Manifests, Personal, BoardUpdate, Presence, Profile>;
+using Message = std::variant<Hello, AccessChanges, Personal, BoardUpdate, Presence, Profile>;
 
 [[nodiscard]] QByteArray encode(const Message &message);
 [[nodiscard]] std::optional<Message> decode(const QByteArray &bytes);

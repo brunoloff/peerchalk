@@ -20,7 +20,7 @@ TEST(Codes, InviteRoundTrips) {
     EXPECT_EQ(decoded->id, invite.id);
     EXPECT_EQ(decoded->name, invite.name);
     EXPECT_EQ(decoded->capability, invite.capability);
-    EXPECT_EQ(decoded->admin, invite.admin);
+    EXPECT_EQ(decoded->creator, invite.creator);
 }
 
 TEST(Codes, ContactCardRoundTrips) {

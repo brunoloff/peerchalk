@@ -10,7 +10,7 @@ target_compile_options(peerchalk_board_tests PRIVATE
 gtest_discover_tests(peerchalk_board_tests)
 
 add_executable(peerchalk_library_tests codes_test.cpp workspace_test.cpp
-    identity_store_test.cpp manifest_test.cpp)
+    identity_store_test.cpp signatures_test.cpp access_log_test.cpp files_test.cpp)
 target_link_libraries(peerchalk_library_tests PRIVATE peerchalk_library GTest::gtest_main)
 target_compile_options(peerchalk_library_tests PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:${peerchalk_warning_flags}>)

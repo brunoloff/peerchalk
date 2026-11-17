@@ -1,19 +1,18 @@
-// Workspace persistence, migration, manifests from peers and personal sync.
+// Workspace persistence, changes from peers and personal sync.
 #include "library/files.hpp"
-#include "library/secrets.hpp"
 #include "library/workspace.hpp"
 
 #include <QDir>
-#include <QFile>
 #include <QJsonArray>
 
 #include <algorithm>
+#include <set>
 #include <stdexcept>
 
 namespace peerchalk {
 namespace {
 
-constexpr int formatVersion = 2;
+constexpr int formatVersion = 3;
 
 QString base64(const QByteArray &bytes) { return QString::fromLatin1(bytes.toBase64()); }
 
@@ -21,99 +20,119 @@ QByteArray fromBase64(const QJsonValue &value) {
     return QByteArray::fromBase64(value.toString().toLatin1());
 }
 
-QJsonValue manifestJson(const std::optional<SignedManifest> &manifest) {
-    if (!manifest)
-        return QJsonValue::Null;
-    return QJsonObject{{"payload", base64(manifest->payload)},
-                       {"signature", base64(manifest->signature)}};
+QJsonArray opsJson(const std::vector<SignedOp> &ops) {
+    QJsonArray array;
+    for (const SignedOp &op : ops)
+        array.append(
+            QJsonObject{{"payload", base64(op.payload)}, {"signature", base64(op.signature)}});
+    return array;
 }
 
-// The stored manifest, checked against the entry's admin; throws when it does not verify.
-std::optional<SignedManifest> manifestFromJson(const QJsonValue &value, ResourceKind kind,
-                                               const QUuid &id, const QByteArray &admin) {
-    if (value.isNull() || value.isUndefined())
-        return std::nullopt;
-    std::optional<SignedManifest> manifest =
-        verifyManifest(fromBase64(value[QStringLiteral("payload")]),
-                       fromBase64(value[QStringLiteral("signature")]), kind, id, admin);
-    if (!manifest)
-        throw std::runtime_error("a stored manifest does not verify");
-    return manifest;
-}
-
-QJsonObject toJson(const ProjectEntry &entry) {
-    return {{"id", entry.id.toString(QUuid::WithoutBraces)},
-            {"capability", base64(entry.capability)},
-            {"admin", base64(entry.admin)},
-            {"inviteName", entry.inviteName},
-            {"color", entry.colorIndex},
-            {"manifest", manifestJson(entry.manifest)}};
-}
-
-QJsonObject toJson(const BoardEntry &entry) {
-    return {{"id", entry.id.toString(QUuid::WithoutBraces)},
-            {"capability", base64(entry.capability)},
-            {"admin", base64(entry.admin)},
-            {"inviteName", entry.inviteName},
-            {"edited", entry.edited.toString(Qt::ISODateWithMs)},
-            {"manifest", manifestJson(entry.manifest)}};
+std::vector<SignedOp> opsFromJson(const QJsonValue &value) {
+    std::vector<SignedOp> ops;
+    for (const QJsonValue &entry : value.toArray()) {
+        std::optional<SignedOp> op =
+            verifyOp(fromBase64(entry["payload"]), fromBase64(entry["signature"]));
+        if (!op)
+            throw std::runtime_error("a stored access change does not verify");
+        ops.push_back(*std::move(op));
+    }
+    return ops;
 }
 
 QUuid requireId(const QJsonObject &object) {
-    const QUuid id = QUuid::fromString(object[QStringLiteral("id")].toString());
+    const QUuid id = QUuid::fromString(object["id"].toString());
     if (id.isNull())
         throw std::runtime_error("an entry has no valid id");
     return id;
 }
 
+QByteArray optionalKey(const QJsonObject &object, const char *name) {
+    const QByteArray key = fromBase64(object[QString::fromLatin1(name)]);
+    if (!key.isEmpty() && key.size() != 32)
+        throw std::runtime_error(std::string("an entry has a damaged ") + name);
+    return key;
+}
+
+QJsonObject toJson(const ProjectEntry &entry) {
+    return {{"id", entry.id.toString(QUuid::WithoutBraces)},
+            {"capability", base64(entry.capability)},
+            {"creator", base64(entry.creator)},
+            {"inviteName", entry.inviteName},
+            {"color", entry.colorIndex},
+            {"ops", opsJson(entry.ops)}};
+}
+
+QJsonObject toJson(const BoardEntry &entry) {
+    return {{"id", entry.id.toString(QUuid::WithoutBraces)},
+            {"capability", base64(entry.capability)},
+            {"creator", base64(entry.creator)},
+            {"inviteName", entry.inviteName},
+            {"edited", entry.edited.toString(Qt::ISODateWithMs)},
+            {"ops", opsJson(entry.ops)}};
+}
+
 ProjectEntry projectFromJson(const QJsonObject &object) {
-    ProjectEntry entry{requireId(object),
-                       base64Field(object, QStringLiteral("capability"), 32),
-                       base64Field(object, QStringLiteral("admin"), 32),
-                       object[QStringLiteral("inviteName")].toString(),
-                       object[QStringLiteral("color")].toInt(),
-                       std::nullopt};
-    entry.manifest = manifestFromJson(object[QStringLiteral("manifest")], ResourceKind::Project,
-                                      entry.id, entry.admin);
-    return entry;
+    return {requireId(object),
+            base64Field(object, QStringLiteral("capability"), 32),
+            base64Field(object, QStringLiteral("creator"), 32),
+            object["inviteName"].toString(),
+            object["color"].toInt(),
+            opsFromJson(object["ops"]),
+            {}};
 }
 
 BoardEntry boardFromJson(const QJsonObject &object) {
-    BoardEntry entry{
-        requireId(object),
-        fromBase64(object[QStringLiteral("capability")]),
-        base64Field(object, QStringLiteral("admin"), 32),
-        object[QStringLiteral("inviteName")].toString(),
-        std::nullopt,
-        QDateTime::fromString(object[QStringLiteral("edited")].toString(), Qt::ISODateWithMs)};
-    if (!entry.capability.isEmpty() && entry.capability.size() != 32)
-        throw std::runtime_error("a board has a damaged capability");
-    entry.manifest = manifestFromJson(object[QStringLiteral("manifest")], ResourceKind::Board,
-                                      entry.id, entry.admin);
-    return entry;
+    return {requireId(object),
+            optionalKey(object, "capability"),
+            optionalKey(object, "creator"),
+            object["inviteName"].toString(),
+            QDateTime::fromString(object["edited"].toString(), Qt::ISODateWithMs),
+            opsFromJson(object["ops"]),
+            {}};
 }
 
-bool isNewer(const std::optional<SignedManifest> &current, const SignedManifest &candidate) {
-    return !current || candidate.manifest.version > current->manifest.version;
+// Adds the changes not yet in `ops`; returns whether any were new.
+bool addMissing(std::vector<SignedOp> &ops, const std::vector<SignedOp> &incoming) {
+    bool added = false;
+    for (const SignedOp &op : incoming) {
+        if (std::ranges::find(ops, op.hash, &SignedOp::hash) == ops.end()) {
+            ops.push_back(op);
+            added = true;
+        }
+    }
+    return added;
+}
+
+std::vector<SignedOp> forResource(const std::vector<SignedOp> &ops, ResourceKind kind,
+                                  const QUuid &id) {
+    std::vector<SignedOp> result;
+    for (const SignedOp &op : ops)
+        if (op.op.kind == kind && op.op.resource == id)
+            result.push_back(op);
+    return result;
 }
 
 } // namespace
 
 void Workspace::load() {
     const QString path = QDir(directory_).filePath(QStringLiteral("workspace.json"));
-    const std::optional<QJsonObject> root = readJsonObject(path, formatVersion);
-    if (!root) {
-        migrateProjectsFile();
+    const std::optional<int> version = jsonFileVersion(path);
+    if (!version || *version < formatVersion) {
+        if (migrate())
+            save();
         return;
     }
+    const std::optional<QJsonObject> root = readJsonObject(path, formatVersion);
     try {
-        for (const QJsonValue &value : (*root)[QStringLiteral("projects")].toArray())
+        for (const QJsonValue &value : (*root)["projects"].toArray())
             projects_.push_back(projectFromJson(value.toObject()));
-        for (const QJsonValue &value : (*root)[QStringLiteral("boards")].toArray())
+        for (const QJsonValue &value : (*root)["boards"].toArray())
             boards_.push_back(boardFromJson(value.toObject()));
     } catch (const std::exception &error) {
         throw std::runtime_error(path.toStdString() + ": " + error.what());
     }
+    recompute();
 }
 
 void Workspace::save() const {
@@ -121,107 +140,93 @@ void Workspace::save() const {
                     formatVersion, true);
 }
 
-// Earlier versions kept projects with nested boards in projects.json, all created here;
-// they become projects and boards administered by this user.
-void Workspace::migrateProjectsFile() {
-    const QString path = QDir(directory_).filePath(QStringLiteral("projects.json"));
-    const std::optional<QJsonObject> old = readJsonObject(path, 1);
-    if (!old)
-        return;
-    for (const QJsonValue &value : (*old)[QStringLiteral("projects")].toArray()) {
-        const QJsonObject project = value.toObject();
-        const QUuid projectId = requireId(project);
-        const QString name = project[QStringLiteral("name")].toString();
-        projects_.push_back({projectId, base64Field(project, QStringLiteral("capability"), 32),
-                             user_, name, project[QStringLiteral("color")].toInt(), std::nullopt});
-        projects_.back().manifest = signManifest(
-            {ResourceKind::Project, projectId, name, user_, 1, {}, {}, false}, signer_);
-        for (const QJsonValue &boardValue : project[QStringLiteral("boards")].toArray()) {
-            const QJsonObject board = boardValue.toObject();
-            const QUuid boardId = requireId(board);
-            const QString boardName = board[QStringLiteral("name")].toString();
-            boards_.push_back({boardId, newCapability(), user_, boardName, std::nullopt,
-                               QDateTime::fromString(board[QStringLiteral("edited")].toString(),
-                                                     Qt::ISODateWithMs)});
-            boards_.back().manifest = signManifest(
-                {ResourceKind::Board, boardId, boardName, user_, 1, {}, {projectId}, false},
-                signer_);
-        }
+bool Workspace::addOp(const SignedOp &op) {
+    std::vector<SignedOp> *ops = nullptr;
+    if (op.op.kind == ResourceKind::Project && hasProject(op.op.resource))
+        ops = &findProject(op.op.resource).ops;
+    else if (op.op.kind == ResourceKind::Board && hasBoard(op.op.resource))
+        ops = &findBoard(op.op.resource).ops;
+    return ops != nullptr && addMissing(*ops, {op});
+}
+
+// A board you know only through a project is anchored by the creator that the project's
+// SetBoard change names. Each candidate creator from projects you may access is tried,
+// and the board is kept only if it then turns out accessible, so a member's forged
+// changes cannot take over a real board.
+bool Workspace::learnBoard(const QUuid &boardId, const std::vector<SignedOp> &boardOps) {
+    std::set<QByteArray> candidates;
+    for (const ProjectEntry &project : projects_) {
+        if (!mayAccessProject(user_, project.id))
+            continue;
+        for (const SignedOp &op : project.ops)
+            if (op.op.action == AccessOp::Action::SetBoard && op.op.board == boardId &&
+                op.op.included)
+                candidates.insert(op.op.user);
     }
-    save();
-    QFile::rename(path, QDir(directory_).filePath(QStringLiteral("projects.v1-migrated.json")));
+    for (const QByteArray &creator : candidates) {
+        boards_.push_back(
+            {boardId, {}, creator, {}, QDateTime::currentDateTimeUtc(), boardOps, {}});
+        recompute();
+        if (mayAccessBoard(user_, boardId))
+            return true;
+        boards_.pop_back();
+    }
+    recompute();
+    return false;
 }
 
-bool Workspace::acceptManifest(const QByteArray &payload, const QByteArray &signature) {
-    const std::optional<SignedManifest> received = verifyAnyManifest(payload, signature);
-    if (!received)
-        return false;
-    const Manifest &manifest = received->manifest;
-    if (manifest.kind == ResourceKind::Board)
-        return acceptBoardManifest(*received);
-    if (!hasProject(manifest.id))
-        return false;
-    ProjectEntry &entry = findProject(manifest.id);
-    if (entry.admin != manifest.admin || !isNewer(entry.manifest, *received))
-        return false;
-    entry.manifest = received;
-    save();
-    return true;
-}
-
-bool Workspace::acceptBoardManifest(const SignedManifest &received) {
-    const Manifest &manifest = received.manifest;
-    if (hasBoard(manifest.id)) {
-        BoardEntry &entry = findBoard(manifest.id);
-        if (entry.admin != manifest.admin || !isNewer(entry.manifest, received))
-            return false;
-        entry.manifest = received;
+bool Workspace::acceptOps(const std::vector<std::pair<QByteArray, QByteArray>> &signedOps) {
+    std::vector<SignedOp> verified;
+    for (const auto &[payload, signature] : signedOps)
+        if (std::optional<SignedOp> op = verifyOp(payload, signature))
+            verified.push_back(*std::move(op));
+    bool changed = false;
+    for (const SignedOp &op : verified)
+        if (op.op.kind == ResourceKind::Project)
+            changed |= addOp(op);
+    recompute();
+    std::set<QUuid> unknownBoards;
+    for (const SignedOp &op : verified) {
+        if (op.op.kind != ResourceKind::Board)
+            continue;
+        if (hasBoard(op.op.resource))
+            changed |= addOp(op);
+        else
+            unknownBoards.insert(op.op.resource);
+    }
+    for (const QUuid &id : unknownBoards)
+        changed |= learnBoard(id, forResource(verified, ResourceKind::Board, id));
+    recompute();
+    const auto unreachable = [this](const BoardEntry &board) {
+        return board.capability.isEmpty() && board.creator != user_ &&
+               !mayAccessBoard(user_, board.id);
+    };
+    changed |= std::erase_if(boards_, unreachable) > 0;
+    if (changed)
         save();
-        return true;
-    }
-    const bool vouched = std::ranges::any_of(manifest.projects, [&](const QUuid &projectId) {
-        return mayAccessProject(user_, projectId) &&
-               project(projectId).manifest->manifest.includes(manifest.admin);
-    });
-    if (!vouched || manifest.deleted)
-        return false;
-    boards_.push_back({manifest.id,
-                       {},
-                       manifest.admin,
-                       manifest.name,
-                       received,
-                       QDateTime::currentDateTimeUtc()});
-    save();
-    return true;
+    return changed;
 }
 
-std::vector<SignedManifest> Workspace::manifestsForProject(const QUuid &projectId) const {
-    std::vector<SignedManifest> result;
-    if (!hasProject(projectId) || !project(projectId).manifest)
-        return result;
-    result.push_back(*project(projectId).manifest);
-    for (const BoardEntry &board : boards_) {
-        if (board.manifest && std::ranges::find(board.manifest->manifest.projects, projectId) !=
-                                  board.manifest->manifest.projects.end())
-            result.push_back(*board.manifest);
-    }
+std::vector<SignedOp> Workspace::opsForProject(const QUuid &projectId) const {
+    if (!hasProject(projectId))
+        return {};
+    std::vector<SignedOp> result = project(projectId).ops;
+    for (const QUuid &id : project(projectId).state.boards)
+        if (hasBoard(id))
+            std::ranges::copy(board(id).ops, std::back_inserter(result));
     return result;
 }
 
-std::vector<SignedManifest> Workspace::manifestsForBoard(const QUuid &boardId) const {
-    if (!hasBoard(boardId) || !board(boardId).manifest)
-        return {};
-    return {*board(boardId).manifest};
+std::vector<SignedOp> Workspace::opsForBoard(const QUuid &boardId) const {
+    return hasBoard(boardId) ? board(boardId).ops : std::vector<SignedOp>{};
 }
 
-std::vector<SignedManifest> Workspace::allManifests() const {
-    std::vector<SignedManifest> result;
+std::vector<SignedOp> Workspace::allOps() const {
+    std::vector<SignedOp> result;
     for (const ProjectEntry &project : projects_)
-        if (project.manifest)
-            result.push_back(*project.manifest);
+        std::ranges::copy(project.ops, std::back_inserter(result));
     for (const BoardEntry &board : boards_)
-        if (board.manifest)
-            result.push_back(*board.manifest);
+        std::ranges::copy(board.ops, std::back_inserter(result));
     return result;
 }
 
@@ -235,21 +240,20 @@ QJsonObject Workspace::exportPersonal() const {
     return {{"projects", projects}, {"boards", boards}};
 }
 
-// Your own devices are trusted with capabilities, but their manifests must still verify.
+// Your own devices are trusted with capabilities; their changes still need valid
+// signatures and only count if replay accepts them.
 bool Workspace::mergePersonal(const QJsonObject &personal) {
     bool changed = false;
-    for (const QJsonValue &value : personal[QStringLiteral("projects")].toArray()) {
+    for (const QJsonValue &value : personal["projects"].toArray()) {
         const ProjectEntry incoming = projectFromJson(value.toObject());
         if (!hasProject(incoming.id)) {
             projects_.push_back(incoming);
             changed = true;
-        } else if (incoming.manifest && findProject(incoming.id).admin == incoming.admin &&
-                   isNewer(findProject(incoming.id).manifest, *incoming.manifest)) {
-            findProject(incoming.id).manifest = incoming.manifest;
-            changed = true;
+        } else if (findProject(incoming.id).creator == incoming.creator) {
+            changed |= addMissing(findProject(incoming.id).ops, incoming.ops);
         }
     }
-    for (const QJsonValue &value : personal[QStringLiteral("boards")].toArray()) {
+    for (const QJsonValue &value : personal["boards"].toArray()) {
         const BoardEntry incoming = boardFromJson(value.toObject());
         if (!hasBoard(incoming.id)) {
             boards_.push_back(incoming);
@@ -257,19 +261,18 @@ bool Workspace::mergePersonal(const QJsonObject &personal) {
             continue;
         }
         BoardEntry &entry = findBoard(incoming.id);
-        if (entry.admin != incoming.admin)
+        if (entry.creator != incoming.creator)
             continue;
         if (entry.capability.isEmpty() && !incoming.capability.isEmpty()) {
             entry.capability = incoming.capability;
             changed = true;
         }
-        if (incoming.manifest && isNewer(entry.manifest, *incoming.manifest)) {
-            entry.manifest = incoming.manifest;
-            changed = true;
-        }
+        changed |= addMissing(entry.ops, incoming.ops);
     }
-    if (changed)
+    if (changed) {
+        recompute();
         save();
+    }
     return changed;
 }
 

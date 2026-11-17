@@ -50,7 +50,16 @@ TEST_F(LibraryTest, InvitesJoinAnotherLibrary) {
     EXPECT_EQ(bob.currentProjectName(), QStringLiteral("Shared"));
     EXPECT_TRUE(bob.currentProjectPending());
     EXPECT_FALSE(bob.currentProjectIsAdmin());
-    EXPECT_TRUE(bob.projectInvite(project).isEmpty()); // only the admin invites
+    EXPECT_TRUE(bob.projectInvite(project).isEmpty()); // only owners invite
+}
+
+// Delivers the signed access changes `from` holds to `to`, as a connection would.
+void deliver(Library &from, Library &to) {
+    std::vector<std::pair<QByteArray, QByteArray>> ops;
+    for (const SignedOp &op : from.workspace().allOps())
+        ops.emplace_back(op.payload, op.signature);
+    to.workspace().acceptOps(ops);
+    to.workspaceUpdated();
 }
 
 TEST_F(LibraryTest, ANonMemberWaitsAndSeesNoBoards) {
@@ -60,36 +69,53 @@ TEST_F(LibraryTest, ANonMemberWaitsAndSeesNoBoards) {
     const QString project = alice.createProject(QStringLiteral("P"));
     alice.createBoard(QStringLiteral("Board"));
     bob.joinInvite(alice.projectInvite(project));
-    // Bob receives the project's manifests but is not a member.
-    const QUuid id = QUuid::fromString(project);
-    for (const SignedManifest &m : alice.workspace().manifestsForProject(id))
-        bob.workspace().acceptManifest(m.payload, m.signature);
-    bob.workspaceUpdated();
+    deliver(alice, bob);
     EXPECT_TRUE(bob.currentProjectPending());
     EXPECT_EQ(bob.boards()->rowCount(), 0);
     alice.admitToProject(project, bob.userKey(), QStringLiteral("Bob"));
-    for (const SignedManifest &m : alice.workspace().manifestsForProject(id))
-        bob.workspace().acceptManifest(m.payload, m.signature);
-    bob.workspaceUpdated();
+    deliver(alice, bob);
     EXPECT_FALSE(bob.currentProjectPending());
     EXPECT_EQ(bob.boards()->rowCount(), 1);
+    EXPECT_EQ(bob.projectRole(project), QStringLiteral("member"));
     EXPECT_EQ(alice.contacts()->rowCount(), 1); // approving also remembers the person
 }
 
-TEST_F(LibraryTest, AdminAddsAndRemovesMembersFromContacts) {
+TEST_F(LibraryTest, ABoardInviteIsApprovedByTheBoardOwner) {
     QTemporaryDir other;
     Library alice(dir_.path());
-    Library bob(other.path());
+    Library carol(other.path());
+    alice.createProject(QStringLiteral("P"));
+    const QString board = alice.createBoard(QStringLiteral("Board"));
+    carol.joinInvite(alice.boardInvite(board));
+    deliver(alice, carol);
+    EXPECT_EQ(carol.boardRole(board), QStringLiteral("none"));
+    alice.admitToBoard(board, carol.userKey(), QStringLiteral("Carol"));
+    deliver(alice, carol);
+    EXPECT_EQ(carol.boardRole(board), QStringLiteral("member"));
+    EXPECT_EQ(carol.sharedBoardCount(), 1);
+}
+
+TEST_F(LibraryTest, TheAdminSetsRolesAndOwnersAddMembers) {
+    QTemporaryDir second;
+    QTemporaryDir third;
+    Library alice(dir_.path());
+    Library bob(second.path());
+    Library carol(third.path());
     const QString project = alice.createProject(QStringLiteral("P"));
     ASSERT_TRUE(alice.addContact(bob.contactCode()));
-    alice.setProjectMember(project, bob.userKey(), true);
-    QVariantList people = alice.projectPeople(project);
+    alice.setProjectRole(project, bob.userKey(), QStringLiteral("owner"));
+    const QVariantList people = alice.projectPeople(project);
     ASSERT_EQ(people.size(), 2);
-    EXPECT_TRUE(people[0].toMap()["admin"].toBool());
-    EXPECT_TRUE(people[1].toMap()["member"].toBool());
-    alice.setProjectMember(project, bob.userKey(), false);
-    people = alice.projectPeople(project);
-    EXPECT_FALSE(people[1].toMap()["member"].toBool());
+    EXPECT_EQ(people[0].toMap()["role"].toString(), QStringLiteral("admin"));
+    EXPECT_EQ(people[1].toMap()["role"].toString(), QStringLiteral("owner"));
+    bob.joinInvite(alice.projectInvite(project));
+    deliver(alice, bob);
+    EXPECT_FALSE(bob.projectInvite(project).isEmpty()); // owners invite
+    bob.admitToProject(project, carol.userKey(), QStringLiteral("Carol"));
+    deliver(bob, alice);
+    EXPECT_EQ(alice.projectPeople(project).size(), 3);
+    alice.transferProjectAdmin(project, bob.userKey());
+    EXPECT_EQ(alice.projectRole(project), QStringLiteral("owner"));
 }
 
 TEST_F(LibraryTest, BoardsCanJoinMoreProjects) {

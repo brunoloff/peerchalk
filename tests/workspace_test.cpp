@@ -5,6 +5,7 @@
 #include <QDir>
 #include <QFile>
 #include <QJsonArray>
+#include <QJsonDocument>
 #include <QJsonObject>
 #include <QTemporaryDir>
 
@@ -18,6 +19,8 @@ namespace {
 
 // One user's installation: identity plus workspace in a temporary folder.
 struct Person {
+    explicit Person(QString name) : name(std::move(name)) {}
+    QString name;
     QTemporaryDir dir;
     UserIdentity identity{dir.path()};
     std::unique_ptr<Workspace> workspace =
@@ -28,53 +31,80 @@ struct Person {
     }
 };
 
-// Delivers every manifest `from` would offer for a project to `to`.
-void sendProject(const Person &from, Person &to, const QUuid &projectId) {
-    for (const SignedManifest &m : from.workspace->manifestsForProject(projectId))
-        to.workspace->acceptManifest(m.payload, m.signature);
+std::vector<std::pair<QByteArray, QByteArray>> wire(const std::vector<SignedOp> &ops) {
+    std::vector<std::pair<QByteArray, QByteArray>> result;
+    for (const SignedOp &op : ops)
+        result.emplace_back(op.payload, op.signature);
+    return result;
 }
 
-TEST(Workspace, CreatorIsAdminAndMayAccess) {
-    Person alice;
-    const QUuid project = alice.workspace->createProject(QStringLiteral("Thesis"));
-    const QUuid board = alice.workspace->createBoard(QStringLiteral("Sketch"), project);
-    EXPECT_TRUE(alice.workspace->mayAccessProject(alice.key(), project));
-    EXPECT_TRUE(alice.workspace->mayAccessBoard(alice.key(), board));
+// Delivers what `from` offers for a project to `to`, as a connection would.
+void sendProject(const Person &from, Person &to, const QUuid &project) {
+    to.workspace->acceptOps(wire(from.workspace->opsForProject(project)));
+}
+
+TEST(Workspace, CreatorIsAdminAndBoardsJoinTheProject) {
+    Person alice("Alice");
+    const QUuid project = alice.workspace->createProject(QStringLiteral("Thesis"), alice.name);
+    const QUuid board = alice.workspace->createBoard(QStringLiteral("Sketch"), project, alice.name);
+    EXPECT_EQ(alice.workspace->projectRole(project, alice.key()), Role::Admin);
+    EXPECT_EQ(alice.workspace->boardRole(board, alice.key()), Role::Admin);
     EXPECT_EQ(alice.workspace->boardsInProject(project), std::vector<QUuid>{board});
     EXPECT_TRUE(alice.workspace->sharedBoards().empty());
 }
 
-TEST(Workspace, InvitedProjectMemberSeesItsBoards) {
-    Person alice;
-    Person bob;
-    const QUuid project = alice.workspace->createProject(QStringLiteral("Thesis"));
-    const QUuid board = alice.workspace->createBoard(QStringLiteral("Sketch"), project);
-    alice.workspace->setProjectMembers(project, {{bob.key(), QStringLiteral("Bob")}});
+TEST(Workspace, ProjectMembersSeeAndMayOpenItsBoards) {
+    Person alice("Alice");
+    Person bob("Bob");
+    const QUuid project = alice.workspace->createProject(QStringLiteral("Thesis"), alice.name);
+    const QUuid board = alice.workspace->createBoard(QStringLiteral("Sketch"), project, alice.name);
     bob.workspace->join(alice.workspace->inviteToProject(project));
-    EXPECT_FALSE(bob.workspace->mayAccessProject(bob.key(), project)); // no manifest yet
+    sendProject(alice, bob, project);
+    EXPECT_FALSE(bob.workspace->mayAccessProject(bob.key(), project)); // not let in yet
+    EXPECT_FALSE(bob.workspace->hasBoard(board));
+    alice.workspace->setProjectRole(project, bob.key(), bob.name, Role::Member);
     sendProject(alice, bob, project);
     EXPECT_TRUE(bob.workspace->mayAccessProject(bob.key(), project));
     EXPECT_EQ(bob.workspace->boardsInProject(project), std::vector<QUuid>{board});
     EXPECT_TRUE(bob.workspace->mayAccessBoard(bob.key(), board));
-    EXPECT_TRUE(alice.workspace->mayAccessBoard(bob.key(), board));
+    EXPECT_EQ(bob.workspace->boardRole(board, bob.key()), Role::None); // member via the project
 }
 
-TEST(Workspace, NonMembersGetNoAccessEvenWithTheInvite) {
-    Person alice;
-    Person eve;
-    const QUuid project = alice.workspace->createProject(QStringLiteral("Thesis"));
-    const QUuid board = alice.workspace->createBoard(QStringLiteral("Sketch"), project);
-    eve.workspace->join(alice.workspace->inviteToProject(project));
-    sendProject(alice, eve, project);
-    EXPECT_FALSE(eve.workspace->mayAccessProject(eve.key(), project));
-    EXPECT_FALSE(alice.workspace->mayAccessBoard(eve.key(), board));
+TEST(Workspace, OwnersAddMembersButNotOwners) {
+    Person alice("Alice");
+    Person bob("Bob");
+    Person carol("Carol");
+    const QUuid project = alice.workspace->createProject(QStringLiteral("Thesis"), alice.name);
+    alice.workspace->setProjectRole(project, bob.key(), bob.name, Role::Owner);
+    bob.workspace->join(alice.workspace->inviteToProject(project));
+    sendProject(alice, bob, project);
+    bob.workspace->setProjectRole(project, carol.key(), carol.name, Role::Member);
+    EXPECT_THROW(bob.workspace->setProjectRole(project, carol.key(), carol.name, Role::Owner),
+                 std::invalid_argument);
+    EXPECT_THROW(bob.workspace->renameProject(project, QStringLiteral("Mine")),
+                 std::invalid_argument);
+    sendProject(bob, alice, project); // Bob's change reaches Alice
+    EXPECT_EQ(alice.workspace->projectRole(project, carol.key()), Role::Member);
+    EXPECT_NO_THROW(static_cast<void>(bob.workspace->inviteToProject(project)));
+}
+
+TEST(Workspace, AdminCanHandOverTheProject) {
+    Person alice("Alice");
+    Person bob("Bob");
+    const QUuid project = alice.workspace->createProject(QStringLiteral("Thesis"), alice.name);
+    alice.workspace->setProjectRole(project, bob.key(), bob.name, Role::Member);
+    alice.workspace->transferProjectAdmin(project, bob.key(), bob.name);
+    EXPECT_EQ(alice.workspace->projectRole(project, alice.key()), Role::Owner);
+    EXPECT_EQ(alice.workspace->projectRole(project, bob.key()), Role::Admin);
+    EXPECT_THROW(alice.workspace->renameProject(project, QStringLiteral("x")),
+                 std::invalid_argument);
 }
 
 TEST(Workspace, ABoardCanBelongToSeveralProjects) {
-    Person alice;
-    const QUuid first = alice.workspace->createProject(QStringLiteral("A"));
-    const QUuid second = alice.workspace->createProject(QStringLiteral("B"));
-    const QUuid board = alice.workspace->createBoard(QStringLiteral("Shared"), first);
+    Person alice("Alice");
+    const QUuid first = alice.workspace->createProject(QStringLiteral("A"), alice.name);
+    const QUuid second = alice.workspace->createProject(QStringLiteral("B"), alice.name);
+    const QUuid board = alice.workspace->createBoard(QStringLiteral("Shared"), first, alice.name);
     alice.workspace->setBoardInProject(board, second, true);
     EXPECT_EQ(alice.workspace->boardsInProject(first), std::vector<QUuid>{board});
     EXPECT_EQ(alice.workspace->boardsInProject(second), std::vector<QUuid>{board});
@@ -82,56 +112,44 @@ TEST(Workspace, ABoardCanBelongToSeveralProjects) {
     EXPECT_TRUE(alice.workspace->boardsInProject(first).empty());
 }
 
-TEST(Workspace, BoardOnlyInviteGrantsJustThatBoard) {
-    Person alice;
-    Person carol;
-    const QUuid project = alice.workspace->createProject(QStringLiteral("Thesis"));
-    const QUuid board = alice.workspace->createBoard(QStringLiteral("Sketch"), project);
-    alice.workspace->setBoardMembers(board, {{carol.key(), QStringLiteral("Carol")}});
+TEST(Workspace, BoardInviteGrantsJustThatBoardOnceApproved) {
+    Person alice("Alice");
+    Person carol("Carol");
+    const QUuid project = alice.workspace->createProject(QStringLiteral("Thesis"), alice.name);
+    const QUuid board = alice.workspace->createBoard(QStringLiteral("Sketch"), project, alice.name);
     carol.workspace->join(alice.workspace->inviteToBoard(board));
-    for (const SignedManifest &m : alice.workspace->manifestsForBoard(board))
-        carol.workspace->acceptManifest(m.payload, m.signature);
+    EXPECT_EQ(carol.workspace->sharedBoards(), std::vector<QUuid>{board}); // waiting
+    alice.workspace->setBoardRole(board, carol.key(), carol.name, Role::Member);
+    carol.workspace->acceptOps(wire(alice.workspace->opsForBoard(board)));
     EXPECT_TRUE(carol.workspace->mayAccessBoard(carol.key(), board));
-    EXPECT_EQ(carol.workspace->sharedBoards(), std::vector<QUuid>{board});
     EXPECT_FALSE(alice.workspace->mayAccessProject(carol.key(), project));
 }
 
-TEST(Workspace, OnlyTheAdminChangesManifests) {
-    Person alice;
-    Person bob;
-    const QUuid project = alice.workspace->createProject(QStringLiteral("Thesis"));
-    alice.workspace->setProjectMembers(project, {{bob.key(), QStringLiteral("Bob")}});
-    bob.workspace->join(alice.workspace->inviteToProject(project));
-    sendProject(alice, bob, project);
-    EXPECT_THROW(bob.workspace->renameProject(project, QStringLiteral("Mine")),
-                 std::invalid_argument);
-    EXPECT_THROW(static_cast<void>(bob.workspace->inviteToProject(project)), std::invalid_argument);
-    // A manifest Bob signs himself is not accepted as the project's.
-    const SignedManifest forged = signManifest(
-        {ResourceKind::Project, project, QStringLiteral("Mine"), bob.key(), 99, {}, {}, false},
-        bob.identity.signer());
-    EXPECT_FALSE(alice.workspace->acceptManifest(forged.payload, forged.signature));
-}
-
-TEST(Workspace, OlderManifestsAreIgnored) {
-    Person alice;
-    Person bob;
-    const QUuid project = alice.workspace->createProject(QStringLiteral("Old"));
-    bob.workspace->join(alice.workspace->inviteToProject(project));
-    const SignedManifest old = alice.workspace->manifestsForProject(project).front();
-    alice.workspace->renameProject(project, QStringLiteral("New"));
-    sendProject(alice, bob, project);
-    EXPECT_FALSE(bob.workspace->acceptManifest(old.payload, old.signature));
-    EXPECT_EQ(bob.workspace->project(project).name(), QStringLiteral("New"));
+TEST(Workspace, ForgedChangesHaveNoEffect) {
+    Person alice("Alice");
+    Person eve("Eve");
+    const QUuid project = alice.workspace->createProject(QStringLiteral("Thesis"), alice.name);
+    eve.workspace->join(alice.workspace->inviteToProject(project));
+    sendProject(alice, eve, project);
+    // Eve signs a change making herself an owner; it verifies but she has no right to it.
+    AccessOp op;
+    op.resource = project;
+    op.clock = 99;
+    op.signer = eve.key();
+    op.action = AccessOp::Action::SetRole;
+    op.user = eve.key();
+    op.role = Role::Owner;
+    const SignedOp forged = signOp(op, eve.identity.signer());
+    alice.workspace->acceptOps({{forged.payload, forged.signature}});
+    EXPECT_EQ(alice.workspace->projectRole(project, eve.key()), Role::None);
 }
 
 TEST(Workspace, AdminDeletionReachesMembers) {
-    Person alice;
-    Person bob;
-    const QUuid project = alice.workspace->createProject(QStringLiteral("Temp"));
-    alice.workspace->setProjectMembers(project, {{bob.key(), QStringLiteral("Bob")}});
+    Person alice("Alice");
+    Person bob("Bob");
+    const QUuid project = alice.workspace->createProject(QStringLiteral("Temp"), alice.name);
+    alice.workspace->setProjectRole(project, bob.key(), bob.name, Role::Member);
     bob.workspace->join(alice.workspace->inviteToProject(project));
-    sendProject(alice, bob, project);
     alice.workspace->removeProject(project);
     sendProject(alice, bob, project);
     EXPECT_TRUE(bob.workspace->project(project).deleted());
@@ -139,9 +157,9 @@ TEST(Workspace, AdminDeletionReachesMembers) {
 }
 
 TEST(Workspace, PersistsAcrossReloads) {
-    Person alice;
-    const QUuid project = alice.workspace->createProject(QStringLiteral("Keep"));
-    const QUuid board = alice.workspace->createBoard(QStringLiteral("Board"), project);
+    Person alice("Alice");
+    const QUuid project = alice.workspace->createProject(QStringLiteral("Keep"), alice.name);
+    const QUuid board = alice.workspace->createBoard(QStringLiteral("Board"), project, alice.name);
     alice.workspace->saveBoardState(board, QByteArray("yrs"));
     alice.reload();
     EXPECT_EQ(alice.workspace->boardsInProject(project), std::vector<QUuid>{board});
@@ -151,7 +169,7 @@ TEST(Workspace, PersistsAcrossReloads) {
     EXPECT_FALSE(permissions & (QFile::ReadGroup | QFile::ReadOther));
 }
 
-TEST(Workspace, MigratesTheOldProjectsFile) {
+TEST(Workspace, MigratesTheFirstFileFormat) {
     QTemporaryDir dir;
     const QUuid project = QUuid::createUuid();
     const QUuid board = QUuid::createUuid();
@@ -170,14 +188,40 @@ TEST(Workspace, MigratesTheOldProjectsFile) {
     const Workspace workspace(dir.path(), identity.userKey(), identity.signer());
     EXPECT_EQ(workspace.project(project).name(), QStringLiteral("Old project"));
     EXPECT_EQ(workspace.boardsInProject(project), std::vector<QUuid>{board});
-    EXPECT_EQ(workspace.board(board).admin, identity.userKey());
+    EXPECT_EQ(workspace.boardRole(board, identity.userKey()), Role::Admin);
+}
+
+TEST(Workspace, MigratesSignedManifestsAndKeepsMembers) {
+    QTemporaryDir dir;
+    const UserIdentity identity(dir.path());
+    const QUuid project = QUuid::createUuid();
+    const QByteArray member(32, 'm');
+    const QJsonObject manifest{
+        {"name", "Managed"},
+        {"members",
+         QJsonArray{QJsonObject{{"key", QString::fromLatin1(member.toBase64())}, {"name", "Mo"}}}}};
+    const QJsonObject root{
+        {"projects",
+         QJsonArray{QJsonObject{
+             {"id", project.toString(QUuid::WithoutBraces)},
+             {"capability", QString::fromLatin1(QByteArray(32, 'c').toBase64())},
+             {"admin", QString::fromLatin1(identity.userKey().toBase64())},
+             {"inviteName", "Managed"},
+             {"manifest",
+              QJsonObject{{"payload",
+                           QString::fromLatin1(QJsonDocument(manifest).toJson().toBase64())}}}}}},
+        {"boards", QJsonArray{}}};
+    writeJsonObject(QDir(dir.path()).filePath(QStringLiteral("workspace.json")), root, 2, true);
+    const Workspace workspace(dir.path(), identity.userKey(), identity.signer());
+    EXPECT_EQ(workspace.projectRole(project, member), Role::Member);
+    EXPECT_EQ(workspace.projectRole(project, identity.userKey()), Role::Admin);
 }
 
 TEST(Workspace, YourOwnDevicesShareEverything) {
-    Person alice;
-    const QUuid project = alice.workspace->createProject(QStringLiteral("Mine"));
-    const QUuid board = alice.workspace->createBoard(QStringLiteral("Board"), project);
-    Person laptop;
+    Person alice("Alice");
+    const QUuid project = alice.workspace->createProject(QStringLiteral("Mine"), alice.name);
+    const QUuid board = alice.workspace->createBoard(QStringLiteral("Board"), project, alice.name);
+    Person laptop("Alice");
     laptop.identity.adopt(alice.identity.transferCode(QStringLiteral("Alice")));
     laptop.reload();
     EXPECT_TRUE(laptop.workspace->mergePersonal(alice.workspace->exportPersonal()));
@@ -188,12 +232,15 @@ TEST(Workspace, YourOwnDevicesShareEverything) {
 }
 
 TEST(Workspace, RejectsMisuse) {
-    Person alice;
-    EXPECT_THROW(alice.workspace->createProject(QStringLiteral(" ")), std::invalid_argument);
-    EXPECT_THROW(alice.workspace->createBoard(QStringLiteral("B"), QUuid::createUuid()),
+    Person alice("Alice");
+    EXPECT_THROW(alice.workspace->createProject(QStringLiteral(" "), alice.name),
                  std::invalid_argument);
-    const QUuid project = alice.workspace->createProject(QStringLiteral("P"));
+    EXPECT_THROW(alice.workspace->createBoard(QStringLiteral("B"), QUuid::createUuid(), alice.name),
+                 std::invalid_argument);
+    const QUuid project = alice.workspace->createProject(QStringLiteral("P"), alice.name);
     EXPECT_THROW(alice.workspace->join(alice.workspace->inviteToProject(project)),
+                 std::invalid_argument);
+    EXPECT_THROW(alice.workspace->setProjectRole(project, alice.key(), alice.name, Role::None),
                  std::invalid_argument);
 }
 

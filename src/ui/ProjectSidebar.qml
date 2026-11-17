@@ -11,6 +11,7 @@ Rectangle {
     signal createProjectRequested()
     signal joinProjectRequested()
     signal identityRequested()
+    signal requestsRequested()
 
     color: Theme.surface
     implicitWidth: 280
@@ -168,6 +169,14 @@ Rectangle {
                     color: Theme.muted
                 }
             }
+        }
+
+        PaperButton {
+            Layout.fillWidth: true
+            visible: Network.joinRequestCount > 0
+            primary: true
+            text: Network.joinRequestCount === 1 ? qsTr("1 request to join") : qsTr("%1 requests to join").arg(Network.joinRequestCount)
+            onClicked: sidebar.requestsRequested()
         }
 
         NetworkStatus {

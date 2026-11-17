@@ -11,7 +11,7 @@ AbstractButton {
     required property string name
     required property date edited
 
-    required property bool admin
+    required property bool admin // you own the board
     required property bool pending
 
     signal renameRequested(string boardId, string name)
@@ -83,19 +83,19 @@ AbstractButton {
                     id: menu
 
                     MenuItem {
-                        text: card.admin ? qsTr("Share…") : qsTr("Who has access…")
+                        text: card.admin ? qsTr("Share & projects…") : qsTr("Who has access…")
                         enabled: !card.pending
                         onTriggered: card.shareRequested(card.boardId)
                     }
 
                     MenuItem {
                         text: qsTr("Rename…")
-                        enabled: card.admin
+                        enabled: Library.isBoardAdmin(card.boardId)
                         onTriggered: card.renameRequested(card.boardId, card.name)
                     }
 
                     MenuItem {
-                        text: card.admin ? qsTr("Delete for everyone…") : qsTr("Remove from this device…")
+                        text: Library.isBoardAdmin(card.boardId) ? qsTr("Delete for everyone…") : qsTr("Remove from this device…")
                         onTriggered: card.deleteRequested(card.boardId, card.name)
                     }
                 }

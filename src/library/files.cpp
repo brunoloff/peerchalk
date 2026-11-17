@@ -51,15 +51,30 @@ void removeFile(const QString &path) {
         fail(path, file.errorString());
 }
 
+namespace {
+
+QJsonObject parseJsonObject(const QString &path, const QByteArray &contents) {
+    QJsonParseError error{};
+    const QJsonDocument document = QJsonDocument::fromJson(contents, &error);
+    if (error.error != QJsonParseError::NoError || !document.isObject())
+        fail(path, QStringLiteral("not a valid JSON object (%1)").arg(error.errorString()));
+    return document.object();
+}
+
+} // namespace
+
+std::optional<int> jsonFileVersion(const QString &path) {
+    const std::optional<QByteArray> contents = readFile(path);
+    if (!contents)
+        return std::nullopt;
+    return parseJsonObject(path, *contents).value(QStringLiteral("version")).toInt(-1);
+}
+
 std::optional<QJsonObject> readJsonObject(const QString &path, int version) {
     const std::optional<QByteArray> contents = readFile(path);
     if (!contents)
         return std::nullopt;
-    QJsonParseError error{};
-    const QJsonDocument document = QJsonDocument::fromJson(*contents, &error);
-    if (error.error != QJsonParseError::NoError || !document.isObject())
-        fail(path, QStringLiteral("not a valid JSON object (%1)").arg(error.errorString()));
-    const QJsonObject object = document.object();
+    const QJsonObject object = parseJsonObject(path, *contents);
     if (object.value(QStringLiteral("version")).toInt(-1) != version)
         fail(path, QStringLiteral("unsupported version; expected %1").arg(version));
     return object;

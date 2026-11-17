@@ -20,6 +20,9 @@ void removeFile(const QString &path);
 // A JSON object file with a "version" field equal to version, or nullopt when the
 // file does not exist. Throws std::runtime_error for anything else.
 [[nodiscard]] std::optional<QJsonObject> readJsonObject(const QString &path, int version);
+// The "version" field of a JSON object file (-1 when missing), or nullopt when the file
+// does not exist. Throws std::runtime_error when it is not a JSON object.
+[[nodiscard]] std::optional<int> jsonFileVersion(const QString &path);
 void writeJsonObject(const QString &path, QJsonObject object, int version, bool ownerOnly);
 
 // A base64 field decoded, required to have exactly size bytes; throws std::runtime_error

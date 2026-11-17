@@ -4,18 +4,18 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-// Who may access a project or a board. The admin ticks people from their known people
-// and sends them the invite code; others see the list. For a board, the admin also
-// chooses which of their projects it belongs to.
+// Who has which role on a project or a board, and the controls your own role allows:
+// the admin changes anyone's role and can hand the admin role over; owners add and
+// remove members. For a board, owners also choose which of their projects it is in.
 Dialog {
     id: dialog
 
     property string itemId
     property bool board: false
-    readonly property bool admin: board ? Library.isBoardAdmin(itemId) : Library.isProjectAdmin(itemId)
+    property string myRole: "none"
+    readonly property bool canManage: myRole === "owner" || myRole === "admin"
     property var people: []
     property var projects: []
-    property var requests: []
 
     function show(id: string, isBoard: bool) {
         itemId = id;
@@ -25,30 +25,42 @@ Dialog {
     }
 
     function refresh() {
+        myRole = board ? Library.boardRole(itemId) : Library.projectRole(itemId);
         people = board ? Library.boardPeople(itemId) : Library.projectPeople(itemId);
-        projects = board && admin ? Library.boardProjects(itemId) : [];
-        requests = admin ? Network.joinRequests(itemId) : [];
+        projects = board ? Library.boardProjects(itemId) : [];
     }
 
-    Connections {
-        target: Network
+    function setRole(key: string, role: string) {
+        if (board)
+            Library.setBoardRole(itemId, key, role);
+        else
+            Library.setProjectRole(itemId, key, role);
+        refresh();
+    }
 
-        function onRequestsChanged() {
+    function makeAdmin(key: string) {
+        if (board)
+            Library.transferBoardAdmin(itemId, key);
+        else
+            Library.transferProjectAdmin(itemId, key);
+        refresh();
+    }
+
+    title: board ? qsTr("Share “%1”").arg(Library.boardName(itemId)) : qsTr("People in “%1”").arg(Library.currentProjectName)
+    parent: Overlay.overlay
+    anchors.centerIn: parent
+    width: Math.min(600, parent.width - 32)
+    height: Math.min(implicitHeight, parent.height - 32)
+    modal: true
+
+    Connections {
+        target: Library
+
+        function onWorkspaceChanged() {
             if (dialog.opened)
                 dialog.refresh();
         }
     }
-
-    function invite(): string {
-        return board ? Library.boardInvite(itemId) : Library.projectInvite(itemId);
-    }
-
-    title: board ? qsTr("Share “%1”").arg(Library.boardName(itemId)) : qsTr("Members of “%1”").arg(Library.currentProjectName)
-    parent: Overlay.overlay
-    anchors.centerIn: parent
-    width: Math.min(560, parent.width - 32)
-    height: Math.min(implicitHeight, parent.height - 32)
-    modal: true
 
     ScrollView {
         id: scroll
@@ -64,135 +76,20 @@ Dialog {
                 Layout.fillWidth: true
                 wrapMode: Text.WordWrap
                 color: Theme.muted
-                text: !dialog.admin ? qsTr("Only the admin decides who has access.")
-                    : dialog.board ? qsTr("Send the invite to the people who should open this board on its own. When they open it, they appear here to approve. Members of the projects it belongs to can open it too.")
-                    : qsTr("Send the invite to the people who should open every board in this project. When they open it, they appear here to approve.")
-            }
-
-            SectionLabel {
-                visible: dialog.requests.length > 0
-                text: qsTr("Asking to join")
-            }
-
-            Repeater {
-                model: dialog.requests
-
-                delegate: RowLayout {
-                    id: request
-
-                    required property var modelData
-
-                    Layout.fillWidth: true
-                    spacing: 12
-
-                    Avatar {
-                        name: request.modelData.name
-                        size: 34
-                        color: Theme.personColors[Format.keyColorIndex(request.modelData.key, Theme.personColors.length)]
-                    }
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 0
-
-                        Label {
-                            Layout.fillWidth: true
-                            elide: Text.ElideRight
-                            text: request.modelData.name
-                            font.weight: Font.DemiBold
-                            color: Theme.ink
-                        }
-
-                        Label {
-                            Layout.fillWidth: true
-                            wrapMode: Text.WrapAnywhere
-                            text: request.modelData.fingerprint
-                            font.family: Theme.monoFont
-                            font.pixelSize: 12
-                            color: Theme.muted
-                        }
-                    }
-
-                    PaperButton {
-                        text: qsTr("Approve")
-                        primary: true
-                        onClicked: {
-                            if (dialog.board)
-                                Library.admitToBoard(dialog.itemId, request.modelData.key, request.modelData.name);
-                            else
-                                Library.admitToProject(dialog.itemId, request.modelData.key, request.modelData.name);
-                            dialog.refresh();
-                        }
-                    }
-                }
-            }
-
-            Label {
-                Layout.fillWidth: true
-                visible: dialog.requests.length > 0
-                wrapMode: Text.WordWrap
-                color: Theme.muted
-                font.pixelSize: 12
-                text: qsTr("Anyone with the invite can ask. To be sure it is really them, compare the fingerprint with the one on their identity screen.")
-            }
-
-            SectionLabel {
-                text: qsTr("Has access")
+                text: dialog.myRole === "admin" ? qsTr("You are the admin: you decide who are owners and members, and can hand the admin role to someone else.")
+                    : dialog.myRole === "owner" ? qsTr("You are an owner: you can add and remove members.")
+                    : qsTr("Only owners and the admin change who has access.")
             }
 
             Repeater {
                 model: dialog.people
 
-                delegate: RowLayout {
-                    id: row
-
-                    required property var modelData
-
-                    Layout.fillWidth: true
-                    spacing: 12
-
-                    Avatar {
-                        name: row.modelData.name
-                        size: 34
-                        color: Theme.personColors[Format.keyColorIndex(row.modelData.key, Theme.personColors.length)]
-                    }
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 0
-
-                        Label {
-                            Layout.fillWidth: true
-                            elide: Text.ElideRight
-                            color: Theme.ink
-                            font.weight: Font.DemiBold
-                            text: row.modelData.name + (row.modelData.you ? qsTr(" (you)") : "")
-                                + (row.modelData.admin ? qsTr(" · admin") : "")
-                        }
-
-                        Label {
-                            text: row.modelData.fingerprint.slice(0, 19) + " …"
-                            font.family: Theme.monoFont
-                            font.pixelSize: 12
-                            color: Theme.muted
-                        }
-                    }
-
-                    CheckBox {
-                        checked: row.modelData.member
-                        enabled: dialog.admin && !row.modelData.admin
-                        Accessible.name: qsTr("%1 has access").arg(row.modelData.name)
-                        onToggled: {
-                            if (dialog.board)
-                                Library.setBoardMember(dialog.itemId, row.modelData.key, checked);
-                            else
-                                Library.setProjectMember(dialog.itemId, row.modelData.key, checked);
-                            dialog.refresh();
-                        }
-                    }
+                delegate: PersonRoleRow {
+                    myRole: dialog.myRole
+                    onRoleRequested: (key, role) => dialog.setRole(key, role)
+                    onAdminRequested: key => dialog.makeAdmin(key)
                 }
             }
-
 
             SectionLabel {
                 visible: dialog.projects.length > 0
@@ -218,20 +115,20 @@ Dialog {
 
             RowLayout {
                 Layout.fillWidth: true
-                visible: dialog.admin
+                visible: dialog.canManage
                 spacing: 8
 
                 Label {
                     Layout.fillWidth: true
                     wrapMode: Text.WordWrap
                     color: Theme.muted
-                    text: qsTr("Send the invite privately; it lets people find this %1 and ask to join.").arg(dialog.board ? qsTr("board") : qsTr("project"))
+                    text: qsTr("Send the invite privately. When someone opens it, they appear under Requests for you or another owner to approve.")
                 }
 
                 PaperButton {
                     text: qsTr("Copy invite")
                     primary: true
-                    onClicked: Library.copyToClipboard(dialog.invite())
+                    onClicked: Library.copyToClipboard(dialog.board ? Library.boardInvite(dialog.itemId) : Library.projectInvite(dialog.itemId))
                 }
             }
         }

@@ -68,7 +68,7 @@ ApplicationWindow {
         target: Network
 
         function onJoinRequested(name: string, itemName: string) {
-            toast.show(qsTr("%1 asks to join “%2”. Open its members to approve.").arg(name).arg(itemName));
+            toast.show(qsTr("%1 asks to join “%2”. Approve them under Requests.").arg(name).arg(itemName));
         }
     }
 }

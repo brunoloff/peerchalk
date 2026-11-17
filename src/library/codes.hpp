@@ -15,15 +15,16 @@ inline constexpr qsizetype capabilitySize = 32;
 inline constexpr qsizetype maxCodeNameBytes = 200;
 
 // Everything needed to join a project or a single board: what it is, its name, the
-// secret that lets members find each other, and its admin's key, which signs the list of
-// members. Only listed members get any content, but the secret should stay private.
+// secret that lets its people find each other, and its creator's key, from which its
+// signed access changes are checked. Only people let in get any content, but the
+// secret should stay private.
 struct Invite {
     enum class Kind { Project, Board };
     Kind kind{Kind::Project};
     QUuid id;
     QString name;
     QByteArray capability;
-    QByteArray admin;
+    QByteArray creator;
 };
 
 // A person's public signing key and the name they chose; safe to share openly.

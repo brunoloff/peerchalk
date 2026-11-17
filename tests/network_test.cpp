@@ -66,7 +66,8 @@ struct Device {
 
     [[nodiscard]] std::size_t strokesOn(const QString &board) {
         const QUuid id = QUuid::fromString(board);
-        if (!library.workspace().hasBoard(id) || !library.workspace().board(id).manifest)
+        const Workspace &workspace = library.workspace();
+        if (!workspace.hasBoard(id) || !workspace.mayAccessBoard(workspace.user(), id))
             return 0;
         return library.document(id).board().strokes().size();
     }
@@ -93,7 +94,7 @@ TEST_F(NetworkTest, ProjectMembersShareBoardsLive) {
     Device bob(dht_);
     ASSERT_TRUE(alice.library.addContact(bob.library.contactCode()));
     const QString project = alice.library.createProject(QStringLiteral("Thesis"));
-    alice.library.setProjectMember(project, bob.library.userKey(), true);
+    alice.library.setProjectRole(project, bob.library.userKey(), QStringLiteral("member"));
     const QString board = alice.library.createBoard(QStringLiteral("Sketch"));
     alice.draw(board, 0.0F);
     ASSERT_FALSE(bob.library.joinInvite(alice.library.projectInvite(project)).isEmpty());
@@ -117,11 +118,9 @@ TEST_F(NetworkTest, InviteWithoutMembershipRevealsNoContent) {
     const QString board = alice.library.createBoard(QStringLiteral("Secret"));
     alice.draw(board, 0.0F);
     ASSERT_FALSE(eve.library.joinInvite(alice.library.projectInvite(project)).isEmpty());
-    // Eve reaches Alice and learns the project's manifest, but she is not a member.
+    // Eve reaches Alice and learns who is in the project, but she is not a member.
     ASSERT_TRUE(QTest::qWaitFor(
-        [&] {
-            return eve.library.workspace().project(QUuid::fromString(project)).manifest.has_value();
-        },
+        [&] { return eve.library.workspace().project(QUuid::fromString(project)).state.exists; },
         timeoutMs));
     QTest::qWait(3000);
     EXPECT_FALSE(eve.library.workspace().hasBoard(QUuid::fromString(board)));
@@ -155,7 +154,7 @@ TEST_F(NetworkTest, NameAndColourChangesReachConnectedPeers) {
     Device bob(dht_);
     ASSERT_TRUE(alice.library.addContact(bob.library.contactCode()));
     const QString project = alice.library.createProject(QStringLiteral("Thesis"));
-    alice.library.setProjectMember(project, bob.library.userKey(), true);
+    alice.library.setProjectRole(project, bob.library.userKey(), QStringLiteral("member"));
     const QString board = alice.library.createBoard(QStringLiteral("Sketch"));
     bob.library.joinInvite(alice.library.projectInvite(project));
     ASSERT_TRUE(QTest::qWaitFor(
@@ -175,20 +174,73 @@ TEST_F(NetworkTest, NameAndColourChangesReachConnectedPeers) {
         timeoutMs));
 }
 
-TEST_F(NetworkTest, ABoardInviteSharesOnlyThatBoard) {
+// Waits until `approver` sees someone asking to join the item and returns that request.
+QVariantMap awaitRequest(Device &approver, const QString &item) {
+    if (!QTest::qWaitFor([&] { return !approver.network->joinRequests(item).isEmpty(); },
+                         timeoutMs))
+        return {};
+    return approver.network->joinRequests(item).front().toMap();
+}
+
+TEST_F(NetworkTest, ABoardInviteSharesOnlyThatBoardOnceApproved) {
     Device alice(dht_);
     Device carol(dht_);
-    ASSERT_TRUE(alice.library.addContact(carol.library.contactCode()));
     alice.library.createProject(QStringLiteral("Thesis"));
     const QString shared = alice.library.createBoard(QStringLiteral("For Carol"));
     const QString other = alice.library.createBoard(QStringLiteral("Not for Carol"));
     alice.draw(shared, 0.0F);
     alice.draw(other, 0.0F);
-    alice.library.setBoardMember(shared, carol.library.userKey(), true);
     ASSERT_FALSE(carol.library.joinInvite(alice.library.boardInvite(shared)).isEmpty());
+    const QVariantMap request = awaitRequest(alice, shared);
+    ASSERT_EQ(request["key"].toString(), carol.library.userKey()) << "no request from Carol";
+    EXPECT_EQ(carol.strokesOn(shared), 0U);
+    alice.library.admitToBoard(shared, request["key"].toString(), request["name"].toString());
     ASSERT_TRUE(QTest::qWaitFor([&] { return carol.strokesOn(shared) == 1; }, timeoutMs));
     EXPECT_FALSE(carol.library.workspace().hasBoard(QUuid::fromString(other)));
     EXPECT_EQ(carol.library.workspace().sharedBoards().size(), 1U);
+}
+
+// An owner who is not the admin approves a newcomer, and the admin is not needed.
+TEST_F(NetworkTest, AnOwnerApprovesWhileTheAdminIsOffline) {
+    auto alice = std::make_unique<Device>(dht_);
+    Device bob(dht_);
+    Device dave(dht_);
+    ASSERT_TRUE(alice->library.addContact(bob.library.contactCode()));
+    const QString project = alice->library.createProject(QStringLiteral("Thesis"));
+    const QString board = alice->library.createBoard(QStringLiteral("Sketch"));
+    alice->draw(board, 0.0F);
+    alice->library.setProjectRole(project, bob.library.userKey(), QStringLiteral("owner"));
+    bob.library.joinInvite(alice->library.projectInvite(project));
+    ASSERT_TRUE(QTest::qWaitFor([&] { return bob.strokesOn(board) == 1; }, timeoutMs));
+    alice.reset(); // the admin goes offline
+    ASSERT_FALSE(dave.library.joinInvite(bob.library.projectInvite(project)).isEmpty());
+    const QVariantMap request = awaitRequest(bob, project);
+    ASSERT_EQ(request["key"].toString(), dave.library.userKey()) << "Bob never saw Dave";
+    bob.library.admitToProject(project, request["key"].toString(), request["name"].toString());
+    ASSERT_TRUE(QTest::qWaitFor([&] { return dave.strokesOn(board) == 1; }, timeoutMs))
+        << "Dave never received the board from Bob";
+    EXPECT_EQ(dave.library.projectRole(project), QStringLiteral("member"));
+}
+
+// The admin's signed changes travel through anyone who has them.
+TEST_F(NetworkTest, MembersPassOnTheAdminsChanges) {
+    auto alice = std::make_unique<Device>(dht_);
+    Device bob(dht_);
+    Device carol(dht_);
+    ASSERT_TRUE(alice->library.addContact(bob.library.contactCode()));
+    ASSERT_TRUE(alice->library.addContact(carol.library.contactCode()));
+    const QString project = alice->library.createProject(QStringLiteral("Thesis"));
+    const QString board = alice->library.createBoard(QStringLiteral("Sketch"));
+    alice->draw(board, 0.0F);
+    alice->library.setProjectRole(project, bob.library.userKey(), QStringLiteral("member"));
+    alice->library.setProjectRole(project, carol.library.userKey(), QStringLiteral("member"));
+    const QString invite = alice->library.projectInvite(project);
+    bob.library.joinInvite(invite);
+    ASSERT_TRUE(QTest::qWaitFor([&] { return bob.strokesOn(board) == 1; }, timeoutMs));
+    alice.reset(); // Carol only ever meets Bob
+    carol.library.joinInvite(invite);
+    ASSERT_TRUE(QTest::qWaitFor([&] { return carol.strokesOn(board) == 1; }, timeoutMs))
+        << "Carol never received the board through Bob";
 }
 
 TEST_F(NetworkTest, ALinkedDeviceGetsEverything) {
