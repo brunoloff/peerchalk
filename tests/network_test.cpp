@@ -150,6 +150,31 @@ TEST_F(NetworkTest, ApprovingAJoinRequestSharesTheBoards) {
     EXPECT_TRUE(alice.network->joinRequests(project).isEmpty());
 }
 
+TEST_F(NetworkTest, NameAndColourChangesReachConnectedPeers) {
+    Device alice(dht_);
+    Device bob(dht_);
+    ASSERT_TRUE(alice.library.addContact(bob.library.contactCode()));
+    const QString project = alice.library.createProject(QStringLiteral("Thesis"));
+    alice.library.setProjectMember(project, bob.library.userKey(), true);
+    const QString board = alice.library.createBoard(QStringLiteral("Sketch"));
+    bob.library.joinInvite(alice.library.projectInvite(project));
+    ASSERT_TRUE(QTest::qWaitFor(
+        [&] { return bob.library.workspace().hasBoard(QUuid::fromString(board)); }, timeoutMs));
+    bob.network->setPresence(board, QPointF(1, 2), true);
+    ASSERT_TRUE(QTest::qWaitFor([&] { return alice.network->boardPresence(board).size() == 1; },
+                                timeoutMs));
+    bob.library.setDisplayName(QStringLiteral("Bruno 1"));
+    bob.library.setColorIndex(3);
+    EXPECT_TRUE(QTest::qWaitFor(
+        [&] {
+            const QVariantList people = alice.network->boardPresence(board);
+            return !people.isEmpty() &&
+                   people.front().toMap()["name"].toString() == QStringLiteral("Bruno 1") &&
+                   people.front().toMap()["colorIndex"].toInt() == 3;
+        },
+        timeoutMs));
+}
+
 TEST_F(NetworkTest, ABoardInviteSharesOnlyThatBoard) {
     Device alice(dht_);
     Device carol(dht_);

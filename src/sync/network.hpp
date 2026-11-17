@@ -162,6 +162,7 @@ class Network : public QObject {
     [[nodiscard]] std::vector<QUuid> syncableBoards(const Peer &peer) const;
     void workspaceChanged();
     void boardChanged(const QUuid &board);
+    void profileChanged();
     void sendPresence();
     [[nodiscard]] Presence presenceFor(const Peer &peer) const;
     // The item a peer's space is about, if you administer it and the peer is not in it.

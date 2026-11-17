@@ -44,6 +44,12 @@ struct BoardUpdate {
     QByteArray update;
 };
 
+// The sender's new display name and colour, after a change.
+struct Profile {
+    QString displayName;
+    int colorIndex{0};
+};
+
 // Which board the sender has open, and where its pointer is (world coordinates).
 struct Presence {
     QUuid board; // null: no board open
@@ -51,7 +57,7 @@ struct Presence {
     bool cursorVisible{false};
 };
 
-using Message = std::variant<Hello, Manifests, Personal, BoardUpdate, Presence>;
+using Message = std::variant<Hello, Manifests, Personal, BoardUpdate, Presence, Profile>;
 
 [[nodiscard]] QByteArray encode(const Message &message);
 [[nodiscard]] std::optional<Message> decode(const QByteArray &bytes);

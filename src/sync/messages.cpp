@@ -13,7 +13,8 @@ enum Type : char {
     ManifestsType = 2,
     PersonalType = 3,
     BoardType = 4,
-    PresenceType = 5
+    PresenceType = 5,
+    ProfileType = 6
 };
 constexpr qsizetype uuidSize = 16;
 
@@ -61,6 +62,9 @@ struct Encoder {
     }
     QByteArray operator()(const BoardUpdate &update) const {
         return QByteArray(1, BoardType) + update.board.toRfc4122() + update.update;
+    }
+    QByteArray operator()(const Profile &profile) const {
+        return json(ProfileType, {{"name", profile.displayName}, {"color", profile.colorIndex}});
     }
     QByteArray operator()(const Presence &presence) const {
         return json(PresenceType, {{"board", presence.board.isNull()
@@ -134,6 +138,9 @@ std::optional<Message> decode(const QByteArray &bytes) {
                         (*object)[QStringLiteral("contacts")].toObject()};
     case PresenceType:
         return decodePresence(*object);
+    case ProfileType:
+        return Profile{(*object)[QStringLiteral("name")].toString().left(200),
+                       (*object)[QStringLiteral("color")].toInt()};
     default:
         return std::nullopt;
     }

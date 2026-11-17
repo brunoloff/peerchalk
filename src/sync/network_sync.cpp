@@ -45,6 +45,11 @@ void Network::receive(const PeerId &id, std::uint64_t generation, const QByteArr
     } else if (const auto *presence = std::get_if<Presence>(&*message)) {
         peer->presence = *presence;
         emit presenceChanged();
+    } else if (const auto *profile = std::get_if<Profile>(&*message)) {
+        peer->user->name = profile->displayName.trimmed();
+        peer->user->colorIndex = profile->colorIndex;
+        emit presenceChanged();
+        emit peersChanged();
     }
 }
 
@@ -170,6 +175,16 @@ void Network::boardChanged(const QUuid &board) {
     for (auto &[id, peer] : peers_) {
         if (peer->ready && syncable(*peer, board)) {
             peer->dirtyBoards.insert(board);
+            flush(id);
+        }
+    }
+}
+
+// Your name or colour changed: tell everyone already connected.
+void Network::profileChanged() {
+    for (auto &[id, peer] : peers_) {
+        if (peer->ready && peer->user) {
+            queue(*peer, Profile{library_.displayName(), library_.colorIndex()});
             flush(id);
         }
     }
