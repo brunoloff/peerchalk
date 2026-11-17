@@ -2,18 +2,21 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-// The minimap and zoom controls at the bottom right of the board.
+// The minimap and zoom controls. Floating, they hug the right edge at a fixed size;
+// with stretch set (inside the side panel) they fill the available width.
 ColumnLayout {
     id: navigator
 
     required property BoardCanvas canvas
+    property bool stretch: false
 
     spacing: 8
 
     Panel {
         Layout.alignment: Qt.AlignRight
+        Layout.fillWidth: navigator.stretch
         implicitWidth: 180
-        implicitHeight: 120
+        implicitHeight: navigator.stretch ? 150 : 120
         radius: 12
 
         BoardMinimap {
@@ -28,6 +31,7 @@ ColumnLayout {
 
     Panel {
         Layout.alignment: Qt.AlignRight
+        Layout.fillWidth: navigator.stretch
         implicitWidth: zoomRow.implicitWidth
         implicitHeight: 40
         radius: 12
@@ -46,6 +50,7 @@ ColumnLayout {
             }
 
             Label {
+                Layout.fillWidth: navigator.stretch
                 Layout.minimumWidth: 54
                 horizontalAlignment: Text.AlignHCenter
                 text: Math.round(navigator.canvas.zoom * 100) + "%"

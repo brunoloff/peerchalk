@@ -38,15 +38,31 @@ void appendQuad(QSGGeometry::Point2D *&vertex, const Bounds &rect) {
 
 } // namespace
 
-QSGGeometryNode *createStrokeNode(const Stroke &stroke) {
-    const std::vector<MeshVertex> strip = buildTriangleStrip(stroke);
-    auto *geometry =
-        new QSGGeometry(QSGGeometry::defaultAttributes_Point2D(), static_cast<int>(strip.size()));
-    geometry->setDrawingMode(QSGGeometry::DrawTriangleStrip);
+QColor strokeColor(const Stroke &stroke, StrokeSelection selection) {
+    QColor color = QColor::fromRgba(stroke.argb());
+    if (stroke.kind() == StrokeKind::Highlighter) {
+        if (selection == StrokeSelection::HighlightersOpaque)
+            color.setAlpha(255);
+        else
+            color.setAlphaF(color.alphaF() * highlighterOpacity);
+    }
+    return color;
+}
+
+bool selects(StrokeSelection selection, const Stroke &stroke) {
+    if (selection == StrokeSelection::All)
+        return true;
+    const bool highlighter = stroke.kind() == StrokeKind::Highlighter;
+    return highlighter == (selection == StrokeSelection::HighlightersOpaque);
+}
+
+QSGGeometryNode *createStrokeNode(const Stroke &stroke, const QColor &color) {
+    const std::vector<MeshVertex> mesh = buildStrokeMesh(stroke);
+    QSGGeometry *geometry = createTriangles(mesh.size());
     QSGGeometry::Point2D *vertices = geometry->vertexDataAsPoint2D();
-    for (std::size_t i = 0; i < strip.size(); ++i)
-        vertices[i].set(strip[i].x, strip[i].y);
-    return createNode(geometry, QColor::fromRgba(stroke.argb()));
+    for (std::size_t i = 0; i < mesh.size(); ++i)
+        vertices[i].set(mesh[i].x, mesh[i].y);
+    return createNode(geometry, color);
 }
 
 QSGGeometryNode *createDotsNode(const std::vector<Point> &centres, float size,
@@ -77,10 +93,13 @@ void deleteChildren(QSGNode *parent) {
     }
 }
 
-void setStrokeNodes(QSGNode *parent, const std::vector<Stroke> &strokes) {
+void setStrokeNodes(QSGNode *parent, const std::vector<Stroke> &strokes,
+                    StrokeSelection selection) {
     deleteChildren(parent);
-    for (const Stroke &stroke : strokes)
-        parent->appendChildNode(createStrokeNode(stroke));
+    for (const Stroke &stroke : strokes) {
+        if (selects(selection, stroke) && !stroke.points().empty())
+            parent->appendChildNode(createStrokeNode(stroke, strokeColor(stroke, selection)));
+    }
 }
 
 QMatrix4x4 viewMatrix(const Viewport &viewport) {

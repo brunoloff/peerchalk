@@ -12,4 +12,7 @@ QtObject {
     readonly property string fit: "M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"
     readonly property string plus: "M12 5v14M5 12h14"
     readonly property string minus: "M5 12h14"
+    readonly property string pin: "M9 4h6l-1 6 3 3H7l3-3zM12 13v7"
+    readonly property string close: "M6 6l12 12M18 6L6 18"
+    readonly property string chevronLeft: "M15 6l-6 6 6 6"
 }

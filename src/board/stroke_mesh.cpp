@@ -2,58 +2,65 @@
 
 #include <algorithm>
 #include <cmath>
+#include <numbers>
 
 namespace peerchalk {
 namespace {
 
 // Pressure 0 still draws a hairline so that light touches remain visible.
-constexpr float minimumHalfWidth = 0.25F;
+constexpr float minimumWidth = 0.5F;
+// Discs use enough sides that each is at most this long in world units.
+constexpr float discSideLength = 2.0F;
+constexpr int minDiscSides = 8;
+constexpr int maxDiscSides = 48;
 
-float halfWidth(const Stroke &stroke, const StrokePoint &point) {
-    return std::max(minimumHalfWidth, stroke.width() * point.pressure / 2.0F);
+void appendDisc(std::vector<MeshVertex> &mesh, const StrokePoint &centre, float radius) {
+    const float circumference = 2.0F * std::numbers::pi_v<float> * radius;
+    const int sides = std::clamp(static_cast<int>(std::ceil(circumference / discSideLength)),
+                                 minDiscSides, maxDiscSides);
+    const float step = 2.0F * std::numbers::pi_v<float> / static_cast<float>(sides);
+    for (int i = 0; i < sides; ++i) {
+        const float a0 = step * static_cast<float>(i);
+        const float a1 = step * static_cast<float>(i + 1);
+        mesh.push_back({centre.x, centre.y});
+        mesh.push_back({centre.x + radius * std::cos(a0), centre.y + radius * std::sin(a0)});
+        mesh.push_back({centre.x + radius * std::cos(a1), centre.y + radius * std::sin(a1)});
+    }
 }
 
-// Unit normal of the direction from a to b, or nullopt when they coincide.
-std::optional<MeshVertex> unitNormal(const StrokePoint &a, const StrokePoint &b) {
+void appendBand(std::vector<MeshVertex> &mesh, const StrokePoint &a, const StrokePoint &b,
+                float halfWidth) {
     const float dx = b.x - a.x;
     const float dy = b.y - a.y;
     const float length = std::hypot(dx, dy);
     if (length == 0.0F)
-        return std::nullopt;
-    return MeshVertex{-dy / length, dx / length};
-}
-
-std::vector<MeshVertex> dot(const Stroke &stroke, const StrokePoint &point) {
-    const float h = halfWidth(stroke, point);
-    return {{point.x - h, point.y - h},
-            {point.x - h, point.y + h},
-            {point.x + h, point.y - h},
-            {point.x + h, point.y + h}};
+        return;
+    const float nx = -dy / length * halfWidth;
+    const float ny = dx / length * halfWidth;
+    const MeshVertex a0{a.x + nx, a.y + ny};
+    const MeshVertex a1{a.x - nx, a.y - ny};
+    const MeshVertex b0{b.x + nx, b.y + ny};
+    const MeshVertex b1{b.x - nx, b.y - ny};
+    mesh.insert(mesh.end(), {a0, a1, b0, a1, b1, b0});
 }
 
 } // namespace
 
-std::vector<MeshVertex> buildTriangleStrip(const Stroke &stroke) {
+float pointWidth(const Stroke &stroke, const StrokePoint &point) {
+    return std::max(minimumWidth, stroke.width() * point.pressure);
+}
+
+std::vector<MeshVertex> buildStrokeMesh(const Stroke &stroke) {
     const std::vector<StrokePoint> &points = stroke.points();
-    if (points.empty())
-        return {};
-    if (points.size() == 1)
-        return dot(stroke, points.front());
-    std::vector<MeshVertex> strip;
-    strip.reserve(points.size() * 2);
-    std::optional<MeshVertex> normal;
+    std::vector<MeshVertex> mesh;
     for (std::size_t i = 0; i < points.size(); ++i) {
-        const std::size_t next = std::min(i + 1, points.size() - 1);
-        const std::size_t previous = i == next ? i - 1 : i;
-        if (std::optional<MeshVertex> segment = unitNormal(points[previous], points[next]))
-            normal = segment;
-        if (!normal)
-            continue;
-        const float h = halfWidth(stroke, points[i]);
-        strip.push_back({points[i].x + normal->x * h, points[i].y + normal->y * h});
-        strip.push_back({points[i].x - normal->x * h, points[i].y - normal->y * h});
+        const float own = pointWidth(stroke, points[i]);
+        const float incoming = i > 0 ? pointWidth(stroke, points[i - 1]) : own;
+        appendDisc(mesh, points[i], std::max(own, incoming) / 2.0F);
+        if (i + 1 < points.size())
+            appendBand(mesh, points[i], points[i + 1], own / 2.0F);
     }
-    return strip.empty() ? dot(stroke, points.front()) : strip;
+    return mesh;
 }
 
 } // namespace peerchalk

@@ -81,7 +81,7 @@ QSGNode *BoardMinimap::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *) 
     }
     strokes->setMatrix(viewMatrix(*mapping));
     if (strokesDirty_) {
-        setStrokeNodes(strokes, canvas_->board().strokes());
+        setStrokeNodes(strokes, canvas_->board().strokes(), StrokeSelection::All);
         strokesDirty_ = false;
     }
     const Bounds visible = toBounds(canvas_->visibleArea());

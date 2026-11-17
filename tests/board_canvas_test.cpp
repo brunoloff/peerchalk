@@ -1,10 +1,13 @@
 #include "ui/board_canvas.hpp"
 
 #include <QGuiApplication>
+#include <QMouseEvent>
+#include <QPointingDevice>
 #include <QQuickWindow>
 #include <QSignalSpy>
 #include <QTest>
 #include <QWheelEvent>
+#include <QtGui/private/qeventpoint_p.h>
 
 #include <gtest/gtest.h>
 
@@ -53,14 +56,46 @@ TEST_F(BoardCanvasTest, PenDragRecordsOneStroke) {
     EXPECT_FLOAT_EQ(stroke.points().back().y, 50.0F);
 }
 
-TEST_F(BoardCanvasTest, HighlighterIsTranslucentAndWide) {
+TEST_F(BoardCanvasTest, HighlighterIsWideWithConstantWidth) {
     canvas_.setTool(BoardCanvas::Tool::Highlighter);
+    canvas_.setPenColor(Qt::yellow);
     canvas_.setPenWidth(4.0);
     drag({10, 10}, {100, 10});
     ASSERT_EQ(canvas_.strokeCount(), 1);
     const Stroke &stroke = canvas_.board().strokes().front();
-    EXPECT_LT(qAlpha(stroke.argb()), 255);
+    EXPECT_EQ(stroke.kind(), StrokeKind::Highlighter);
+    EXPECT_EQ(stroke.argb(), QColor(Qt::yellow).rgba());
     EXPECT_FLOAT_EQ(stroke.width(), 16.0F);
+    for (const StrokePoint &point : stroke.points())
+        EXPECT_FLOAT_EQ(point.pressure, 1.0F);
+}
+
+// Sends the mouse events Qt synthesises from a pen on a tablet: they carry the pen's
+// device, which reports pressure.
+TEST_F(BoardCanvasTest, PenPressureReachesTheStroke) {
+    QPointingDevice pen(
+        "test pen", 4242, QInputDevice::DeviceType::Stylus, QPointingDevice::PointerType::Pen,
+        QInputDevice::Capability::Position | QInputDevice::Capability::Pressure, 1, 3);
+    const struct {
+        QEvent::Type type;
+        QPointF position;
+        qreal pressure;
+    } samples[] = {{QEvent::MouseButtonPress, {20, 20}, 0.2},
+                   {QEvent::MouseMove, {60, 20}, 0.6},
+                   {QEvent::MouseMove, {100, 20}, 0.9},
+                   {QEvent::MouseButtonRelease, {100, 20}, 0.0}};
+    for (const auto &sample : samples) {
+        const bool release = sample.type == QEvent::MouseButtonRelease;
+        QMouseEvent event(sample.type, sample.position, sample.position,
+                          window_.mapToGlobal(sample.position), Qt::LeftButton,
+                          release ? Qt::NoButton : Qt::LeftButton, Qt::NoModifier, &pen);
+        QMutableEventPoint::setPressure(event.point(0), sample.pressure);
+        QGuiApplication::sendEvent(&window_, &event);
+    }
+    ASSERT_EQ(canvas_.strokeCount(), 1);
+    const Stroke &stroke = canvas_.board().strokes().front();
+    EXPECT_FLOAT_EQ(stroke.points().front().pressure, 0.2F);
+    EXPECT_FLOAT_EQ(stroke.points().back().pressure, 0.9F);
 }
 
 TEST_F(BoardCanvasTest, UndoRemovesTheLastStroke) {
@@ -83,6 +118,12 @@ TEST_F(BoardCanvasTest, MiddleButtonPansWhileUsingThePen) {
     drag({100, 100}, {150, 100}, Qt::MiddleButton);
     EXPECT_EQ(canvas_.strokeCount(), 0);
     EXPECT_DOUBLE_EQ(canvas_.viewCenter().x(), 50.0);
+}
+
+TEST_F(BoardCanvasTest, RightButtonPansWhileUsingThePen) {
+    drag({100, 100}, {100, 40}, Qt::RightButton);
+    EXPECT_EQ(canvas_.strokeCount(), 0);
+    EXPECT_DOUBLE_EQ(canvas_.viewCenter().y(), 160.0);
 }
 
 TEST_F(BoardCanvasTest, EraserRemovesStrokesAndUndoRestoresThem) {

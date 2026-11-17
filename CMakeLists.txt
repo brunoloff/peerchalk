@@ -28,6 +28,23 @@ set(BUILD_TESTING OFF)
 add_subdirectory("${PEERCHALK_P2PDC_SOURCE_DIR}" p2pdc EXCLUDE_FROM_ALL)
 set(BUILD_TESTING ${peerchalk_build_testing})
 
+# Yrs (the Rust port of Yjs) through its C interface holds the board document. The
+# header and library must come from the same Yrs build for the target platform; by
+# default the ones p2pdc's Yrs reference build leaves in its .deps folder are used.
+find_path(PEERCHALK_YRS_INCLUDE_DIR libyrs.h
+    HINTS "${PEERCHALK_P2PDC_SOURCE_DIR}/.deps/y-crdt/tests-ffi/include")
+find_library(PEERCHALK_YRS_LIBRARY NAMES yrs
+    HINTS "${PEERCHALK_P2PDC_SOURCE_DIR}/.deps/y-crdt-target/debug")
+if(NOT PEERCHALK_YRS_INCLUDE_DIR OR NOT PEERCHALK_YRS_LIBRARY)
+    message(FATAL_ERROR "Yrs not found. Build it as in "
+        "${PEERCHALK_P2PDC_SOURCE_DIR}/integrations/yrs/README.md, or set "
+        "PEERCHALK_YRS_INCLUDE_DIR and PEERCHALK_YRS_LIBRARY.")
+endif()
+add_library(peerchalk_yrs UNKNOWN IMPORTED)
+set_target_properties(peerchalk_yrs PROPERTIES
+    IMPORTED_LOCATION "${PEERCHALK_YRS_LIBRARY}"
+    INTERFACE_INCLUDE_DIRECTORIES "${PEERCHALK_YRS_INCLUDE_DIR}")
+
 find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2)
 qt_standard_project_setup(REQUIRES 6.5)
 

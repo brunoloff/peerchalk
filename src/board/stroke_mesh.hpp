@@ -11,10 +11,16 @@ struct MeshVertex {
     float y;
 };
 
-// Converts a stroke into a triangle strip whose half-width at each point is
-// width * pressure / 2, so wide lines render on every graphics backend.
-// Strokes with fewer than two distinct points produce a small square dot;
-// strokes with no points produce an empty strip.
-[[nodiscard]] std::vector<MeshVertex> buildTriangleStrip(const Stroke &stroke);
+// The width a stroke is drawn with at one of its points: base width times pressure,
+// never thinner than a hairline so light touches stay visible.
+[[nodiscard]] float pointWidth(const Stroke &stroke, const StrokePoint &point);
+
+// Converts a stroke into triangles (three vertices each) that cover its outline:
+// - each segment is a band of constant width, the width at its first point;
+// - each point gets a round disc as wide as the wider band touching it, which rounds
+//   the caps, smooths the joints and hides width steps between bands;
+// - a one-point stroke is a round dot.
+// The pieces overlap, so the mesh suits opaque colours or drawing into an opaque layer.
+[[nodiscard]] std::vector<MeshVertex> buildStrokeMesh(const Stroke &stroke);
 
 } // namespace peerchalk

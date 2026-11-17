@@ -16,7 +16,19 @@ namespace peerchalk {
 // Scene-graph builders shared by the board canvas and its minimap. Every node returned
 // owns its geometry and material; parents own their children.
 
-[[nodiscard]] QSGGeometryNode *createStrokeNode(const Stroke &stroke);
+// Highlighter strokes are shown at this opacity over the board.
+inline constexpr float highlighterOpacity = 0.47F;
+
+// Which strokes a set of nodes shows, and how highlighters are coloured.
+enum class StrokeSelection {
+    All,               // every stroke; highlighters translucent (for overviews)
+    Pens,              // pen strokes only
+    HighlightersOpaque // highlighters only, opaque, for a layer shown at highlighterOpacity
+};
+
+[[nodiscard]] QColor strokeColor(const Stroke &stroke, StrokeSelection selection);
+[[nodiscard]] bool selects(StrokeSelection selection, const Stroke &stroke);
+[[nodiscard]] QSGGeometryNode *createStrokeNode(const Stroke &stroke, const QColor &color);
 // Square dots of the given size centred on each point.
 [[nodiscard]] QSGGeometryNode *createDotsNode(const std::vector<Point> &centres, float size,
                                               const QColor &color);
@@ -26,8 +38,8 @@ namespace peerchalk {
 
 // Removes and deletes every child of parent.
 void deleteChildren(QSGNode *parent);
-// Replaces parent's children with one node per stroke.
-void setStrokeNodes(QSGNode *parent, const std::vector<Stroke> &strokes);
+// Replaces parent's children with one node per selected stroke that has points.
+void setStrokeNodes(QSGNode *parent, const std::vector<Stroke> &strokes, StrokeSelection selection);
 [[nodiscard]] QMatrix4x4 viewMatrix(const Viewport &viewport);
 
 } // namespace peerchalk

@@ -97,5 +97,56 @@ TEST(Board, ContentBoundsCoverAllStrokes) {
     EXPECT_FLOAT_EQ(bounds->bottom, 61.0F);
 }
 
+// Brings `to` up to date with `from`, as two peers would over a connection.
+void sync(const Board &from, Board &to) {
+    ASSERT_TRUE(to.apply(from.difference(to.stateVector())));
+}
+
+TEST(BoardSync, PeersConvergeOnTheSameStrokes) {
+    Board alice;
+    Board bob;
+    alice.addStroke(line(0, 0, 10, 0, 1U));
+    bob.addStroke(line(0, 50, 10, 50, 2U));
+    sync(alice, bob);
+    sync(bob, alice);
+    ASSERT_EQ(alice.strokes().size(), 2U);
+    ASSERT_EQ(bob.strokes().size(), 2U);
+    for (std::size_t i = 0; i < 2; ++i)
+        EXPECT_EQ(alice.strokes()[i].argb(), bob.strokes()[i].argb());
+}
+
+TEST(BoardSync, EraseReachesThePeer) {
+    Board alice;
+    Board bob;
+    alice.addStroke(line(0, 0, 10, 0));
+    sync(alice, bob);
+    bob.eraseNear({5.0F, 0.0F}, 2.0F);
+    bob.endGesture();
+    sync(bob, alice);
+    EXPECT_TRUE(alice.strokes().empty());
+}
+
+TEST(BoardSync, UndoNeverRevertsAPeersStroke) {
+    Board alice;
+    Board bob;
+    alice.addStroke(line(0, 0, 10, 0, 1U));
+    sync(alice, bob);
+    EXPECT_FALSE(bob.canUndo());
+    EXPECT_FALSE(bob.undo());
+    bob.addStroke(line(0, 50, 10, 50, 2U));
+    ASSERT_TRUE(bob.undo());
+    ASSERT_EQ(bob.strokes().size(), 1U);
+    EXPECT_EQ(bob.strokes().front().argb(), 1U);
+}
+
+TEST(BoardSync, RejectsMalformedUpdates) {
+    Board board;
+    const Bytes garbage{std::byte{0xFF}, std::byte{0x01}, std::byte{0x80}};
+    EXPECT_FALSE(board.apply({}));
+    EXPECT_FALSE(board.apply(garbage));
+    EXPECT_THROW(static_cast<void>(board.difference({})), std::invalid_argument);
+    EXPECT_TRUE(board.strokes().empty());
+}
+
 } // namespace
 } // namespace peerchalk

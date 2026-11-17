@@ -50,5 +50,18 @@ TEST(Stroke, RejectsInvalidPoints) {
     EXPECT_TRUE(stroke.points().empty());
 }
 
+TEST(Stroke, ReplacesTheLastPoint) {
+    Stroke stroke(0xff000000U, 2.0F);
+    EXPECT_THROW(stroke.replaceLastPoint({0.0F, 0.0F, 1.0F}), std::logic_error);
+    stroke.addPoint({1.0F, 1.0F, 0.2F});
+    stroke.replaceLastPoint({1.0F, 1.0F, 0.9F});
+    EXPECT_FLOAT_EQ(stroke.points().front().pressure, 0.9F);
+    EXPECT_THROW(stroke.replaceLastPoint({1.0F, 1.0F, 2.0F}), std::invalid_argument);
+}
+
+TEST(Stroke, RejectsUnknownKinds) {
+    EXPECT_THROW(Stroke(0xff000000U, 2.0F, static_cast<StrokeKind>(9)), std::invalid_argument);
+}
+
 } // namespace
 } // namespace peerchalk

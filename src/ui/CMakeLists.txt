@@ -7,7 +7,7 @@ qt_add_qml_module(peerchalk_ui URI PeerChalk VERSION 1.0
     SOURCES
         board_canvas.cpp board_canvas.hpp board_canvas_input.cpp
         board_minimap.cpp board_minimap.hpp
-        conversions.hpp scene_nodes.cpp scene_nodes.hpp
+        conversions.hpp scene_nodes.cpp scene_nodes.hpp stroke_layer.cpp stroke_layer.hpp
     QML_FILES
         Main.qml Theme.qml Icons.qml Icon.qml Panel.qml RailButton.qml ToolRail.qml
         Inspector.qml SectionLabel.qml ColorSwatch.qml WidthButton.qml NavigatorPanel.qml)

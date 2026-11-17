@@ -1,6 +1,7 @@
 #pragma once
 
 #include "board/board.hpp"
+#include "board/stroke_builder.hpp"
 #include "board/viewport.hpp"
 
 #include <QColor>
@@ -13,8 +14,14 @@
 
 namespace peerchalk {
 
-// The infinite board: draws strokes and a dotted grid through a pannable, zoomable
-// viewport, and turns mouse, touch and pen input into drawing, erasing and panning.
+class StrokeLayer;
+
+// The infinite board: draws a dotted grid and, through two child layers, the strokes,
+// all through a pannable, zoomable viewport. Highlighter strokes are drawn opaque into
+// an offscreen layer shown at highlighterOpacity beneath the pen ink, so overlapping
+// highlighter strokes never darken and ink stays crisp. Turns mouse, touch and pen input
+// (with pressure when the device reports it) into drawing, erasing and panning.
+// Middle- and right-button drags always pan.
 // Positions exposed to QML (viewCenter, visibleArea, contentBounds) are world coordinates.
 class BoardCanvas : public QQuickItem {
     Q_OBJECT
@@ -51,6 +58,9 @@ class BoardCanvas : public QQuickItem {
     [[nodiscard]] QPointF viewCenter() const;
     [[nodiscard]] QRectF visibleArea() const;
     [[nodiscard]] const Board &board() const { return board_; }
+    [[nodiscard]] const Viewport &viewport() const { return viewport_; }
+    // The stroke being drawn, or null.
+    [[nodiscard]] const Stroke *activeStroke() const;
 
     Q_INVOKABLE void undo();
     // Zooms about the centre of the view by factor (> 0).
@@ -82,14 +92,16 @@ class BoardCanvas : public QQuickItem {
   private:
     enum class Gesture { None, Drawing, Erasing, Panning };
 
-    void pointerPressed(QPointF position, float pressure, bool forcePan);
-    void pointerMoved(QPointF position, float pressure);
-    void pointerReleased(QPointF position, float pressure);
+    // pressure is empty for devices without a pressure sensor.
+    void pointerPressed(QPointF position, std::optional<float> pressure, bool forcePan);
+    void pointerMoved(QPointF position, std::optional<float> pressure);
+    void pointerReleased(QPointF position, std::optional<float> pressure);
     void pointerCancelled();
-    void addActivePoint(QPointF position, float pressure);
+    void addActivePoint(QPointF position, std::optional<float> pressure);
     void eraseAlong(QPointF from, QPointF to);
     void viewUpdated();
     void strokesUpdated();
+    void activeStrokeUpdated();
 
     Tool tool_{Tool::Pen};
     QColor penColor_{Qt::black};
@@ -99,8 +111,9 @@ class BoardCanvas : public QQuickItem {
     Viewport viewport_;
     Gesture gesture_{Gesture::None};
     QPointF lastPosition_;
-    std::optional<Stroke> activeStroke_;
-    bool committedDirty_{true};
+    std::optional<StrokeBuilder> activeStroke_;
+    StrokeLayer *highlighterLayer_;
+    StrokeLayer *penLayer_;
 };
 
 } // namespace peerchalk

@@ -2,6 +2,7 @@
 
 #include "ui/conversions.hpp"
 #include "ui/scene_nodes.hpp"
+#include "ui/stroke_layer.hpp"
 
 #include <QSGTransformNode>
 #include <QtLogging>
@@ -16,10 +17,24 @@ constexpr float fitMarginPx = 48.0F;
 
 } // namespace
 
-BoardCanvas::BoardCanvas(QQuickItem *parent) : QQuickItem(parent) {
+BoardCanvas::BoardCanvas(QQuickItem *parent)
+    : QQuickItem(parent),
+      highlighterLayer_(new StrokeLayer(*this, StrokeSelection::HighlightersOpaque, this)),
+      penLayer_(new StrokeLayer(*this, StrokeSelection::Pens, this)) {
     setFlag(ItemHasContents, true);
-    setAcceptedMouseButtons(Qt::LeftButton | Qt::MiddleButton);
+    setAcceptedMouseButtons(Qt::LeftButton | Qt::MiddleButton | Qt::RightButton);
     setAcceptTouchEvents(true);
+    // Rendering the highlighters offscreen first means each pixel is covered once, so
+    // the layer's opacity applies evenly however strokes overlap.
+    auto *layer = highlighterLayer_->property("layer").value<QObject *>();
+    if (layer == nullptr || !layer->setProperty("enabled", true) ||
+        !layer->setProperty("smooth", true))
+        qFatal("BoardCanvas: Qt Quick item layers are unavailable");
+    highlighterLayer_->setOpacity(highlighterOpacity);
+}
+
+const Stroke *BoardCanvas::activeStroke() const {
+    return activeStroke_ ? &activeStroke_->stroke() : nullptr;
 }
 
 void BoardCanvas::setTool(Tool tool) {
@@ -124,48 +139,37 @@ void BoardCanvas::centerOn(QPointF worldPoint) {
 }
 
 QSGNode *BoardCanvas::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *) {
-    QSGNode *root = oldNode;
-    if (root == nullptr) {
-        root = new QSGNode;
-        root->appendChildNode(new QSGNode); // grid
-        auto *transform = new QSGTransformNode;
-        transform->appendChildNode(new QSGNode); // committed strokes
-        transform->appendChildNode(new QSGNode); // stroke being drawn
-        root->appendChildNode(transform);
-        committedDirty_ = true;
-    }
-    QSGNode *grid = root->firstChild();
+    QSGNode *grid = oldNode != nullptr ? oldNode : new QSGNode;
     deleteChildren(grid);
     grid->appendChildNode(createDotsNode(
         gridDots(viewport_, static_cast<float>(width()), static_cast<float>(height())),
         gridDotSizePx, gridColor_));
-    auto *transform = static_cast<QSGTransformNode *>(root->lastChild());
-    transform->setMatrix(viewMatrix(viewport_));
-    if (committedDirty_) {
-        setStrokeNodes(transform->firstChild(), board_.strokes());
-        committedDirty_ = false;
-    }
-    QSGNode *active = transform->lastChild();
-    deleteChildren(active);
-    if (activeStroke_)
-        active->appendChildNode(createStrokeNode(*activeStroke_));
-    return root;
+    return grid;
 }
 
 void BoardCanvas::geometryChange(const QRectF &newGeometry, const QRectF &oldGeometry) {
     QQuickItem::geometryChange(newGeometry, oldGeometry);
+    highlighterLayer_->setSize(newGeometry.size());
+    penLayer_->setSize(newGeometry.size());
     viewUpdated();
 }
 
 void BoardCanvas::viewUpdated() {
     emit viewChanged();
     update();
+    highlighterLayer_->update();
+    penLayer_->update();
 }
 
 void BoardCanvas::strokesUpdated() {
-    committedDirty_ = true;
     emit strokesChanged();
-    update();
+    highlighterLayer_->markStrokesDirty();
+    penLayer_->markStrokesDirty();
+}
+
+void BoardCanvas::activeStrokeUpdated() {
+    highlighterLayer_->update();
+    penLayer_->update();
 }
 
 } // namespace peerchalk
