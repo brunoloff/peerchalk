@@ -1,0 +1,37 @@
+cmake_minimum_required(VERSION 3.20)
+project(PeerChalk VERSION 0.1.0 LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+# One shared Ninja pool for compiling and linking keeps builds from saturating the host.
+set_property(GLOBAL APPEND PROPERTY JOB_POOLS peerchalk_heavy=1)
+set(CMAKE_JOB_POOL_COMPILE peerchalk_heavy)
+set(CMAKE_JOB_POOL_LINK peerchalk_heavy)
+include(CTest)
+
+option(PEERCHALK_WERROR "Treat compiler warnings as errors in PeerChalk targets" ON)
+set(peerchalk_warning_flags -Wall -Wextra -Wpedantic)
+if(PEERCHALK_WERROR)
+    list(APPEND peerchalk_warning_flags -Werror)
+endif()
+
+set(PEERCHALK_P2PDC_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../p2p-discovery-connect"
+    CACHE PATH "p2p-discovery-connect source directory")
+if(NOT EXISTS "${PEERCHALK_P2PDC_SOURCE_DIR}/CMakeLists.txt")
+    message(FATAL_ERROR "p2p-discovery-connect not found at ${PEERCHALK_P2PDC_SOURCE_DIR}. "
+        "Set PEERCHALK_P2PDC_SOURCE_DIR to its source directory.")
+endif()
+# Build only the p2pdc library here; its own tests and tools belong to its repository.
+set(peerchalk_build_testing ${BUILD_TESTING})
+set(BUILD_TESTING OFF)
+add_subdirectory("${PEERCHALK_P2PDC_SOURCE_DIR}" p2pdc EXCLUDE_FROM_ALL)
+set(BUILD_TESTING ${peerchalk_build_testing})
+
+find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2)
+qt_standard_project_setup(REQUIRES 6.5)
+
+add_subdirectory(src)
+if(BUILD_TESTING AND NOT EMSCRIPTEN AND NOT ANDROID)
+    add_subdirectory(tests)
+endif()
