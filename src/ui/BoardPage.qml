@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -10,6 +12,12 @@ Item {
 
     required property string boardId
     readonly property string boardName: Library.boardName(boardId)
+    // Other devices showing this board, from Network.boardPresence.
+    property var people: []
+
+    function refreshPeople() {
+        people = Network.boardPresence(boardId);
+    }
 
     signal back()
 
@@ -28,7 +36,22 @@ Item {
     }
 
     objectName: "boardPage"
-    Component.onDestruction: Library.saveBoards()
+    Component.onCompleted: {
+        Network.setPresence(page.boardId, Qt.point(0, 0), false);
+        page.refreshPeople();
+    }
+    Component.onDestruction: {
+        Network.setPresence("", Qt.point(0, 0), false);
+        Library.saveBoards();
+    }
+
+    Connections {
+        target: Network
+
+        function onPresenceChanged() {
+            page.refreshPeople();
+        }
+    }
 
     Item {
         id: boardArea
@@ -52,6 +75,7 @@ Item {
             penWidth: Theme.penWidths[1]
             gridColor: Theme.gridDot
             document: Library.openBoard(page.boardId)
+            onCursorMoved: (point, inside) => Network.setPresence(page.boardId, point, inside)
         }
 
         Panel {
@@ -88,9 +112,47 @@ Item {
                     }
 
                     Label {
-                        text: qsTr("%1 · only you so far").arg(Library.currentProjectName)
+                        text: page.people.length === 0 ? qsTr("%1 · only you here").arg(Library.currentProjectName)
+                            : page.people.length === 1 ? qsTr("%1 · 1 other person here").arg(Library.currentProjectName)
+                            : qsTr("%1 · %2 others here").arg(Library.currentProjectName).arg(page.people.length)
                         font.pixelSize: 12
                         color: Theme.muted
+                    }
+                }
+            }
+        }
+
+        Repeater {
+            model: page.people
+
+            delegate: RemoteCursor {
+                boardCanvas: canvas
+            }
+        }
+
+        Row {
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.margins: Theme.gap
+            spacing: -8
+            visible: page.people.length > 0
+
+            Repeater {
+                model: page.people
+
+                delegate: Avatar {
+                    required property var modelData
+
+                    name: modelData.name
+                    size: 34
+                    color: Theme.personColors[modelData.colorIndex % Theme.personColors.length]
+                    border.color: Theme.surface
+                    border.width: 2
+                    ToolTip.visible: hover.hovered
+                    ToolTip.text: modelData.name
+
+                    HoverHandler {
+                        id: hover
                     }
                 }
             }

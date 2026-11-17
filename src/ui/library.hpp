@@ -139,6 +139,8 @@ class Library : public QObject {
     void boardFilterChanged();
     void profileChanged();
     void workspaceChanged();
+    // A board's contents changed, here or from a peer (C++ only, for sync).
+    void boardChanged(const QUuid &boardId);
     void errorOccurred(const QString &message);
 
   private:

@@ -4,6 +4,7 @@
 #include "ui/conversions.hpp"
 
 #include <QEventPoint>
+#include <QHoverEvent>
 #include <QMouseEvent>
 #include <QPointingDevice>
 #include <QTouchEvent>
@@ -53,7 +54,14 @@ void BoardCanvas::pointerPressed(QPointF position, std::optional<float> pressure
     }
 }
 
+void BoardCanvas::hoverMoveEvent(QHoverEvent *event) {
+    emit cursorMoved(toQPointF(viewport_.toWorld(toPoint(event->position()))), true);
+}
+
+void BoardCanvas::hoverLeaveEvent(QHoverEvent *) { emit cursorMoved({}, false); }
+
 void BoardCanvas::pointerMoved(QPointF position, std::optional<float> pressure) {
+    emit cursorMoved(toQPointF(viewport_.toWorld(toPoint(position))), true);
     if (gesture_ == Gesture::Panning) {
         const QPointF delta = position - lastPosition_;
         lastPosition_ = position;

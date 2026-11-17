@@ -35,35 +35,69 @@ ctest --test-dir build-native -j 1
 
 Run the app with `bin/peerchalk`.
 
+## Sharing and access
+
+Each project and each board has one admin, its creator. The admin chooses who has access
+from their known people (added with contact codes) and sends them an invite code; a
+board can be shared on its own or belong to several projects, whose members can then
+open it. Who has access is recorded in a manifest the admin signs, so peers accept only
+the admin's changes, and having an invite code alone gives no board contents.
+
+A person (user key) can use several devices (device keys): "Link another device" on the
+identity screen gives a secret code that a new installation pastes on its welcome screen.
+Your devices then share your projects, boards and contacts automatically.
+
+## Networking
+
+PeerChalk finds peers through p2p-discovery-connect: every project, every board shared
+on its own, and your own set of devices has a discovery secret, and devices holding it
+find each other on the OpenDHT network and connect directly over WebRTC. Boards sync as
+Yrs updates, live, with the other people's cursors shown on the board. By default it
+uses the public OpenDHT network through Jami's bootstrap node and no STUN/TURN servers,
+which works on one machine and on local networks; reaching people behind other NATs
+may need STUN/TURN. Environment variables adjust this:
+
+| Variable | Meaning |
+|---|---|
+| `PEERCHALK_NETWORK=off` | Stay offline |
+| `PEERCHALK_BOOTSTRAP=host:port,…` | OpenDHT bootstrap nodes |
+| `PEERCHALK_DHT_NETWORK=<number>` | OpenDHT network id |
+| `PEERCHALK_STUN=host:port` | A STUN server |
+| `PEERCHALK_TURN=user:password@host:port` | A TURN server (UDP) |
+
+To try it on one computer, run two installations with separate data folders:
+
+```sh
+PEERCHALK_DATA_DIR=/tmp/peerchalk-ana bin/peerchalk &
+PEERCHALK_DATA_DIR=/tmp/peerchalk-ben bin/peerchalk &
+```
+
+Exchange contact codes between them (identity screen), create a project in one, tick
+the other person under "Members & invite", copy the invite and join with it in the
+other. They find each other within about ten seconds.
+
 ## Data on this device
 
 PeerChalk keeps its data in the platform's app data folder (on Linux
-`~/.local/share/PeerChalk`), or in the folder named by `PEERCHALK_DATA_DIR`, which is
-handy for running a second identity side by side:
+`~/.local/share/PeerChalk`), or in the folder named by `PEERCHALK_DATA_DIR`:
 
-- `identity.json`: your Ed25519 signing seed and X25519 recipient secret. It is readable
-  only by you but not encrypted; an OS keychain is planned.
+- `identity.json`: your user key's Ed25519 seed; `device.json`: this device's Ed25519
+  seed and X25519 secret. Both are readable only by you but not encrypted; an OS
+  keychain is planned.
 - `profile.json`, `contacts.json`: your name and colour, and the people you know with how
   you verified them.
-- `projects.json`: projects, their boards, and each project's discovery secret (also
-  readable only by you).
+- `workspace.json`: projects and boards with their signed manifests and discovery
+  secrets (readable only by you).
 - `boards/<id>.yrs`: each board's Yrs document.
-
-An invite code (`peerchalk-invite:1:…`) carries a project's id, name and secret: anyone
-with it can join, so share it privately. A contact code (`peerchalk-contact:1:…`)
-carries only your public key and name. Compare fingerprints to verify each other.
-Sharing boards between members needs the networking that is still to come.
-
-Lint with `clang-format --dry-run --Werror` on the C++ sources and
-`cmake --build build-native --target all_qmllint` for the QML.
 
 ## Layout
 
 - `src/board/`: the board model in plain C++: strokes, their binary encoding and
   triangle meshes, input filtering for pressure-sensitive drawing, the pan/zoom viewport
   and background grid, and the Yrs-backed board with eraser and per-user undo.
-- `src/library/`: this device's projects, boards and identity on disk, and the invite
-  and contact codes people exchange.
+- `src/library/`: identities, signed manifests and access rules, the workspace of
+  projects and boards on disk, and the invite and contact codes people exchange.
+- `src/sync/`: the p2pdc network service and PeerChalk's sync protocol.
 - `src/ui/`: the Qt Quick items (canvas, minimap, board previews), the `Library` QML
   singleton, and the screens (home, identity, board), built as the `PeerChalk` QML module.
   Colours and sizes follow the "Paper" design in `Theme.qml`.

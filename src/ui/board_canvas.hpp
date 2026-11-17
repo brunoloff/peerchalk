@@ -77,6 +77,8 @@ class BoardCanvas : public QQuickItem {
     // Shows every stroke, zooming in no further than 100%; does nothing on an empty board.
     Q_INVOKABLE void fitContent();
     Q_INVOKABLE void centerOn(QPointF worldPoint);
+    // The item position where a world point is shown.
+    Q_INVOKABLE QPointF toScreen(QPointF worldPoint) const;
 
   signals:
     void documentChanged();
@@ -86,6 +88,8 @@ class BoardCanvas : public QQuickItem {
     void gridColorChanged();
     void strokesChanged();
     void viewChanged();
+    // The pointer moved over the board (world coordinates), or left it.
+    void cursorMoved(QPointF worldPoint, bool inside);
 
   protected:
     QSGNode *updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *data) override;
@@ -96,6 +100,8 @@ class BoardCanvas : public QQuickItem {
     void mouseUngrabEvent() override;
     void touchEvent(QTouchEvent *event) override;
     void wheelEvent(QWheelEvent *event) override;
+    void hoverMoveEvent(QHoverEvent *event) override;
+    void hoverLeaveEvent(QHoverEvent *event) override;
 
   private:
     enum class Gesture { None, Drawing, Erasing, Panning };

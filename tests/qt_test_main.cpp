@@ -8,6 +8,8 @@
 int main(int argc, char **argv) {
     QGuiApplication app(argc, argv);
     peerchalk::useAppControlsStyle();
+    // UI tests never reach the internet; network tests configure their own local DHT.
+    qputenv("PEERCHALK_NETWORK", "off");
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }

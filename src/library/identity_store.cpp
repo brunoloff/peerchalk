@@ -68,25 +68,36 @@ void IdentityStore::adoptIdentity(const QString &transferCode) {
     saveContacts();
 }
 
+// Contacts in their stored form; throws std::runtime_error for malformed entries.
+static std::vector<Contact> contactsFromJson(const QJsonObject &root) {
+    std::vector<Contact> contacts;
+    for (const QJsonValue &value : root.value(QStringLiteral("contacts")).toArray()) {
+        const QJsonObject object = value.toObject();
+        try {
+            contacts.push_back(
+                {base64Field(object, QStringLiteral("signingKey"), signingKeySize),
+                 requireName(object.value(QStringLiteral("name")).toString()),
+                 verificationFromName(object.value(QStringLiteral("verification")).toString())});
+        } catch (const std::invalid_argument &error) {
+            throw std::runtime_error(error.what());
+        }
+    }
+    return contacts;
+}
+
 void IdentityStore::loadContacts() {
     const QString path = QDir(directory_).filePath(QStringLiteral("contacts.json"));
     const std::optional<QJsonObject> root = readJsonObject(path, formatVersion);
     if (!root)
         return;
     try {
-        for (const QJsonValue &value : root->value(QStringLiteral("contacts")).toArray()) {
-            const QJsonObject object = value.toObject();
-            contacts_.push_back(
-                {base64Field(object, QStringLiteral("signingKey"), signingKeySize),
-                 requireName(object.value(QStringLiteral("name")).toString()),
-                 verificationFromName(object.value(QStringLiteral("verification")).toString())});
-        }
+        contacts_ = contactsFromJson(*root);
     } catch (const std::exception &error) {
         throw std::runtime_error(path.toStdString() + ": " + error.what());
     }
 }
 
-void IdentityStore::saveContacts() const {
+QJsonObject IdentityStore::exportContacts() const {
     QJsonArray contacts;
     for (const Contact &contact : contacts_) {
         contacts.append(QJsonObject{
@@ -95,8 +106,32 @@ void IdentityStore::saveContacts() const {
             {QStringLiteral("verification"),
              verificationNames.at(static_cast<std::size_t>(contact.verification))}});
     }
-    writeJsonObject(QDir(directory_).filePath(QStringLiteral("contacts.json")),
-                    {{QStringLiteral("contacts"), contacts}}, formatVersion, false);
+    return {{QStringLiteral("contacts"), contacts}};
+}
+
+bool IdentityStore::mergeContacts(const QJsonObject &exported) {
+    bool changed = false;
+    for (const Contact &incoming : contactsFromJson(exported)) {
+        if (incoming.signingKey == signingKey())
+            continue;
+        const auto it = std::ranges::find(contacts_, incoming.signingKey, &Contact::signingKey);
+        if (it == contacts_.end()) {
+            contacts_.push_back(incoming);
+            changed = true;
+        } else if (it->verification == Verification::None &&
+                   incoming.verification != Verification::None) {
+            it->verification = incoming.verification;
+            changed = true;
+        }
+    }
+    if (changed)
+        saveContacts();
+    return changed;
+}
+
+void IdentityStore::saveContacts() const {
+    writeJsonObject(QDir(directory_).filePath(QStringLiteral("contacts.json")), exportContacts(),
+                    formatVersion, false);
 }
 
 void IdentityStore::setDisplayName(const QString &name) {

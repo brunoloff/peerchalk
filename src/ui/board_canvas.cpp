@@ -24,6 +24,7 @@ BoardCanvas::BoardCanvas(QQuickItem *parent)
     setFlag(ItemHasContents, true);
     setAcceptedMouseButtons(Qt::LeftButton | Qt::MiddleButton | Qt::RightButton);
     setAcceptTouchEvents(true);
+    setAcceptHoverEvents(true);
     // Rendering the highlighters offscreen first means each pixel is covered once, so
     // the layer's opacity applies evenly however strokes overlap.
     auto *layer = highlighterLayer_->property("layer").value<QObject *>();
@@ -152,6 +153,10 @@ void BoardCanvas::centerOn(QPointF worldPoint) {
     viewport_.centerOn(toPoint(worldPoint), static_cast<float>(width()),
                        static_cast<float>(height()));
     viewUpdated();
+}
+
+QPointF BoardCanvas::toScreen(QPointF worldPoint) const {
+    return toQPointF(viewport_.toScreen(toPoint(worldPoint)));
 }
 
 QSGNode *BoardCanvas::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *) {

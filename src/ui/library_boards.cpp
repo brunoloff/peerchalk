@@ -24,6 +24,7 @@ BoardDocument &Library::document(const QUuid &boardId) {
     connect(document, &BoardDocument::changed, this, [this, boardId] {
         if (documents_.at(boardId)->revision() != savedRevisions_[boardId])
             saveTimer_->start();
+        emit boardChanged(boardId);
     });
     return *document;
 }

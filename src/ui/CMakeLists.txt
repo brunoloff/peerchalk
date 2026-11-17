@@ -10,6 +10,9 @@ qt_add_qml_module(peerchalk_ui URI PeerChalk VERSION 1.0
         conversions.hpp scene_nodes.cpp scene_nodes.hpp stroke_layer.cpp stroke_layer.hpp
         board_preview.cpp board_preview.hpp library.cpp library.hpp library_people.cpp
         library_boards.cpp board_document.cpp board_document.hpp
+        ../sync/messages.cpp ../sync/messages.hpp ../sync/network.cpp ../sync/network.hpp
+        ../sync/network_config.cpp ../sync/network_config.hpp ../sync/network_peers.cpp
+        ../sync/network_sync.cpp
         row_model.cpp row_model.hpp
         app_style.cpp app_style.hpp
     QML_FILES
@@ -18,9 +21,12 @@ qt_add_qml_module(peerchalk_ui URI PeerChalk VERSION 1.0
         BoardPage.qml HomePage.qml ProjectSidebar.qml ProjectHeader.qml WelcomePanel.qml
         BoardCard.qml IdentityPage.qml PageHeader.qml ProfileCard.qml PeopleCard.qml
         PersonRow.qml VerifyPanel.qml Avatar.qml PaperButton.qml TextInputDialog.qml
-        ConfirmDialog.qml CodeDialog.qml Toast.qml MembersDialog.qml)
+        ConfirmDialog.qml CodeDialog.qml Toast.qml MembersDialog.qml RemoteCursor.qml
+        NetworkStatus.qml)
 target_include_directories(peerchalk_ui PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/..")
-target_link_libraries(peerchalk_ui PUBLIC peerchalk_board peerchalk_library Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick
+# The generated QML type registrations include headers by file name.
+target_include_directories(peerchalk_ui PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../sync")
+target_link_libraries(peerchalk_ui PUBLIC peerchalk_board peerchalk_library p2pdc::p2pdc Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick
     Qt6::QuickControls2)
 target_compile_options(peerchalk_ui PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:${peerchalk_warning_flags}>)

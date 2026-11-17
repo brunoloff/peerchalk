@@ -170,6 +170,11 @@ Rectangle {
             }
         }
 
+        NetworkStatus {
+            Layout.fillWidth: true
+            Layout.leftMargin: 10
+        }
+
         ItemDelegate {
             id: identityButton
 

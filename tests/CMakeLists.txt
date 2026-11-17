@@ -24,3 +24,14 @@ target_compile_options(peerchalk_ui_tests PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:${peerchalk_warning_flags}>)
 gtest_discover_tests(peerchalk_ui_tests
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software")
+
+# End-to-end sync over p2pdc on a private OpenDHT network on the loopback interface.
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(PEERCHALK_TEST_OPENDHT REQUIRED IMPORTED_TARGET opendht)
+add_executable(peerchalk_network_tests qt_test_main.cpp network_test.cpp)
+target_link_libraries(peerchalk_network_tests PRIVATE peerchalk_ui Qt6::Test GTest::gtest
+    PkgConfig::PEERCHALK_TEST_OPENDHT)
+target_compile_options(peerchalk_network_tests PRIVATE
+    $<$<CXX_COMPILER_ID:GNU,Clang>:${peerchalk_warning_flags}>)
+gtest_discover_tests(peerchalk_network_tests
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 300)

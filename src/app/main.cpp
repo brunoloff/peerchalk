@@ -1,3 +1,4 @@
+#include "sync/network.hpp"
 #include "ui/app_style.hpp"
 
 #include <QGuiApplication>
@@ -20,5 +21,12 @@ int main(int argc, char **argv) {
         &engine, &QQmlApplicationEngine::objectCreationFailed, &app,
         [] { QCoreApplication::exit(1); }, Qt::QueuedConnection);
     engine.loadFromModule("PeerChalk", "Main");
+    // Close connections and stop p2pdc before the engine and its singletons go away.
+    QObject::connect(&app, &QCoreApplication::aboutToQuit, [&engine] {
+        auto *network =
+            engine.singletonInstance<peerchalk::sync::Network *>("PeerChalk", "Network");
+        if (network != nullptr)
+            network->shutdown(std::chrono::seconds(3));
+    });
     return app.exec();
 }

@@ -4,6 +4,7 @@
 #include "library/user_identity.hpp"
 
 #include <QByteArray>
+#include <QJsonObject>
 #include <QString>
 
 #include <vector>
@@ -44,6 +45,11 @@ class IdentityStore {
     void addContact(const ContactCard &card);
     void setVerification(const QByteArray &signingKey, Verification verification);
     void removeContact(const QByteArray &signingKey);
+    // Contacts for your other devices; merging adds unknown people and verifications
+    // made elsewhere, and returns true when something changed. Throws
+    // std::runtime_error for malformed input.
+    [[nodiscard]] QJsonObject exportContacts() const;
+    bool mergeContacts(const QJsonObject &exported);
 
   private:
     [[nodiscard]] Contact &findContact(const QByteArray &signingKey);
