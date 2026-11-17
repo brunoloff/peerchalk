@@ -35,6 +35,25 @@ ctest --test-dir build-native -j 1
 
 Run the app with `bin/peerchalk`.
 
+## Data on this device
+
+PeerChalk keeps its data in the platform's app data folder (on Linux
+`~/.local/share/PeerChalk`), or in the folder named by `PEERCHALK_DATA_DIR`, which is
+handy for running a second identity side by side:
+
+- `identity.json`: your Ed25519 signing seed and X25519 recipient secret. It is readable
+  only by you but not encrypted; an OS keychain is planned.
+- `profile.json`, `contacts.json`: your name and colour, and the people you know with how
+  you verified them.
+- `projects.json`: projects, their boards, and each project's discovery secret (also
+  readable only by you).
+- `boards/<id>.yrs`: each board's Yrs document.
+
+An invite code (`peerchalk-invite:1:…`) carries a project's id, name and secret: anyone
+with it can join, so share it privately. A contact code (`peerchalk-contact:1:…`)
+carries only your public key and name. Compare fingerprints to verify each other.
+Sharing boards between members needs the networking that is still to come.
+
 Lint with `clang-format --dry-run --Werror` on the C++ sources and
 `cmake --build build-native --target all_qmllint` for the QML.
 
@@ -43,8 +62,11 @@ Lint with `clang-format --dry-run --Werror` on the C++ sources and
 - `src/board/`: the board model in plain C++: strokes, their binary encoding and
   triangle meshes, input filtering for pressure-sensitive drawing, the pan/zoom viewport
   and background grid, and the Yrs-backed board with eraser and per-user undo.
-- `src/ui/`: the Qt Quick canvas and minimap items and the QML screens, built as the
-  `PeerChalk` QML module. Colours and sizes follow the "Paper" design in `Theme.qml`.
+- `src/library/`: this device's projects, boards and identity on disk, and the invite
+  and contact codes people exchange.
+- `src/ui/`: the Qt Quick items (canvas, minimap, board previews), the `Library` QML
+  singleton, and the screens (home, identity, board), built as the `PeerChalk` QML module.
+  Colours and sizes follow the "Paper" design in `Theme.qml`.
 - `src/app/`: the application entry point.
 - `tests/`: GoogleTest unit tests for the model and the canvas.
 

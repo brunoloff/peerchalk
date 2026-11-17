@@ -1,3 +1,5 @@
+#include "ui/app_style.hpp"
+
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QSurfaceFormat>
@@ -12,6 +14,7 @@ int main(int argc, char **argv) {
     QSurfaceFormat::setDefaultFormat(format);
     QGuiApplication app(argc, argv);
     QGuiApplication::setApplicationName(QStringLiteral("PeerChalk"));
+    peerchalk::useAppControlsStyle();
     QQmlApplicationEngine engine;
     QObject::connect(
         &engine, &QQmlApplicationEngine::objectCreationFailed, &app,

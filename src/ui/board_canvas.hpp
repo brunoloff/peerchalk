@@ -70,6 +70,11 @@ class BoardCanvas : public QQuickItem {
     // Shows every stroke, zooming in no further than 100%; does nothing on an empty board.
     Q_INVOKABLE void fitContent();
     Q_INVOKABLE void centerOn(QPointF worldPoint);
+    // The board as saved bytes, and loading saved bytes into a board that is still empty.
+    // Loading returns false for an empty, malformed or non-empty board; loaded strokes
+    // cannot be undone.
+    Q_INVOKABLE QByteArray saveState() const;
+    Q_INVOKABLE bool loadState(const QByteArray &state);
 
   signals:
     void toolChanged();

@@ -138,6 +138,23 @@ void BoardCanvas::centerOn(QPointF worldPoint) {
     viewUpdated();
 }
 
+QByteArray BoardCanvas::saveState() const {
+    const Bytes state = board_.encodeState();
+    return {reinterpret_cast<const char *>(state.data()), static_cast<qsizetype>(state.size())};
+}
+
+bool BoardCanvas::loadState(const QByteArray &state) {
+    if (!board_.strokes().empty() || board_.canUndo()) {
+        qWarning("BoardCanvas: refusing to load into a board that already has strokes");
+        return false;
+    }
+    const auto *data = reinterpret_cast<const std::byte *>(state.constData());
+    if (!board_.apply(ByteView(data, static_cast<std::size_t>(state.size()))))
+        return false;
+    strokesUpdated();
+    return true;
+}
+
 QSGNode *BoardCanvas::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *) {
     QSGNode *grid = oldNode != nullptr ? oldNode : new QSGNode;
     deleteChildren(grid);

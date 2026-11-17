@@ -139,6 +139,25 @@ TEST(BoardSync, UndoNeverRevertsAPeersStroke) {
     EXPECT_EQ(bob.strokes().front().argb(), 1U);
 }
 
+TEST(BoardSync, SavedStateLoadsIntoANewBoardWithoutUndoHistory) {
+    Board original;
+    original.addStroke(line(0, 0, 10, 0, 1U));
+    original.addStroke(line(0, 50, 10, 50, 2U));
+    Board loaded;
+    ASSERT_TRUE(loaded.apply(original.encodeState()));
+    ASSERT_EQ(loaded.strokes().size(), 2U);
+    EXPECT_EQ(loaded.strokes()[1].argb(), 2U);
+    EXPECT_FALSE(loaded.canUndo());
+}
+
+TEST(BoardSync, EmptyBoardSavesAndLoads) {
+    Board loaded;
+    const Bytes state = Board().encodeState();
+    EXPECT_FALSE(state.empty());
+    EXPECT_TRUE(loaded.apply(state));
+    EXPECT_TRUE(loaded.strokes().empty());
+}
+
 TEST(BoardSync, RejectsMalformedUpdates) {
     Board board;
     const Bytes garbage{std::byte{0xFF}, std::byte{0x01}, std::byte{0x80}};

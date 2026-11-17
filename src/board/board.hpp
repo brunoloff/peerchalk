@@ -48,6 +48,8 @@ class Board {
     [[nodiscard]] Bytes difference(ByteView stateVector) const;
     // Applies a peer's update; returns false when it is empty or malformed.
     bool apply(ByteView update);
+    // The whole document as one update, for saving; apply() loads it into a new board.
+    [[nodiscard]] Bytes encodeState() const;
 
   private:
     struct Native;

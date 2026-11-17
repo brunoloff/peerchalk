@@ -199,6 +199,12 @@ Bytes Board::difference(ByteView stateVector) const {
     return takeBinary(data, length);
 }
 
+Bytes Board::encodeState() const {
+    // A state vector with no entries: the difference is the whole document.
+    const std::byte emptyStateVector[] = {std::byte{0}};
+    return difference(emptyStateVector);
+}
+
 bool Board::apply(ByteView update) {
     if (update.empty())
         return false;
