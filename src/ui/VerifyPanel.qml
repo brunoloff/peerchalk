@@ -42,7 +42,7 @@ Rectangle {
         Label {
             Layout.fillWidth: true
             visible: !panel.verified
-            text: qsTr("Compare this fingerprint with the one on %1's identity screen. If every group matches, it really is their key.").arg(panel.personName)
+            text: qsTr("Compare this fingerprint with the one in %1's Settings → People. If every group matches, it really is their key.").arg(panel.personName)
             wrapMode: Text.WordWrap
             lineHeight: 1.3
             color: Theme.muted

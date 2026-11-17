@@ -11,7 +11,7 @@ Item {
     readonly property bool hasProject: Library.currentProjectId.length > 0
 
     signal openBoard(string boardId)
-    signal openIdentity()
+    signal openSettings()
 
     function createBoard(name: string) {
         const id = Library.createBoard(name);
@@ -33,7 +33,7 @@ Item {
             Layout.preferredWidth: implicitWidth
             onCreateProjectRequested: newProjectDialog.ask("")
             onJoinProjectRequested: joinDialog.ask("")
-            onIdentityRequested: home.openIdentity()
+            onSettingsRequested: home.openSettings()
             onRequestsRequested: requestsDialog.open()
         }
 
@@ -217,7 +217,7 @@ Item {
         id: linkDialog
 
         title: qsTr("Link this device")
-        label: qsTr("On a device where you already use PeerChalk, open Identity & contacts, choose “Link another device” and paste its code here. This device then acts as you and gets your projects once both are online.")
+        label: qsTr("On a device where you already use PeerChalk, open Settings → People, choose “Link another device” and paste its code here. This device then acts as you and gets your projects once both are online.")
         placeholder: "peerchalk-identity:1:…"
         acceptText: qsTr("Link")
         onSubmitted: text => Library.adoptIdentity(text)

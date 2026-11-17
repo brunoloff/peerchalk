@@ -2,26 +2,13 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-// Your identity and the people you know.
+// Settings → People: your identity and the people you know.
 Item {
     id: page
-
-    signal back()
-
-    Rectangle {
-        anchors.fill: parent
-        color: Theme.background
-    }
 
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
-
-        PageHeader {
-            Layout.fillWidth: true
-            title: qsTr("Identity & contacts")
-            onBack: page.back()
-        }
 
         ScrollView {
             id: scroll

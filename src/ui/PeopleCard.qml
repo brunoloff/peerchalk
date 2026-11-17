@@ -4,7 +4,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-// The identity screen's list of known people, with verification of the selected one.
+// Settings → People: the list of known people, with verification of the selected one.
 Panel {
     id: people
 

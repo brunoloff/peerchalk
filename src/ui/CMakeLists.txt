@@ -12,6 +12,7 @@ qt_add_qml_module(peerchalk_ui URI PeerChalk VERSION 1.0
         library_boards.cpp board_document.cpp board_document.hpp
         ../sync/messages.cpp ../sync/messages.hpp ../sync/network.cpp ../sync/network.hpp
         ../sync/network_config.cpp ../sync/network_config.hpp ../sync/network_peers.cpp
+        ../sync/network_settings.cpp ../sync/network_settings.hpp ../sync/network_settings_page.cpp
         ../sync/network_sync.cpp
         row_model.cpp row_model.hpp
         app_style.cpp app_style.hpp
@@ -19,10 +20,11 @@ qt_add_qml_module(peerchalk_ui URI PeerChalk VERSION 1.0
         Main.qml Theme.qml Icons.qml Format.qml Icon.qml Panel.qml RailButton.qml ToolRail.qml
         Inspector.qml SectionLabel.qml ColorSwatch.qml WidthButton.qml NavigatorPanel.qml
         BoardPage.qml HomePage.qml ProjectSidebar.qml ProjectHeader.qml WelcomePanel.qml
-        BoardCard.qml IdentityPage.qml PageHeader.qml ProfileCard.qml PeopleCard.qml
+        BoardCard.qml PeoplePane.qml PageHeader.qml ProfileCard.qml PeopleCard.qml
         PersonRow.qml VerifyPanel.qml Avatar.qml PaperButton.qml TextInputDialog.qml
         ConfirmDialog.qml CodeDialog.qml Toast.qml MembersDialog.qml RemoteCursor.qml
-        NetworkStatus.qml PersonRoleRow.qml RequestsDialog.qml)
+        NetworkStatus.qml PersonRoleRow.qml RequestsDialog.qml SettingsPage.qml
+        NetworkPane.qml SettingField.qml)
 target_include_directories(peerchalk_ui PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/..")
 # The generated QML type registrations include headers by file name.
 target_include_directories(peerchalk_ui PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../sync")

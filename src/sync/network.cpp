@@ -57,7 +57,7 @@ Network *Network::create(QQmlEngine *engine, QJSEngine *) {
     auto *library = engine->singletonInstance<Library *>("PeerChalk", "Library");
     NetworkConfig config;
     try {
-        config = NetworkConfig::fromEnvironment();
+        config = NetworkConfig::from(NetworkSettings::load(library->directory()).withEnvironment());
     } catch (const std::exception &error) {
         qWarning("PeerChalk networking is off: %s", error.what());
         config.enabled = false;

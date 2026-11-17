@@ -12,8 +12,8 @@ ApplicationWindow {
         stack.push(boardPage, { boardId: boardId });
     }
 
-    function openIdentity() {
-        stack.push(identityPage);
+    function openSettings(tab: int) {
+        stack.push(settingsPage, { currentTab: tab });
     }
 
     width: 1280
@@ -32,7 +32,7 @@ ApplicationWindow {
         anchors.fill: parent
         initialItem: HomePage {
             onOpenBoard: boardId => window.openBoard(boardId)
-            onOpenIdentity: window.openIdentity()
+            onOpenSettings: window.openSettings(0)
         }
     }
 
@@ -45,9 +45,9 @@ ApplicationWindow {
     }
 
     Component {
-        id: identityPage
+        id: settingsPage
 
-        IdentityPage {
+        SettingsPage {
             onBack: stack.pop()
         }
     }

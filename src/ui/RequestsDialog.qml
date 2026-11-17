@@ -40,7 +40,7 @@ Dialog {
             color: Theme.muted
             text: dialog.requests.length === 0
                 ? qsTr("No one is asking to join right now. People appear here while they are online with an invite you or another owner sent.")
-                : qsTr("Anyone with the invite can ask. To be sure it is really them, compare the fingerprint with the one on their identity screen.")
+                : qsTr("Anyone with the invite can ask. To be sure it is really them, compare the fingerprint with the one in their Settings → People.")
         }
 
         Repeater {

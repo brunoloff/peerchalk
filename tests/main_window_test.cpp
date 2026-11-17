@@ -98,11 +98,21 @@ TEST_F(MainWindowTest, UsesTheBasicControlsStyle) {
 TEST_F(MainWindowTest, DialogsOpenWithoutQmlWarnings) {
     library_->createProject(QStringLiteral("Project"));
     openEveryDialog(window_);
-    QMetaObject::invokeMethod(window_, "openIdentity");
+    QMetaObject::invokeMethod(window_, "openSettings", Q_ARG(int, 0));
     ASSERT_TRUE(QTest::qWaitFor([this] { return !item("stack")->property("busy").toBool(); }));
     openEveryDialog(window_);
+    item("settingsPage")->setProperty("currentTab", 1);
+    QTest::qWait(50);
     for (const QQmlError &warning : warnings_)
         ADD_FAILURE() << warning.toString().toStdString();
+}
+
+TEST_F(MainWindowTest, TheSettingsPageOpensOnTheChosenTab) {
+    QMetaObject::invokeMethod(window_, "openSettings", Q_ARG(int, 1));
+    ASSERT_TRUE(QTest::qWaitFor([this] { return item("networkPane") != nullptr; }));
+    EXPECT_TRUE(item("networkPane")->isVisible());
+    item("settingsPage")->setProperty("currentTab", 0);
+    EXPECT_FALSE(item("networkPane")->isVisible());
 }
 
 TEST_F(MainWindowTest, StartsWithAnIdentityAndNoProjects) {

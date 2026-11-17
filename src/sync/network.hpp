@@ -14,6 +14,7 @@
 #include <QTimer>
 #include <QUuid>
 #include <QVariantList>
+#include <QVariantMap>
 #include <QtQml/qqmlregistration.h>
 
 #include <atomic>
@@ -55,6 +56,10 @@ class Network : public QObject {
     // People connected through an invite to a project or board you own who have no
     // access yet, across all of them.
     Q_PROPERTY(int joinRequestCount READ joinRequestCount NOTIFY requestsChanged)
+    // PEERCHALK_* environment variables set, which take precedence over saved settings.
+    Q_PROPERTY(bool settingsOverridden READ settingsOverridden CONSTANT)
+    // Settings were saved that apply once PeerChalk starts again.
+    Q_PROPERTY(bool restartNeeded READ restartNeeded NOTIFY settingsChanged)
 
   public:
     Network(Library &library, NetworkConfig config, QObject *parent = nullptr);
@@ -71,6 +76,12 @@ class Network : public QObject {
     [[nodiscard]] bool online() const { return started_ && !stopping_; }
     [[nodiscard]] int connectedDevices() const;
     [[nodiscard]] int joinRequestCount() const;
+    [[nodiscard]] static bool settingsOverridden();
+    [[nodiscard]] bool restartNeeded() const { return restartNeeded_; }
+    // The saved settings: {enabled, bootstrap, dhtNetwork, stun, turn}.
+    Q_INVOKABLE QVariantMap settings() const;
+    // Checks and saves settings for the next start; returns what is wrong, or "".
+    Q_INVOKABLE QString saveSettings(const QVariantMap &settings);
     // For a project or board you own: connected people without access, {key, name,
     // fingerprint}. They hold its invite; approving makes them members.
     Q_INVOKABLE QVariantList joinRequests(const QString &itemId) const;
@@ -89,6 +100,7 @@ class Network : public QObject {
     void peersChanged();
     void presenceChanged();
     void requestsChanged();
+    void settingsChanged();
     // Someone without access reached a project or board you own.
     void joinRequested(const QString &name, const QString &itemName);
 
@@ -186,6 +198,7 @@ class Network : public QObject {
     QUuid presenceBoard_;
     QPointF cursor_;
     bool cursorVisible_{false};
+    bool restartNeeded_{false};
 };
 
 } // namespace peerchalk::sync

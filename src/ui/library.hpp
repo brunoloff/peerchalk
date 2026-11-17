@@ -79,6 +79,8 @@ class Library : public QObject {
     [[nodiscard]] QString deviceName() const { return identity_.identity().deviceName(); }
     [[nodiscard]] bool canAdoptIdentity() const;
 
+    // The data folder this library reads and writes.
+    [[nodiscard]] QString directory() const { return directory_; }
     [[nodiscard]] Workspace &workspace() { return workspace_; }
     [[nodiscard]] IdentityStore &identityStore() { return identity_; }
 
@@ -170,6 +172,7 @@ class Library : public QObject {
     void refreshContacts();
     void ensureValidSelection();
 
+    QString directory_;
     IdentityStore identity_;
     Workspace workspace_;
     QString currentProject_;

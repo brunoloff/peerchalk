@@ -55,8 +55,8 @@ changes and keep only those the signer's role allowed. Anyone who has them passe
 on, so the admin does not need to be online for new members to be let in. Having an
 invite code alone gives no board contents.
 
-A person (user key) can use several devices (device keys): "Link another device" on the
-identity screen gives a secret code that a new installation pastes on its welcome screen.
+A person (user key) can use several devices (device keys): "Link another device" under
+Settings → People gives a secret code that a new installation pastes on its welcome screen.
 Your devices then share your projects, boards and contacts automatically.
 
 ## Networking
@@ -67,7 +67,8 @@ find each other on the OpenDHT network and connect directly over WebRTC. Boards 
 Yrs updates, live, with the other people's cursors shown on the board. By default it
 uses the public OpenDHT network through Jami's bootstrap node and no STUN/TURN servers,
 which works on one machine and on local networks; reaching people behind other NATs
-may need STUN/TURN. Environment variables adjust this:
+may need STUN/TURN. Settings → Network changes this (from the next start), and
+these environment variables take precedence over it:
 
 | Variable | Meaning |
 |---|---|

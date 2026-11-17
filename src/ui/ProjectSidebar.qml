@@ -4,13 +4,13 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-// The left column of the home screen: the app name, the projects and the identity.
+// The left column of the home screen: the app name, the projects, and you (opening the settings).
 Rectangle {
     id: sidebar
 
     signal createProjectRequested()
     signal joinProjectRequested()
-    signal identityRequested()
+    signal settingsRequested()
     signal requestsRequested()
 
     color: Theme.surface
@@ -185,15 +185,15 @@ Rectangle {
         }
 
         ItemDelegate {
-            id: identityButton
+            id: settingsButton
 
             Layout.fillWidth: true
-            Accessible.name: qsTr("Identity and contacts")
-            onClicked: sidebar.identityRequested()
+            Accessible.name: qsTr("Settings")
+            onClicked: sidebar.settingsRequested()
 
             background: Rectangle {
                 radius: 12
-                color: identityButton.hovered ? Theme.hover : "transparent"
+                color: settingsButton.hovered ? Theme.hover : "transparent"
                 border.color: Theme.border
             }
 
@@ -219,7 +219,7 @@ Rectangle {
                     }
 
                     Label {
-                        text: qsTr("Identity & contacts")
+                        text: qsTr("Settings")
                         font.pixelSize: 12
                         color: Theme.muted
                     }

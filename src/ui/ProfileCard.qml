@@ -4,7 +4,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-// The identity screen's card about you: name, colour, fingerprint and contact code.
+// Settings → People: the card about you: name, colour, fingerprint and contact code.
 Panel {
     id: profile
 

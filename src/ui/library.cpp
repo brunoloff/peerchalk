@@ -43,7 +43,7 @@ QString idText(const QUuid &id) { return id.toString(QUuid::WithoutBraces); }
 } // namespace
 
 Library::Library(const QString &directory, QObject *parent)
-    : QObject(parent), identity_(directory, defaultDisplayName()),
+    : QObject(parent), directory_(directory), identity_(directory, defaultDisplayName()),
       workspace_(directory, identity_.signingKey(), identity_.identity().signer()),
       saveTimer_(new QTimer(this)),
       projects_(new RowModel({"projectId", "name", "colorIndex", "boardCount", "admin", "pending"},
