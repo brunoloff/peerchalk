@@ -1,0 +1,11 @@
+#!/bin/sh
+# Runs the PeerChalk app from the native build directory.
+set -eu
+root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
+app="$root/build-native/src/peerchalk"
+if [ ! -x "$app" ]; then
+    printf 'PeerChalk is not built. Build it with: %s\n' \
+        'nice -n 15 cmake --build build-native --parallel 1' >&2
+    exit 1
+fi
+exec "$app" "$@"

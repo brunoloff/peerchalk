@@ -1,5 +1,3 @@
-pragma ComponentBehavior: Bound
-
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -8,69 +6,146 @@ import PeerChalk
 ApplicationWindow {
     id: window
 
-    width: 1024
-    height: 720
+    width: 1280
+    height: 800
     visible: true
     title: qsTr("PeerChalk")
+    color: Theme.background
+    font.family: Theme.bodyFont
 
-    header: ToolBar {
-        RowLayout {
-            anchors.fill: parent
-            spacing: 8
+    RowLayout {
+        anchors.fill: parent
+        spacing: 0
 
-            Repeater {
-                model: ["#1d1d1f", "#d93025", "#1a73e8", "#188038"]
+        Item {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            clip: true
 
-                delegate: RoundButton {
-                    id: swatch
+            Rectangle {
+                anchors.fill: parent
+                color: Theme.boardBackground
+            }
 
-                    required property string modelData
+            BoardCanvas {
+                id: canvas
 
-                    checkable: true
-                    checked: Qt.colorEqual(canvas.penColor, swatch.modelData)
-                    Accessible.name: qsTr("Pen colour %1").arg(swatch.modelData)
-                    onClicked: canvas.penColor = swatch.modelData
+                anchors.fill: parent
+                penColor: Theme.penColors[0]
+                penWidth: Theme.penWidths[1]
+                gridColor: Theme.gridDot
+            }
 
-                    contentItem: Rectangle {
-                        implicitWidth: 18
-                        implicitHeight: 18
-                        radius: 9
-                        color: swatch.modelData
+            Panel {
+                anchors.left: parent.left
+                anchors.top: parent.top
+                anchors.margins: Theme.gap
+                implicitWidth: titleColumn.implicitWidth + 28
+                implicitHeight: titleColumn.implicitHeight + 16
+
+                ColumnLayout {
+                    id: titleColumn
+
+                    anchors.centerIn: parent
+                    spacing: 0
+
+                    Label {
+                        text: qsTr("Untitled board")
+                        font.weight: Font.DemiBold
+                        color: Theme.ink
+                    }
+
+                    Label {
+                        text: qsTr("On this device only · not shared yet")
+                        font.pixelSize: 12
+                        color: Theme.muted
                     }
                 }
             }
 
-            Label {
-                text: qsTr("Width")
+            ToolRail {
+                canvas: canvas
+                anchors.left: parent.left
+                anchors.leftMargin: Theme.gap
+                anchors.verticalCenter: parent.verticalCenter
             }
 
-            Slider {
-                from: 1
-                to: 24
-                value: canvas.penWidth
-                onMoved: canvas.penWidth = value
+            Panel {
+                anchors.left: parent.left
+                anchors.bottom: parent.bottom
+                anchors.margins: Theme.gap
+                implicitWidth: coordinates.implicitWidth + 24
+                implicitHeight: coordinates.implicitHeight + 16
+                radius: Theme.controlRadius
+
+                Label {
+                    id: coordinates
+
+                    anchors.centerIn: parent
+                    text: qsTr("x %1 · y %2").arg(Math.round(canvas.viewCenter.x)).arg(Math.round(canvas.viewCenter.y))
+                    font.pixelSize: 12
+                    color: Theme.muted
+                }
             }
 
-            Item {
-                Layout.fillWidth: true
+            NavigatorPanel {
+                canvas: canvas
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                anchors.margins: Theme.gap
             }
+        }
 
-            Button {
-                text: qsTr("Clear")
-                enabled: canvas.strokeCount > 0
-                onClicked: canvas.clear()
-            }
+        Inspector {
+            Layout.fillHeight: true
+            Layout.preferredWidth: implicitWidth
+            visible: window.width >= 720
+            canvas: canvas
         }
     }
 
-    Rectangle {
-        anchors.fill: parent
-        color: "white"
+    Shortcut {
+        sequences: [StandardKey.Undo]
+        onActivated: canvas.undo()
+    }
 
-        BoardCanvas {
-            id: canvas
+    Shortcut {
+        sequence: "P"
+        onActivated: canvas.tool = BoardCanvas.Pen
+    }
 
-            anchors.fill: parent
-        }
+    Shortcut {
+        sequence: "M"
+        onActivated: canvas.tool = BoardCanvas.Highlighter
+    }
+
+    Shortcut {
+        sequence: "E"
+        onActivated: canvas.tool = BoardCanvas.Eraser
+    }
+
+    Shortcut {
+        sequence: "H"
+        onActivated: canvas.tool = BoardCanvas.Pan
+    }
+
+    Shortcut {
+        sequences: [StandardKey.ZoomIn, "Ctrl+="]
+        onActivated: canvas.zoomBy(1.25)
+    }
+
+    Shortcut {
+        sequences: [StandardKey.ZoomOut]
+        onActivated: canvas.zoomBy(1 / 1.25)
+    }
+
+    Shortcut {
+        sequence: "Ctrl+0"
+        onActivated: canvas.resetView()
+    }
+
+    Shortcut {
+        sequence: "Shift+1"
+        onActivated: canvas.fitContent()
     }
 }

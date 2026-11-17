@@ -1,5 +1,7 @@
 #pragma once
 
+#include "board/geometry.hpp"
+
 #include <cstdint>
 #include <optional>
 #include <vector>
@@ -10,13 +12,6 @@ struct StrokePoint {
     float x;
     float y;
     float pressure; // 0 to 1; 1 when the input device has no pressure sensor.
-};
-
-struct Bounds {
-    float left;
-    float top;
-    float right;
-    float bottom;
 };
 
 // A freehand pen stroke: a polyline with per-point pressure, one colour and a base width.

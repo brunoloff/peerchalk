@@ -1,0 +1,93 @@
+#include "ui/scene_nodes.hpp"
+
+#include "board/stroke_mesh.hpp"
+
+#include <QSGFlatColorMaterial>
+#include <QSGGeometryNode>
+
+namespace peerchalk {
+namespace {
+
+QSGGeometryNode *createNode(QSGGeometry *geometry, const QColor &color) {
+    auto *material = new QSGFlatColorMaterial;
+    material->setColor(color);
+    auto *node = new QSGGeometryNode;
+    node->setGeometry(geometry);
+    node->setMaterial(material);
+    node->setFlags(QSGNode::OwnsGeometry | QSGNode::OwnsMaterial);
+    return node;
+}
+
+QSGGeometry *createTriangles(std::size_t vertexCount) {
+    auto *geometry =
+        new QSGGeometry(QSGGeometry::defaultAttributes_Point2D(), static_cast<int>(vertexCount));
+    geometry->setDrawingMode(QSGGeometry::DrawTriangles);
+    return geometry;
+}
+
+// Writes two triangles covering the rectangle and advances vertex past them.
+void appendQuad(QSGGeometry::Point2D *&vertex, const Bounds &rect) {
+    vertex[0].set(rect.left, rect.top);
+    vertex[1].set(rect.right, rect.top);
+    vertex[2].set(rect.left, rect.bottom);
+    vertex[3].set(rect.right, rect.top);
+    vertex[4].set(rect.right, rect.bottom);
+    vertex[5].set(rect.left, rect.bottom);
+    vertex += 6;
+}
+
+} // namespace
+
+QSGGeometryNode *createStrokeNode(const Stroke &stroke) {
+    const std::vector<MeshVertex> strip = buildTriangleStrip(stroke);
+    auto *geometry =
+        new QSGGeometry(QSGGeometry::defaultAttributes_Point2D(), static_cast<int>(strip.size()));
+    geometry->setDrawingMode(QSGGeometry::DrawTriangleStrip);
+    QSGGeometry::Point2D *vertices = geometry->vertexDataAsPoint2D();
+    for (std::size_t i = 0; i < strip.size(); ++i)
+        vertices[i].set(strip[i].x, strip[i].y);
+    return createNode(geometry, QColor::fromRgba(stroke.argb()));
+}
+
+QSGGeometryNode *createDotsNode(const std::vector<Point> &centres, float size,
+                                const QColor &color) {
+    QSGGeometry *geometry = createTriangles(centres.size() * 6);
+    QSGGeometry::Point2D *vertex = geometry->vertexDataAsPoint2D();
+    const float half = size / 2.0F;
+    for (const Point &centre : centres)
+        appendQuad(vertex, {centre.x - half, centre.y - half, centre.x + half, centre.y + half});
+    return createNode(geometry, color);
+}
+
+QSGGeometryNode *createOutlineNode(const Bounds &rect, float thickness, const QColor &color) {
+    QSGGeometry *geometry = createTriangles(24);
+    QSGGeometry::Point2D *vertex = geometry->vertexDataAsPoint2D();
+    const float t = thickness;
+    appendQuad(vertex, {rect.left, rect.top, rect.right, rect.top + t});
+    appendQuad(vertex, {rect.left, rect.bottom - t, rect.right, rect.bottom});
+    appendQuad(vertex, {rect.left, rect.top + t, rect.left + t, rect.bottom - t});
+    appendQuad(vertex, {rect.right - t, rect.top + t, rect.right, rect.bottom - t});
+    return createNode(geometry, color);
+}
+
+void deleteChildren(QSGNode *parent) {
+    while (QSGNode *child = parent->firstChild()) {
+        parent->removeChildNode(child);
+        delete child;
+    }
+}
+
+void setStrokeNodes(QSGNode *parent, const std::vector<Stroke> &strokes) {
+    deleteChildren(parent);
+    for (const Stroke &stroke : strokes)
+        parent->appendChildNode(createStrokeNode(stroke));
+}
+
+QMatrix4x4 viewMatrix(const Viewport &viewport) {
+    QMatrix4x4 matrix;
+    matrix.translate(viewport.offset().x, viewport.offset().y);
+    matrix.scale(viewport.scale());
+    return matrix;
+}
+
+} // namespace peerchalk

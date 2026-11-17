@@ -1,51 +1,33 @@
 #include "ui/board_canvas.hpp"
 
-#include "board/stroke_mesh.hpp"
+#include "ui/conversions.hpp"
+#include "ui/scene_nodes.hpp"
 
-#include <QEventPoint>
-#include <QMouseEvent>
-#include <QPointingDevice>
-#include <QSGFlatColorMaterial>
-#include <QSGGeometryNode>
-#include <QTouchEvent>
+#include <QSGTransformNode>
 #include <QtLogging>
 
-#include <algorithm>
 #include <cmath>
 
 namespace peerchalk {
 namespace {
 
-float pressureOf(const QEventPoint &point) {
-    const QPointingDevice *device = point.device();
-    if (device == nullptr || !device->capabilities().testFlag(QInputDevice::Capability::Pressure))
-        return 1.0F;
-    return std::clamp(static_cast<float>(point.pressure()), 0.0F, 1.0F);
-}
-
-QSGGeometryNode *createStrokeNode(const Stroke &stroke) {
-    const std::vector<MeshVertex> strip = buildTriangleStrip(stroke);
-    auto *geometry =
-        new QSGGeometry(QSGGeometry::defaultAttributes_Point2D(), static_cast<int>(strip.size()));
-    geometry->setDrawingMode(QSGGeometry::DrawTriangleStrip);
-    QSGGeometry::Point2D *vertices = geometry->vertexDataAsPoint2D();
-    for (std::size_t i = 0; i < strip.size(); ++i)
-        vertices[i].set(strip[i].x, strip[i].y);
-    auto *material = new QSGFlatColorMaterial;
-    material->setColor(QColor::fromRgba(stroke.argb()));
-    auto *node = new QSGGeometryNode;
-    node->setGeometry(geometry);
-    node->setMaterial(material);
-    node->setFlags(QSGNode::OwnsGeometry | QSGNode::OwnsMaterial);
-    return node;
-}
+constexpr float gridDotSizePx = 2.4F;
+constexpr float fitMarginPx = 48.0F;
 
 } // namespace
 
 BoardCanvas::BoardCanvas(QQuickItem *parent) : QQuickItem(parent) {
     setFlag(ItemHasContents, true);
-    setAcceptedMouseButtons(Qt::LeftButton);
+    setAcceptedMouseButtons(Qt::LeftButton | Qt::MiddleButton);
     setAcceptTouchEvents(true);
+}
+
+void BoardCanvas::setTool(Tool tool) {
+    if (tool == tool_)
+        return;
+    pointerCancelled();
+    tool_ = tool;
+    emit toolChanged();
 }
 
 void BoardCanvas::setPenColor(const QColor &color) {
@@ -70,82 +52,120 @@ void BoardCanvas::setPenWidth(qreal width) {
     emit penWidthChanged();
 }
 
-int BoardCanvas::strokeCount() const { return static_cast<int>(strokes_.size()); }
-
-void BoardCanvas::clear() {
-    activeStroke_.reset();
-    if (strokes_.empty())
+void BoardCanvas::setGridColor(const QColor &color) {
+    if (!color.isValid()) {
+        qWarning("BoardCanvas: ignoring invalid grid colour");
         return;
-    strokes_.clear();
-    emit strokesChanged();
+    }
+    if (color == gridColor_)
+        return;
+    gridColor_ = color;
+    emit gridColorChanged();
     update();
+}
+
+int BoardCanvas::strokeCount() const { return static_cast<int>(board_.strokes().size()); }
+
+QRectF BoardCanvas::contentBounds() const {
+    const std::optional<Bounds> bounds = board_.contentBounds();
+    return bounds ? toRect(*bounds) : QRectF();
+}
+
+QPointF BoardCanvas::viewCenter() const {
+    const Point centre =
+        viewport_.toWorld({static_cast<float>(width() / 2.0), static_cast<float>(height() / 2.0)});
+    return {centre.x, centre.y};
+}
+
+QRectF BoardCanvas::visibleArea() const {
+    return toRect(
+        viewport_.visibleWorld(static_cast<float>(width()), static_cast<float>(height())));
+}
+
+void BoardCanvas::undo() {
+    pointerCancelled();
+    if (board_.undo())
+        strokesUpdated();
+}
+
+void BoardCanvas::zoomBy(qreal factor) {
+    if (!std::isfinite(factor) || factor <= 0.0) {
+        qWarning("BoardCanvas: ignoring zoom factor %f; it must be finite and positive", factor);
+        return;
+    }
+    viewport_.zoomAt({static_cast<float>(width() / 2.0), static_cast<float>(height() / 2.0)},
+                     static_cast<float>(factor));
+    viewUpdated();
+}
+
+void BoardCanvas::resetView() {
+    viewport_ = Viewport{};
+    viewport_.centerOn({0.0F, 0.0F}, static_cast<float>(width()), static_cast<float>(height()));
+    viewUpdated();
+}
+
+void BoardCanvas::fitContent() {
+    const std::optional<Bounds> content = board_.contentBounds();
+    if (!content || width() <= 2.0 * fitMarginPx || height() <= 2.0 * fitMarginPx)
+        return;
+    viewport_.fit(*content, static_cast<float>(width()), static_cast<float>(height()), fitMarginPx,
+                  1.0F);
+    viewUpdated();
+}
+
+void BoardCanvas::centerOn(QPointF worldPoint) {
+    if (!std::isfinite(worldPoint.x()) || !std::isfinite(worldPoint.y())) {
+        qWarning("BoardCanvas: ignoring non-finite centre");
+        return;
+    }
+    viewport_.centerOn(toPoint(worldPoint), static_cast<float>(width()),
+                       static_cast<float>(height()));
+    viewUpdated();
 }
 
 QSGNode *BoardCanvas::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *) {
-    QSGNode *root = oldNode != nullptr ? oldNode : new QSGNode;
-    root->removeAllChildNodes();
-    for (const Stroke &stroke : strokes_)
-        root->appendChildNode(createStrokeNode(stroke));
+    QSGNode *root = oldNode;
+    if (root == nullptr) {
+        root = new QSGNode;
+        root->appendChildNode(new QSGNode); // grid
+        auto *transform = new QSGTransformNode;
+        transform->appendChildNode(new QSGNode); // committed strokes
+        transform->appendChildNode(new QSGNode); // stroke being drawn
+        root->appendChildNode(transform);
+        committedDirty_ = true;
+    }
+    QSGNode *grid = root->firstChild();
+    deleteChildren(grid);
+    grid->appendChildNode(createDotsNode(
+        gridDots(viewport_, static_cast<float>(width()), static_cast<float>(height())),
+        gridDotSizePx, gridColor_));
+    auto *transform = static_cast<QSGTransformNode *>(root->lastChild());
+    transform->setMatrix(viewMatrix(viewport_));
+    if (committedDirty_) {
+        setStrokeNodes(transform->firstChild(), board_.strokes());
+        committedDirty_ = false;
+    }
+    QSGNode *active = transform->lastChild();
+    deleteChildren(active);
     if (activeStroke_)
-        root->appendChildNode(createStrokeNode(*activeStroke_));
+        active->appendChildNode(createStrokeNode(*activeStroke_));
     return root;
 }
 
-void BoardCanvas::beginStroke(const QEventPoint &point) {
-    activeStroke_.emplace(penColor_.rgba(), static_cast<float>(penWidth_));
-    extendStroke(point);
+void BoardCanvas::geometryChange(const QRectF &newGeometry, const QRectF &oldGeometry) {
+    QQuickItem::geometryChange(newGeometry, oldGeometry);
+    viewUpdated();
 }
 
-void BoardCanvas::extendStroke(const QEventPoint &point) {
-    if (!activeStroke_)
-        return;
-    const QPointF position = point.position();
-    activeStroke_->addPoint(
-        {static_cast<float>(position.x()), static_cast<float>(position.y()), pressureOf(point)});
+void BoardCanvas::viewUpdated() {
+    emit viewChanged();
     update();
 }
 
-void BoardCanvas::finishStroke() {
-    if (!activeStroke_)
-        return;
-    strokes_.push_back(std::move(*activeStroke_));
-    activeStroke_.reset();
+void BoardCanvas::strokesUpdated() {
+    committedDirty_ = true;
     emit strokesChanged();
     update();
-}
-
-void BoardCanvas::mousePressEvent(QMouseEvent *event) {
-    beginStroke(event->point(0));
-    event->accept();
-}
-
-void BoardCanvas::mouseMoveEvent(QMouseEvent *event) {
-    extendStroke(event->point(0));
-    event->accept();
-}
-
-void BoardCanvas::mouseReleaseEvent(QMouseEvent *event) {
-    extendStroke(event->point(0));
-    finishStroke();
-    event->accept();
-}
-
-void BoardCanvas::touchEvent(QTouchEvent *event) {
-    if (event->type() == QEvent::TouchCancel || event->points().isEmpty()) {
-        activeStroke_.reset();
-        update();
-        return;
-    }
-    const QEventPoint &point = event->points().front();
-    if (point.state() == QEventPoint::Pressed)
-        beginStroke(point);
-    else if (point.state() == QEventPoint::Updated)
-        extendStroke(point);
-    else if (point.state() == QEventPoint::Released) {
-        extendStroke(point);
-        finishStroke();
-    }
-    event->accept();
 }
 
 } // namespace peerchalk
