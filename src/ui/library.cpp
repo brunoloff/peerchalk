@@ -3,6 +3,7 @@
 #include <QClipboard>
 #include <QGuiApplication>
 #include <QStandardPaths>
+#include <QTimer>
 
 #include <algorithm>
 #include <array>
@@ -44,10 +45,14 @@ QString idText(const QUuid &id) { return id.toString(QUuid::WithoutBraces); }
 Library::Library(const QString &directory, QObject *parent)
     : QObject(parent), identity_(directory, defaultDisplayName()),
       workspace_(directory, identity_.signingKey(), identity_.identity().signer()),
+      saveTimer_(new QTimer(this)),
       projects_(new RowModel({"projectId", "name", "colorIndex", "boardCount", "admin", "pending"},
                              this)),
       boards_(new RowModel({"boardId", "name", "edited", "admin", "pending"}, this)),
       contacts_(new RowModel({"key", "name", "fingerprint", "verification"}, this)) {
+    saveTimer_->setSingleShot(true);
+    saveTimer_->setInterval(500);
+    connect(saveTimer_, &QTimer::timeout, this, &Library::saveBoards);
     ensureValidSelection();
     refreshProjects();
     refreshBoards();
@@ -142,6 +147,7 @@ void Library::refreshContacts() {
 }
 
 void Library::workspaceUpdated() {
+    closeRemovedBoards();
     ensureValidSelection();
     refreshProjects();
     refreshBoards();

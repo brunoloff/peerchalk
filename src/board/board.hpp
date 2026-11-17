@@ -4,6 +4,7 @@
 #include "board/stroke_codec.hpp"
 
 #include <cstddef>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <vector>
@@ -51,6 +52,11 @@ class Board {
     // The whole document as one update, for saving; apply() loads it into a new board.
     [[nodiscard]] Bytes encodeState() const;
 
+    // Called after every change to the strokes, local or from a peer, while the change
+    // is still being committed: the listener must not start another change or read the
+    // document through Yrs (stateVector, encodeState...); strokes() is up to date.
+    void setChangeListener(std::function<void()> listener) { listener_ = std::move(listener); }
+
   private:
     struct Native;
 
@@ -58,6 +64,7 @@ class Board {
 
     std::unique_ptr<Native> native_;
     std::vector<Stroke> strokes_;
+    std::function<void()> listener_;
 };
 
 } // namespace peerchalk

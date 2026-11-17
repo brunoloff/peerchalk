@@ -70,11 +70,11 @@ void BoardCanvas::pointerMoved(QPointF position, std::optional<float> pressure) 
 void BoardCanvas::pointerReleased(QPointF position, std::optional<float> pressure) {
     pointerMoved(position, pressure);
     if (gesture_ == Gesture::Drawing && activeStroke_) {
-        board_.addStroke(activeStroke_->stroke());
+        editableBoard().addStroke(activeStroke_->stroke());
         activeStroke_.reset();
-        strokesUpdated();
+        redrawStrokes();
     }
-    board_.endGesture();
+    editableBoard().endGesture();
     gesture_ = Gesture::None;
 }
 
@@ -82,7 +82,7 @@ void BoardCanvas::pointerCancelled() {
     if (gesture_ == Gesture::None)
         return;
     activeStroke_.reset();
-    board_.endGesture();
+    editableBoard().endGesture();
     gesture_ = Gesture::None;
     activeStrokeUpdated();
 }
@@ -102,10 +102,10 @@ void BoardCanvas::eraseAlong(QPointF from, QPointF to) {
     std::size_t removed = 0;
     for (int step = 0; step <= steps; ++step) {
         const QPointF sample = from + delta * (static_cast<qreal>(step) / steps);
-        removed += board_.eraseNear(viewport_.toWorld(toPoint(sample)), radius);
+        removed += editableBoard().eraseNear(viewport_.toWorld(toPoint(sample)), radius);
     }
     if (removed > 0)
-        strokesUpdated();
+        redrawStrokes();
 }
 
 void BoardCanvas::mousePressEvent(QMouseEvent *event) {

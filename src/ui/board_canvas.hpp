@@ -3,9 +3,11 @@
 #include "board/board.hpp"
 #include "board/stroke_builder.hpp"
 #include "board/viewport.hpp"
+#include "ui/board_document.hpp"
 
 #include <QColor>
 #include <QPointF>
+#include <QPointer>
 #include <QQuickItem>
 #include <QRectF>
 #include <QtQml/qqmlregistration.h>
@@ -26,6 +28,9 @@ class StrokeLayer;
 class BoardCanvas : public QQuickItem {
     Q_OBJECT
     QML_ELEMENT
+    // The board shown and edited; without one the canvas uses a private empty board.
+    Q_PROPERTY(
+        peerchalk::BoardDocument *document READ document WRITE setDocument NOTIFY documentChanged)
     Q_PROPERTY(Tool tool READ tool WRITE setTool NOTIFY toolChanged)
     Q_PROPERTY(QColor penColor READ penColor WRITE setPenColor NOTIFY penColorChanged)
     Q_PROPERTY(qreal penWidth READ penWidth WRITE setPenWidth NOTIFY penWidthChanged)
@@ -52,12 +57,14 @@ class BoardCanvas : public QQuickItem {
     [[nodiscard]] QColor gridColor() const { return gridColor_; }
     void setGridColor(const QColor &color);
     [[nodiscard]] int strokeCount() const;
-    [[nodiscard]] bool canUndo() const { return board_.canUndo(); }
+    [[nodiscard]] bool canUndo() const { return board().canUndo(); }
     [[nodiscard]] QRectF contentBounds() const; // null when the board is empty
     [[nodiscard]] qreal zoom() const { return viewport_.scale(); }
     [[nodiscard]] QPointF viewCenter() const;
     [[nodiscard]] QRectF visibleArea() const;
-    [[nodiscard]] const Board &board() const { return board_; }
+    [[nodiscard]] BoardDocument *document() const { return document_; }
+    void setDocument(BoardDocument *document);
+    [[nodiscard]] const Board &board() const { return document_->board(); }
     [[nodiscard]] const Viewport &viewport() const { return viewport_; }
     // The stroke being drawn, or null.
     [[nodiscard]] const Stroke *activeStroke() const;
@@ -70,13 +77,9 @@ class BoardCanvas : public QQuickItem {
     // Shows every stroke, zooming in no further than 100%; does nothing on an empty board.
     Q_INVOKABLE void fitContent();
     Q_INVOKABLE void centerOn(QPointF worldPoint);
-    // The board as saved bytes, and loading saved bytes into a board that is still empty.
-    // Loading returns false for an empty, malformed or non-empty board; loaded strokes
-    // cannot be undone.
-    Q_INVOKABLE QByteArray saveState() const;
-    Q_INVOKABLE bool loadState(const QByteArray &state);
 
   signals:
+    void documentChanged();
     void toolChanged();
     void penColorChanged();
     void penWidthChanged();
@@ -106,13 +109,18 @@ class BoardCanvas : public QQuickItem {
     void eraseAlong(QPointF from, QPointF to);
     void viewUpdated();
     void strokesUpdated();
+    // Redraws committed strokes now, after a local edit; the document's `changed`
+    // notification follows and announces the change (strokesChanged).
+    void redrawStrokes();
     void activeStrokeUpdated();
+    [[nodiscard]] Board &editableBoard() { return document_->board(); }
 
     Tool tool_{Tool::Pen};
     QColor penColor_{Qt::black};
     qreal penWidth_{3.0};
     QColor gridColor_{Qt::lightGray};
-    Board board_;
+    BoardDocument ownDocument_;
+    QPointer<BoardDocument> document_;
     Viewport viewport_;
     Gesture gesture_{Gesture::None};
     QPointF lastPosition_;

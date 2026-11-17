@@ -2,6 +2,7 @@
 
 #include "library/identity_store.hpp"
 #include "library/workspace.hpp"
+#include "ui/board_document.hpp"
 #include "ui/row_model.hpp"
 
 #include <QByteArray>
@@ -11,9 +12,11 @@
 #include <QtQml/qqmlregistration.h>
 
 #include <functional>
+#include <map>
 
 class QQmlEngine;
 class QJSEngine;
+class QTimer;
 
 namespace peerchalk {
 
@@ -50,6 +53,8 @@ class Library : public QObject {
   public:
     // Throws std::runtime_error when the stored data cannot be read.
     explicit Library(const QString &directory, QObject *parent = nullptr);
+    // Saves boards with unsaved changes.
+    ~Library() override;
     static Library *create(QQmlEngine *engine, QJSEngine *scriptEngine);
 
     [[nodiscard]] RowModel *projects() const { return projects_; }
@@ -93,7 +98,14 @@ class Library : public QObject {
     Q_INVOKABLE bool isBoardAdmin(const QString &boardId);
     Q_INVOKABLE QString boardName(const QString &boardId);
     Q_INVOKABLE QByteArray boardState(const QString &boardId);
-    Q_INVOKABLE void saveBoardState(const QString &boardId, const QByteArray &state);
+    void saveBoardState(const QString &boardId, const QByteArray &state);
+    // The live document of a board: loaded from disk on first use, shared by every view
+    // and peer connection, and saved shortly after each change. Null for unknown boards.
+    Q_INVOKABLE peerchalk::BoardDocument *openBoard(const QString &boardId);
+    // Saves every board with unsaved changes now.
+    Q_INVOKABLE void saveBoards();
+    // The live document for C++ users such as sync; throws for unknown boards.
+    BoardDocument &document(const QUuid &boardId);
 
     // People who may be members: you, the current members and your contacts, each
     // {key, name, fingerprint, member, admin, you}.
@@ -135,6 +147,7 @@ class Library : public QObject {
     [[nodiscard]] QVariantList people(const Manifest &manifest);
     [[nodiscard]] std::vector<Member> withMember(std::vector<Member> members, const QString &keyHex,
                                                  bool member) const;
+    void closeRemovedBoards();
     void refreshProjects();
     void refreshBoards();
     void refreshContacts();
@@ -144,6 +157,9 @@ class Library : public QObject {
     Workspace workspace_;
     QString currentProject_;
     QString boardFilter_;
+    std::map<QUuid, BoardDocument *> documents_;
+    std::map<QUuid, quint64> savedRevisions_;
+    QTimer *saveTimer_;
     RowModel *projects_;
     RowModel *boards_;
     RowModel *contacts_;

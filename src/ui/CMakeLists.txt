@@ -9,6 +9,7 @@ qt_add_qml_module(peerchalk_ui URI PeerChalk VERSION 1.0
         board_minimap.cpp board_minimap.hpp
         conversions.hpp scene_nodes.cpp scene_nodes.hpp stroke_layer.cpp stroke_layer.hpp
         board_preview.cpp board_preview.hpp library.cpp library.hpp library_people.cpp
+        library_boards.cpp board_document.cpp board_document.hpp
         row_model.cpp row_model.hpp
         app_style.cpp app_style.hpp
     QML_FILES

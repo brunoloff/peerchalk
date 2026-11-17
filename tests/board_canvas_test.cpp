@@ -48,6 +48,8 @@ TEST_F(BoardCanvasTest, PenDragRecordsOneStroke) {
     canvas_.setPenWidth(5.0);
     drag({10, 10}, {100, 50});
     ASSERT_EQ(canvas_.strokeCount(), 1);
+    // Announced once, on the next event-loop turn, by the board's document.
+    QTest::qWait(50);
     EXPECT_EQ(changed.count(), 1);
     const Stroke &stroke = canvas_.board().strokes().front();
     EXPECT_EQ(stroke.argb(), QColor(Qt::red).rgba());
@@ -96,6 +98,19 @@ TEST_F(BoardCanvasTest, PenPressureReachesTheStroke) {
     const Stroke &stroke = canvas_.board().strokes().front();
     EXPECT_FLOAT_EQ(stroke.points().front().pressure, 0.2F);
     EXPECT_FLOAT_EQ(stroke.points().back().pressure, 0.9F);
+}
+
+TEST_F(BoardCanvasTest, ShowsChangesMadeToItsDocumentElsewhere) {
+    BoardDocument document;
+    canvas_.setDocument(&document);
+    QSignalSpy changed(&canvas_, &BoardCanvas::strokesChanged);
+    Stroke stroke(0xFF000000U, 2.0F);
+    stroke.addPoint({5.0F, 5.0F, 1.0F});
+    document.board().addStroke(stroke); // e.g. a peer's update applied by sync
+    ASSERT_TRUE(QTest::qWaitFor([&] { return changed.count() > 0; }));
+    EXPECT_EQ(canvas_.strokeCount(), 1);
+    canvas_.setDocument(nullptr);
+    EXPECT_EQ(canvas_.strokeCount(), 0);
 }
 
 TEST_F(BoardCanvasTest, UndoRemovesTheLastStroke) {

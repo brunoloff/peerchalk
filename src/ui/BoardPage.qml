@@ -2,25 +2,16 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-// One board: the drawing canvas with its tools, opened from the home screen. The board
-// loads from the library when the page opens and saves itself shortly after each change
-// and when the page closes.
+// One board: the drawing canvas with its tools, opened from the home screen. The board's
+// live document comes from the library, which saves it shortly after each change; the
+// page saves any remaining changes when it closes.
 Item {
     id: page
 
     required property string boardId
     readonly property string boardName: Library.boardName(boardId)
-    property bool loaded: false
-    property bool dirty: false
 
     signal back()
-
-    function save() {
-        if (page.dirty) {
-            Library.saveBoardState(page.boardId, canvas.saveState());
-            page.dirty = false;
-        }
-    }
 
     // The side panel is docked (beside the board) unless auto-hide is on or the window
     // is narrow; then it slides over the board when revealed by hovering the right edge
@@ -37,20 +28,7 @@ Item {
     }
 
     objectName: "boardPage"
-    Component.onCompleted: {
-        const state = Library.boardState(page.boardId);
-        if (state.byteLength > 0)
-            canvas.loadState(state);
-        page.loaded = true;
-    }
-    Component.onDestruction: page.save()
-
-    Timer {
-        id: saveTimer
-
-        interval: 600
-        onTriggered: page.save()
-    }
+    Component.onDestruction: Library.saveBoards()
 
     Item {
         id: boardArea
@@ -73,12 +51,7 @@ Item {
             penColor: Theme.penColors[0]
             penWidth: Theme.penWidths[1]
             gridColor: Theme.gridDot
-            onStrokesChanged: {
-                if (page.loaded) {
-                    page.dirty = true;
-                    saveTimer.restart();
-                }
-            }
+            document: Library.openBoard(page.boardId)
         }
 
         Panel {
@@ -100,7 +73,7 @@ Item {
                     text: qsTr("Back to %1").arg(Library.currentProjectName)
                     iconPath: Icons.chevronLeft
                     onClicked: {
-                        page.save();
+                        Library.saveBoards();
                         page.back();
                     }
                 }

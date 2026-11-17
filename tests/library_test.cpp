@@ -2,6 +2,7 @@
 
 #include <QSignalSpy>
 #include <QTemporaryDir>
+#include <QTest>
 
 #include <gtest/gtest.h>
 
@@ -112,6 +113,45 @@ TEST_F(LibraryTest, FailuresAreReportedNotThrown) {
     library.setVerification(QStringLiteral("zz"), QStringLiteral("call"));
     library.renameBoard(QStringLiteral("nope"), QStringLiteral("x"));
     EXPECT_EQ(errors.count(), 4);
+}
+
+Stroke dot(float x) {
+    Stroke stroke(0xFF000000U, 2.0F);
+    stroke.addPoint({x, 0.0F, 1.0F});
+    return stroke;
+}
+
+TEST_F(LibraryTest, BoardDocumentsAreSharedSavedAndReloaded) {
+    QString boardId;
+    {
+        Library library(dir_.path());
+        library.createProject(QStringLiteral("P"));
+        boardId = library.createBoard(QStringLiteral("B"));
+        BoardDocument *document = library.openBoard(boardId);
+        ASSERT_NE(document, nullptr);
+        EXPECT_EQ(library.openBoard(boardId), document);
+        document->board().addStroke(dot(1.0F));
+        ASSERT_TRUE(QTest::qWaitFor([&] { return !library.boardState(boardId).isEmpty(); }));
+        document->board().addStroke(dot(2.0F));
+    } // the destructor saves the second stroke
+    Library reloaded(dir_.path());
+    EXPECT_EQ(reloaded.openBoard(boardId)->board().strokes().size(), 2U);
+}
+
+TEST_F(LibraryTest, LoadingABoardDoesNotCountAsAnEdit) {
+    QString boardId;
+    {
+        Library library(dir_.path());
+        library.createProject(QStringLiteral("P"));
+        boardId = library.createBoard(QStringLiteral("B"));
+        library.openBoard(boardId)->board().addStroke(dot(1.0F));
+        library.saveBoards();
+    }
+    Library reloaded(dir_.path());
+    const QDateTime edited = reloaded.workspace().board(QUuid::fromString(boardId)).edited;
+    reloaded.openBoard(boardId);
+    QTest::qWait(700);
+    EXPECT_EQ(reloaded.workspace().board(QUuid::fromString(boardId)).edited, edited);
 }
 
 TEST_F(LibraryTest, RemovingTheCurrentProjectSelectsAnother) {

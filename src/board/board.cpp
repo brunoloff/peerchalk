@@ -134,6 +134,8 @@ void Board::applyArrayDelta(const void *event) {
                 strokes_.insert(strokes_.begin() + index++, decodeEntry(change.values[k]));
         }
     }
+    if (listener_)
+        listener_();
 }
 
 std::optional<Bounds> Board::contentBounds() const {

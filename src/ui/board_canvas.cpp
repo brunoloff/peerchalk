@@ -31,6 +31,22 @@ BoardCanvas::BoardCanvas(QQuickItem *parent)
         !layer->setProperty("smooth", true))
         qFatal("BoardCanvas: Qt Quick item layers are unavailable");
     highlighterLayer_->setOpacity(highlighterOpacity);
+    setDocument(nullptr);
+}
+
+void BoardCanvas::setDocument(BoardDocument *document) {
+    BoardDocument *next = document != nullptr ? document : &ownDocument_;
+    if (next == document_)
+        return;
+    pointerCancelled();
+    if (document_)
+        disconnect(document_, nullptr, this, nullptr);
+    document_ = next;
+    // Remote changes (and saved state loading) arrive through the document.
+    connect(document_, &BoardDocument::changed, this, &BoardCanvas::strokesUpdated);
+    connect(document_, &QObject::destroyed, this, [this] { setDocument(nullptr); });
+    strokesUpdated();
+    emit documentChanged();
 }
 
 const Stroke *BoardCanvas::activeStroke() const {
@@ -79,10 +95,10 @@ void BoardCanvas::setGridColor(const QColor &color) {
     update();
 }
 
-int BoardCanvas::strokeCount() const { return static_cast<int>(board_.strokes().size()); }
+int BoardCanvas::strokeCount() const { return static_cast<int>(board().strokes().size()); }
 
 QRectF BoardCanvas::contentBounds() const {
-    const std::optional<Bounds> bounds = board_.contentBounds();
+    const std::optional<Bounds> bounds = board().contentBounds();
     return bounds ? toRect(*bounds) : QRectF();
 }
 
@@ -99,8 +115,8 @@ QRectF BoardCanvas::visibleArea() const {
 
 void BoardCanvas::undo() {
     pointerCancelled();
-    if (board_.undo())
-        strokesUpdated();
+    if (editableBoard().undo())
+        redrawStrokes();
 }
 
 void BoardCanvas::zoomBy(qreal factor) {
@@ -120,7 +136,7 @@ void BoardCanvas::resetView() {
 }
 
 void BoardCanvas::fitContent() {
-    const std::optional<Bounds> content = board_.contentBounds();
+    const std::optional<Bounds> content = board().contentBounds();
     if (!content || width() <= 2.0 * fitMarginPx || height() <= 2.0 * fitMarginPx)
         return;
     viewport_.fit(*content, static_cast<float>(width()), static_cast<float>(height()), fitMarginPx,
@@ -136,23 +152,6 @@ void BoardCanvas::centerOn(QPointF worldPoint) {
     viewport_.centerOn(toPoint(worldPoint), static_cast<float>(width()),
                        static_cast<float>(height()));
     viewUpdated();
-}
-
-QByteArray BoardCanvas::saveState() const {
-    const Bytes state = board_.encodeState();
-    return {reinterpret_cast<const char *>(state.data()), static_cast<qsizetype>(state.size())};
-}
-
-bool BoardCanvas::loadState(const QByteArray &state) {
-    if (!board_.strokes().empty() || board_.canUndo()) {
-        qWarning("BoardCanvas: refusing to load into a board that already has strokes");
-        return false;
-    }
-    const auto *data = reinterpret_cast<const std::byte *>(state.constData());
-    if (!board_.apply(ByteView(data, static_cast<std::size_t>(state.size()))))
-        return false;
-    strokesUpdated();
-    return true;
 }
 
 QSGNode *BoardCanvas::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *) {
@@ -180,6 +179,10 @@ void BoardCanvas::viewUpdated() {
 
 void BoardCanvas::strokesUpdated() {
     emit strokesChanged();
+    redrawStrokes();
+}
+
+void BoardCanvas::redrawStrokes() {
     highlighterLayer_->markStrokesDirty();
     penLayer_->markStrokesDirty();
 }
