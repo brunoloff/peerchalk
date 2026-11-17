@@ -12,6 +12,11 @@ RowLayout {
         return isShared ? 0 : Library.projectPeople(Library.currentProjectId).filter(p => p.member).length;
     }
 
+    readonly property int requestCount: {
+        Network.joinRequestCount; // re-evaluate when requests change
+        return isShared || !Library.currentProjectIsAdmin ? 0 : Network.joinRequests(Library.currentProjectId).length;
+    }
+
     signal membersRequested()
     signal newBoardRequested()
     signal renameRequested()
@@ -38,7 +43,7 @@ RowLayout {
             elide: Text.ElideRight
             color: Theme.muted
             text: header.isShared ? qsTr("Boards shared with you on their own, and boards you made outside projects")
-                : Library.currentProjectPending ? qsTr("Joining · waiting to reach someone already in this project")
+                : Library.currentProjectPending ? qsTr("Waiting for the admin to let you in · keep PeerChalk open")
                 : header.memberCount <= 1 ? qsTr("Only you so far")
                 : qsTr("%1 people").arg(header.memberCount)
         }
@@ -64,6 +69,13 @@ RowLayout {
                 onTriggered: header.deleteRequested()
             }
         }
+    }
+
+    PaperButton {
+        visible: header.requestCount > 0
+        primary: true
+        text: header.requestCount === 1 ? qsTr("1 asking to join") : qsTr("%1 asking to join").arg(header.requestCount)
+        onClicked: header.membersRequested()
     }
 
     PaperButton {

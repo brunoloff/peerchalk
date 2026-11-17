@@ -37,8 +37,9 @@ Run the app with `bin/peerchalk`.
 
 ## Sharing and access
 
-Each project and each board has one admin, its creator. The admin chooses who has access
-from their known people (added with contact codes) and sends them an invite code; a
+Each project and each board has one admin, its creator. The admin sends an invite code;
+when someone opens it they appear as a join request, which the admin approves (or the
+admin ticks people from their known people, added with contact codes, in advance); a
 board can be shared on its own or belong to several projects, whose members can then
 open it. Who has access is recorded in a manifest the admin signs, so peers accept only
 the admin's changes, and having an invite code alone gives no board contents.
@@ -72,9 +73,9 @@ PEERCHALK_DATA_DIR=/tmp/peerchalk-ana bin/peerchalk &
 PEERCHALK_DATA_DIR=/tmp/peerchalk-ben bin/peerchalk &
 ```
 
-Exchange contact codes between them (identity screen), create a project in one, tick
-the other person under "Members & invite", copy the invite and join with it in the
-other. They find each other within about ten seconds.
+Create a project in one, copy the invite from "Members & invite" and join with it in
+the other. Within about ten seconds the first one shows "1 asking to join"; approve it
+there (comparing fingerprints if you like) and the boards start syncing.
 
 ## Data on this device
 

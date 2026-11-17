@@ -120,6 +120,25 @@ void Library::setBoardMember(const QString &boardId, const QString &keyHex, bool
         workspaceUpdated();
 }
 
+void Library::ensureContact(const QString &keyHex, const QString &name) {
+    const QByteArray key = parseKey(keyHex);
+    if (std::ranges::find(identity_.contacts(), key, &Contact::signingKey) ==
+        identity_.contacts().end()) {
+        identity_.addContact({key, name.trimmed().isEmpty() ? tr("Someone") : name});
+        refreshContacts();
+    }
+}
+
+void Library::admitToProject(const QString &projectId, const QString &keyHex, const QString &name) {
+    if (attempt([&] { ensureContact(keyHex, name); }))
+        setProjectMember(projectId, keyHex, true);
+}
+
+void Library::admitToBoard(const QString &boardId, const QString &keyHex, const QString &name) {
+    if (attempt([&] { ensureContact(keyHex, name); }))
+        setBoardMember(boardId, keyHex, true);
+}
+
 QVariantList Library::boardProjects(const QString &boardId) {
     QVariantList result;
     attempt([&] {

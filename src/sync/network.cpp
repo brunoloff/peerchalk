@@ -42,6 +42,8 @@ Network::Network(Library &library, NetworkConfig config, QObject *parent)
     connect(&presenceTimer_, &QTimer::timeout, this, &Network::sendPresence);
     connect(&library_, &Library::workspaceChanged, this, &Network::workspaceChanged);
     connect(&library_, &Library::boardChanged, this, &Network::boardChanged);
+    connect(this, &Network::peersChanged, this, &Network::requestsChanged);
+    connect(&library_, &Library::workspaceChanged, this, &Network::requestsChanged);
     setStatus(config_.enabled ? tr("Not started") : tr("Offline: networking is turned off"));
 }
 

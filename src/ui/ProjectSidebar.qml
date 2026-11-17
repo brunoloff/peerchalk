@@ -122,7 +122,7 @@ Rectangle {
                     }
 
                     Label {
-                        text: row.pending ? qsTr("joining") : row.boardCount
+                        text: row.pending ? qsTr("waiting") : row.boardCount
                         font.pixelSize: 12
                         color: Theme.muted
                     }

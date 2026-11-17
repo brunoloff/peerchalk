@@ -64,7 +64,7 @@ AbstractButton {
 
                 Label {
                     Layout.fillWidth: true
-                    text: card.pending ? qsTr("Joining · waiting to reach its members")
+                    text: card.pending ? qsTr("Waiting for its admin to let you in")
                         : qsTr("Infinite board · edited %1").arg(Format.relativeTime(card.edited))
                     elide: Text.ElideRight
                     font.pixelSize: 12

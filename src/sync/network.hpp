@@ -52,6 +52,9 @@ class Network : public QObject {
     // The node is running and looking for peers.
     Q_PROPERTY(bool online READ online NOTIFY statusChanged)
     Q_PROPERTY(int connectedDevices READ connectedDevices NOTIFY peersChanged)
+    // People connected through an invite to a project or board you administer who are
+    // not members yet, across all of them.
+    Q_PROPERTY(int joinRequestCount READ joinRequestCount NOTIFY requestsChanged)
 
   public:
     Network(Library &library, NetworkConfig config, QObject *parent = nullptr);
@@ -67,6 +70,10 @@ class Network : public QObject {
     [[nodiscard]] QString status() const { return status_; }
     [[nodiscard]] bool online() const { return started_ && !stopping_; }
     [[nodiscard]] int connectedDevices() const;
+    [[nodiscard]] int joinRequestCount() const;
+    // For a project or board you administer: connected people who are not members,
+    // {key, name, fingerprint}. They hold its invite; approving makes them members.
+    Q_INVOKABLE QVariantList joinRequests(const QString &itemId) const;
 
     // Tells peers which board this device shows and where the pointer is (world
     // coordinates); an empty boardId means no board.
@@ -78,6 +85,9 @@ class Network : public QObject {
     void statusChanged();
     void peersChanged();
     void presenceChanged();
+    void requestsChanged();
+    // Someone not yet a member reached a project or board you administer.
+    void joinRequested(const QString &name, const QString &itemName);
 
   private:
     enum class SpaceKind { Personal, Project, Board };
@@ -154,6 +164,8 @@ class Network : public QObject {
     void boardChanged(const QUuid &board);
     void sendPresence();
     [[nodiscard]] Presence presenceFor(const Peer &peer) const;
+    // The item a peer's space is about, if you administer it and the peer is not in it.
+    [[nodiscard]] std::optional<QString> requestedItemName(const Peer &peer) const;
 
     Library &library_;
     NetworkConfig config_;

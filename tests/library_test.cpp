@@ -53,6 +53,29 @@ TEST_F(LibraryTest, InvitesJoinAnotherLibrary) {
     EXPECT_TRUE(bob.projectInvite(project).isEmpty()); // only the admin invites
 }
 
+TEST_F(LibraryTest, ANonMemberWaitsAndSeesNoBoards) {
+    QTemporaryDir other;
+    Library alice(dir_.path());
+    Library bob(other.path());
+    const QString project = alice.createProject(QStringLiteral("P"));
+    alice.createBoard(QStringLiteral("Board"));
+    bob.joinInvite(alice.projectInvite(project));
+    // Bob receives the project's manifests but is not a member.
+    const QUuid id = QUuid::fromString(project);
+    for (const SignedManifest &m : alice.workspace().manifestsForProject(id))
+        bob.workspace().acceptManifest(m.payload, m.signature);
+    bob.workspaceUpdated();
+    EXPECT_TRUE(bob.currentProjectPending());
+    EXPECT_EQ(bob.boards()->rowCount(), 0);
+    alice.admitToProject(project, bob.userKey(), QStringLiteral("Bob"));
+    for (const SignedManifest &m : alice.workspace().manifestsForProject(id))
+        bob.workspace().acceptManifest(m.payload, m.signature);
+    bob.workspaceUpdated();
+    EXPECT_FALSE(bob.currentProjectPending());
+    EXPECT_EQ(bob.boards()->rowCount(), 1);
+    EXPECT_EQ(alice.contacts()->rowCount(), 1); // approving also remembers the person
+}
+
 TEST_F(LibraryTest, AdminAddsAndRemovesMembersFromContacts) {
     QTemporaryDir other;
     Library alice(dir_.path());

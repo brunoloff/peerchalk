@@ -113,6 +113,12 @@ class Library : public QObject {
     Q_INVOKABLE QVariantList boardPeople(const QString &boardId);
     Q_INVOKABLE void setProjectMember(const QString &projectId, const QString &keyHex, bool member);
     Q_INVOKABLE void setBoardMember(const QString &boardId, const QString &keyHex, bool member);
+    // Lets in someone who asked to join (see Network.joinRequests): adds them to your
+    // known people, unverified, if needed, and makes them a member.
+    Q_INVOKABLE void admitToProject(const QString &projectId, const QString &keyHex,
+                                    const QString &name);
+    Q_INVOKABLE void admitToBoard(const QString &boardId, const QString &keyHex,
+                                  const QString &name);
     // The projects you are in, each {projectId, name, included} for the board.
     Q_INVOKABLE QVariantList boardProjects(const QString &boardId);
     Q_INVOKABLE void setBoardInProject(const QString &boardId, const QString &projectId,
@@ -150,6 +156,8 @@ class Library : public QObject {
     [[nodiscard]] std::vector<Member> withMember(std::vector<Member> members, const QString &keyHex,
                                                  bool member) const;
     void closeRemovedBoards();
+    // Adds someone to your known people unless they are already there.
+    void ensureContact(const QString &keyHex, const QString &name);
     void refreshProjects();
     void refreshBoards();
     void refreshContacts();

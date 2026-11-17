@@ -67,7 +67,8 @@ class Workspace {
     // throws std::invalid_argument unless the workspace is empty.
     void resetUser(QByteArray user);
 
-    // Boards shown in a project, and accessible boards shown in none of your projects.
+    // Boards shown in a project, and boards shown in none of your projects: accessible
+    // ones, and ones you joined by invite (which may still await the admin).
     [[nodiscard]] std::vector<QUuid> boardsInProject(const QUuid &projectId) const;
     [[nodiscard]] std::vector<QUuid> sharedBoards() const;
     [[nodiscard]] bool mayAccessProject(const QByteArray &user, const QUuid &projectId) const;

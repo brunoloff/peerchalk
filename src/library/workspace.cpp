@@ -98,7 +98,9 @@ std::vector<QUuid> Workspace::sharedBoards() const {
     std::vector<QUuid> result;
     for (const BoardEntry &board : boards_) {
         const bool shown = std::ranges::find(inProjects, board.id) != inProjects.end();
-        if (!shown && !board.deleted() && (!board.manifest || mayAccessBoard(user_, board.id)))
+        // Boards joined by invite stay listed while their admin has yet to let you in.
+        const bool joined = !board.capability.isEmpty();
+        if (!shown && !board.deleted() && (joined || mayAccessBoard(user_, board.id)))
             result.push_back(board.id);
     }
     return result;

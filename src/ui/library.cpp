@@ -107,17 +107,18 @@ void Library::refreshProjects() {
              {"colorIndex", project.colorIndex},
              {"boardCount", static_cast<int>(workspace_.boardsInProject(project.id).size())},
              {"admin", project.admin == workspace_.user()},
-             {"pending", !project.manifest.has_value()}});
+             {"pending", !workspace_.mayAccessProject(workspace_.user(), project.id)}});
     }
     projects_->setRows(std::move(rows));
 }
 
 void Library::refreshBoards() {
     std::vector<QUuid> ids;
+    const QUuid project = QUuid::fromString(currentProject_);
     if (currentProject_ == sharedId())
         ids = workspace_.sharedBoards();
-    else if (!currentProject_.isEmpty())
-        ids = workspace_.boardsInProject(QUuid::fromString(currentProject_));
+    else if (workspace_.mayAccessProject(workspace_.user(), project))
+        ids = workspace_.boardsInProject(project); // nothing until you are let in
     std::vector<const BoardEntry *> boards;
     for (const QUuid &id : ids)
         boards.push_back(&workspace_.board(id));
@@ -130,7 +131,7 @@ void Library::refreshBoards() {
                      {"name", board->name()},
                      {"edited", board->edited},
                      {"admin", board->admin == workspace_.user()},
-                     {"pending", !board->manifest.has_value()}});
+                     {"pending", !workspace_.mayAccessBoard(workspace_.user(), board->id)}});
     }
     boards_->setRows(std::move(rows));
 }
@@ -183,7 +184,7 @@ bool Library::currentProjectIsAdmin() const {
 
 bool Library::currentProjectPending() const {
     const QUuid id = QUuid::fromString(currentProject_);
-    return workspace_.hasProject(id) && !workspace_.project(id).manifest;
+    return workspace_.hasProject(id) && !workspace_.mayAccessProject(workspace_.user(), id);
 }
 
 void Library::setBoardFilter(const QString &filter) {

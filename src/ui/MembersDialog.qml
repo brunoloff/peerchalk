@@ -15,6 +15,7 @@ Dialog {
     readonly property bool admin: board ? Library.isBoardAdmin(itemId) : Library.isProjectAdmin(itemId)
     property var people: []
     property var projects: []
+    property var requests: []
 
     function show(id: string, isBoard: bool) {
         itemId = id;
@@ -26,6 +27,16 @@ Dialog {
     function refresh() {
         people = board ? Library.boardPeople(itemId) : Library.projectPeople(itemId);
         projects = board && admin ? Library.boardProjects(itemId) : [];
+        requests = admin ? Network.joinRequests(itemId) : [];
+    }
+
+    Connections {
+        target: Network
+
+        function onRequestsChanged() {
+            if (dialog.opened)
+                dialog.refresh();
+        }
     }
 
     function invite(): string {
@@ -54,8 +65,79 @@ Dialog {
                 wrapMode: Text.WordWrap
                 color: Theme.muted
                 text: !dialog.admin ? qsTr("Only the admin decides who has access.")
-                    : dialog.board ? qsTr("Tick the people who may open this board on its own, then send them the invite. Members of the projects it belongs to can open it too.")
-                    : qsTr("Tick the people who may open every board in this project, then send them the invite.")
+                    : dialog.board ? qsTr("Send the invite to the people who should open this board on its own. When they open it, they appear here to approve. Members of the projects it belongs to can open it too.")
+                    : qsTr("Send the invite to the people who should open every board in this project. When they open it, they appear here to approve.")
+            }
+
+            SectionLabel {
+                visible: dialog.requests.length > 0
+                text: qsTr("Asking to join")
+            }
+
+            Repeater {
+                model: dialog.requests
+
+                delegate: RowLayout {
+                    id: request
+
+                    required property var modelData
+
+                    Layout.fillWidth: true
+                    spacing: 12
+
+                    Avatar {
+                        name: request.modelData.name
+                        size: 34
+                        color: Theme.personColors[Format.keyColorIndex(request.modelData.key, Theme.personColors.length)]
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 0
+
+                        Label {
+                            Layout.fillWidth: true
+                            elide: Text.ElideRight
+                            text: request.modelData.name
+                            font.weight: Font.DemiBold
+                            color: Theme.ink
+                        }
+
+                        Label {
+                            Layout.fillWidth: true
+                            wrapMode: Text.WrapAnywhere
+                            text: request.modelData.fingerprint
+                            font.family: Theme.monoFont
+                            font.pixelSize: 12
+                            color: Theme.muted
+                        }
+                    }
+
+                    PaperButton {
+                        text: qsTr("Approve")
+                        primary: true
+                        onClicked: {
+                            if (dialog.board)
+                                Library.admitToBoard(dialog.itemId, request.modelData.key, request.modelData.name);
+                            else
+                                Library.admitToProject(dialog.itemId, request.modelData.key, request.modelData.name);
+                            dialog.refresh();
+                        }
+                    }
+                }
+            }
+
+            Label {
+                Layout.fillWidth: true
+                visible: dialog.requests.length > 0
+                wrapMode: Text.WordWrap
+                color: Theme.muted
+                font.pixelSize: 12
+                text: qsTr("Anyone with the invite can ask. To be sure it is really them, compare the fingerprint with the one on their identity screen.")
+            }
+
+            SectionLabel {
+                text: qsTr("Has access")
             }
 
             Repeater {
@@ -111,13 +193,6 @@ Dialog {
                 }
             }
 
-            Label {
-                Layout.fillWidth: true
-                visible: dialog.admin && Library.contacts.count === 0
-                wrapMode: Text.WordWrap
-                color: Theme.muted
-                text: qsTr("To give someone access, first add them to your known people on the identity screen, using their contact code.")
-            }
 
             SectionLabel {
                 visible: dialog.projects.length > 0
@@ -150,7 +225,7 @@ Dialog {
                     Layout.fillWidth: true
                     wrapMode: Text.WordWrap
                     color: Theme.muted
-                    text: qsTr("The invite lets the people you ticked find this %1. Send it privately.").arg(dialog.board ? qsTr("board") : qsTr("project"))
+                    text: qsTr("Send the invite privately; it lets people find this %1 and ask to join.").arg(dialog.board ? qsTr("board") : qsTr("project"))
                 }
 
                 PaperButton {

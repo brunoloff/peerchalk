@@ -127,6 +127,29 @@ TEST_F(NetworkTest, InviteWithoutMembershipRevealsNoContent) {
     EXPECT_FALSE(eve.library.workspace().hasBoard(QUuid::fromString(board)));
 }
 
+// The everyday flow: the admin sends only the invite; the newcomer shows up as a join
+// request, and approving it delivers the boards.
+TEST_F(NetworkTest, ApprovingAJoinRequestSharesTheBoards) {
+    Device alice(dht_);
+    Device bob(dht_);
+    const QString project = alice.library.createProject(QStringLiteral("Thesis"));
+    const QString board = alice.library.createBoard(QStringLiteral("Sketch"));
+    alice.draw(board, 0.0F);
+    ASSERT_FALSE(bob.library.joinInvite(alice.library.projectInvite(project)).isEmpty());
+    ASSERT_TRUE(QTest::qWaitFor([&] { return alice.network->joinRequests(project).size() == 1; },
+                                timeoutMs))
+        << "Alice never saw Bob's request";
+    EXPECT_TRUE(bob.library.currentProjectPending());
+    EXPECT_EQ(bob.library.boards()->rowCount(), 0);
+    const QVariantMap request = alice.network->joinRequests(project).front().toMap();
+    EXPECT_EQ(request["key"].toString(), bob.library.userKey());
+    alice.library.admitToProject(project, request["key"].toString(), request["name"].toString());
+    ASSERT_TRUE(QTest::qWaitFor([&] { return bob.strokesOn(board) == 1; }, timeoutMs))
+        << "Bob never received the board after being approved";
+    EXPECT_FALSE(bob.library.currentProjectPending());
+    EXPECT_TRUE(alice.network->joinRequests(project).isEmpty());
+}
+
 TEST_F(NetworkTest, ABoardInviteSharesOnlyThatBoard) {
     Device alice(dht_);
     Device carol(dht_);

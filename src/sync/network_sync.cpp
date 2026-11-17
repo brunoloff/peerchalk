@@ -1,6 +1,7 @@
 // Network: what authenticated peers exchange, and who may receive which board.
 #include "sync/network.hpp"
 
+#include "library/codes.hpp"
 #include "library/secrets.hpp"
 #include "ui/library.hpp"
 
@@ -62,6 +63,8 @@ bool Network::handleHello(Peer &peer, const Hello &hello) {
 }
 
 void Network::peerAuthenticated(const PeerId &id, Peer &peer) {
+    if (const std::optional<QString> item = requestedItemName(peer))
+        emit joinRequested(peer.user->name, *item);
     offerManifests(peer);
     for (const QUuid &board : syncableBoards(peer))
         peer.dirtyBoards.insert(board);
@@ -212,6 +215,44 @@ QVariantList Network::boardPresence(const QString &boardId) const {
                                   {"cursor", peer->presence->cursorVisible}});
     }
     return result;
+}
+
+std::optional<QString> Network::requestedItemName(const Peer &peer) const {
+    const Space &space = *spaces_.at(peer.space);
+    const Workspace &workspace = library_.workspace();
+    if (!peer.user || space.kind == SpaceKind::Personal)
+        return std::nullopt;
+    const std::optional<SignedManifest> &manifest =
+        space.kind == SpaceKind::Project
+            ? (workspace.hasProject(space.id) ? workspace.project(space.id).manifest : std::nullopt)
+            : (workspace.hasBoard(space.id) ? workspace.board(space.id).manifest : std::nullopt);
+    if (!manifest || manifest->manifest.admin != workspace.user() ||
+        manifest->manifest.includes(peer.user->userKey))
+        return std::nullopt;
+    return manifest->manifest.name;
+}
+
+QVariantList Network::joinRequests(const QString &itemId) const {
+    const QUuid item = QUuid::fromString(itemId);
+    QVariantList result;
+    std::set<QByteArray> seen; // a user may connect from several devices
+    for (const auto &[id, peer] : peers_) {
+        if (!peer->ready || spaces_.at(peer->space)->id != item || !requestedItemName(*peer) ||
+            !seen.insert(peer->user->userKey).second)
+            continue;
+        result.append(QVariantMap{{"key", QString::fromLatin1(peer->user->userKey.toHex())},
+                                  {"name", peer->user->name},
+                                  {"fingerprint", formatFingerprint(peer->user->userKey)}});
+    }
+    return result;
+}
+
+int Network::joinRequestCount() const {
+    std::set<std::pair<QUuid, QByteArray>> requests;
+    for (const auto &[id, peer] : peers_)
+        if (peer->ready && requestedItemName(*peer))
+            requests.insert({spaces_.at(peer->space)->id, peer->user->userKey});
+    return static_cast<int>(requests.size());
 }
 
 } // namespace peerchalk::sync
