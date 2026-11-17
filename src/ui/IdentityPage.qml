@@ -38,6 +38,10 @@ Item {
                 ProfileCard {
                     width: Math.min(420, scroll.availableWidth - 56)
                     onShowContactCode: contactCodeDialog.open()
+                    onLinkDeviceRequested: {
+                        linkDeviceDialog.code = Library.identityTransferCode();
+                        linkDeviceDialog.open();
+                    }
                 }
 
                 PeopleCard {
@@ -59,6 +63,13 @@ Item {
         title: qsTr("Your contact code")
         code: Library.contactCode
         explanation: qsTr("Send this to people so they can add you. It holds only your public key and name. Then compare fingerprints to verify each other.")
+    }
+
+    CodeDialog {
+        id: linkDeviceDialog
+
+        title: qsTr("Link another device")
+        explanation: qsTr("On the other device, choose “Link this device” on the welcome screen and paste this code. It contains your secret key: anyone who has it can act as you, so move it only between your own devices and never send it to anyone.")
     }
 
     TextInputDialog {

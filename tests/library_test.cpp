@@ -45,8 +45,49 @@ TEST_F(LibraryTest, InvitesJoinAnotherLibrary) {
     Library alice(dir_.path());
     Library bob(other.path());
     const QString project = alice.createProject(QStringLiteral("Shared"));
-    EXPECT_EQ(bob.joinProject(alice.projectInvite(project)), project);
+    EXPECT_EQ(bob.joinInvite(alice.projectInvite(project)), project);
     EXPECT_EQ(bob.currentProjectName(), QStringLiteral("Shared"));
+    EXPECT_TRUE(bob.currentProjectPending());
+    EXPECT_FALSE(bob.currentProjectIsAdmin());
+    EXPECT_TRUE(bob.projectInvite(project).isEmpty()); // only the admin invites
+}
+
+TEST_F(LibraryTest, AdminAddsAndRemovesMembersFromContacts) {
+    QTemporaryDir other;
+    Library alice(dir_.path());
+    Library bob(other.path());
+    const QString project = alice.createProject(QStringLiteral("P"));
+    ASSERT_TRUE(alice.addContact(bob.contactCode()));
+    alice.setProjectMember(project, bob.userKey(), true);
+    QVariantList people = alice.projectPeople(project);
+    ASSERT_EQ(people.size(), 2);
+    EXPECT_TRUE(people[0].toMap()["admin"].toBool());
+    EXPECT_TRUE(people[1].toMap()["member"].toBool());
+    alice.setProjectMember(project, bob.userKey(), false);
+    people = alice.projectPeople(project);
+    EXPECT_FALSE(people[1].toMap()["member"].toBool());
+}
+
+TEST_F(LibraryTest, BoardsCanJoinMoreProjects) {
+    Library alice(dir_.path());
+    const QString first = alice.createProject(QStringLiteral("First"));
+    const QString board = alice.createBoard(QStringLiteral("Board"));
+    const QString second = alice.createProject(QStringLiteral("Second"));
+    alice.setBoardInProject(board, second, true);
+    EXPECT_EQ(alice.boards()->rowCount(), 1);
+    alice.setCurrentProjectId(first);
+    EXPECT_EQ(alice.boards()->rowCount(), 1);
+}
+
+TEST_F(LibraryTest, LinkingADeviceAdoptsTheIdentity) {
+    QTemporaryDir other;
+    Library phone(dir_.path());
+    Library laptop(other.path());
+    ASSERT_TRUE(laptop.canAdoptIdentity());
+    ASSERT_TRUE(laptop.adoptIdentity(phone.identityTransferCode()));
+    EXPECT_EQ(laptop.userKey(), phone.userKey());
+    phone.createProject(QStringLiteral("Now not empty"));
+    EXPECT_FALSE(phone.adoptIdentity(laptop.identityTransferCode()));
 }
 
 TEST_F(LibraryTest, ContactsAndVerification) {
@@ -66,10 +107,10 @@ TEST_F(LibraryTest, ContactsAndVerification) {
 TEST_F(LibraryTest, FailuresAreReportedNotThrown) {
     Library library(dir_.path());
     QSignalSpy errors(&library, &Library::errorOccurred);
-    EXPECT_TRUE(library.joinProject(QStringLiteral("not a code")).isEmpty());
+    EXPECT_TRUE(library.joinInvite(QStringLiteral("not a code")).isEmpty());
     EXPECT_FALSE(library.addContact(library.contactCode()));
-    EXPECT_TRUE(library.createBoard(QStringLiteral("No project yet")).isEmpty());
     library.setVerification(QStringLiteral("zz"), QStringLiteral("call"));
+    library.renameBoard(QStringLiteral("nope"), QStringLiteral("x"));
     EXPECT_EQ(errors.count(), 4);
 }
 
@@ -81,6 +122,7 @@ TEST_F(LibraryTest, RemovingTheCurrentProjectSelectsAnother) {
     EXPECT_EQ(library.currentProjectId(), first);
     library.removeProject(first);
     EXPECT_TRUE(library.currentProjectId().isEmpty());
+    EXPECT_EQ(library.projects()->rowCount(), 0); // deletions are tombstones, hidden
 }
 
 } // namespace

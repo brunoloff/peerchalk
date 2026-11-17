@@ -91,6 +91,7 @@ Rectangle {
                 required property string name
                 required property int colorIndex
                 required property int boardCount
+                required property bool pending
                 readonly property bool current: Library.currentProjectId === projectId
 
                 width: ListView.view.width
@@ -121,10 +122,50 @@ Rectangle {
                     }
 
                     Label {
-                        text: row.boardCount
+                        text: row.pending ? qsTr("joining") : row.boardCount
                         font.pixelSize: 12
                         color: Theme.muted
                     }
+                }
+            }
+        }
+
+        ItemDelegate {
+            id: sharedRow
+
+            readonly property bool current: Library.currentProjectId === Library.sharedId
+
+            Layout.fillWidth: true
+            visible: Library.sharedBoardCount > 0 || current
+            Layout.preferredHeight: 44
+            onClicked: Library.currentProjectId = Library.sharedId
+
+            background: Rectangle {
+                radius: Theme.controlRadius
+                color: sharedRow.current ? Theme.accentSoft : sharedRow.hovered ? Theme.hover : "transparent"
+            }
+
+            contentItem: RowLayout {
+                spacing: 10
+
+                Icon {
+                    implicitWidth: 14
+                    implicitHeight: 14
+                    path: Icons.share
+                    color: Theme.muted
+                }
+
+                Label {
+                    Layout.fillWidth: true
+                    text: qsTr("Shared with me")
+                    font.weight: sharedRow.current ? Font.DemiBold : Font.Normal
+                    color: Theme.ink
+                }
+
+                Label {
+                    text: Library.sharedBoardCount
+                    font.pixelSize: 12
+                    color: Theme.muted
                 }
             }
         }

@@ -14,12 +14,16 @@ inline constexpr qsizetype capabilitySize = 32;
 // Longest name, in UTF-8 bytes, that a code may carry.
 inline constexpr qsizetype maxCodeNameBytes = 200;
 
-// Everything needed to join a project: its identity, name and the secret that lets
-// members find each other. Whoever holds an invite can join, so it is shared privately.
+// Everything needed to join a project or a single board: what it is, its name, the
+// secret that lets members find each other, and its admin's key, which signs the list of
+// members. Only listed members get any content, but the secret should stay private.
 struct Invite {
-    QUuid project;
+    enum class Kind { Project, Board };
+    Kind kind{Kind::Project};
+    QUuid id;
     QString name;
     QByteArray capability;
+    QByteArray admin;
 };
 
 // A person's public signing key and the name they chose; safe to share openly.
@@ -28,9 +32,9 @@ struct ContactCard {
     QString name;
 };
 
-// Text forms people copy and paste: "peerchalk-invite:1:" or "peerchalk-contact:1:"
+// Text forms people copy and paste: "peerchalk-invite:2:" or "peerchalk-contact:1:"
 // followed by unpadded base64url. Encoding throws std::invalid_argument for wrong key
-// sizes, a null project or empty names; names longer than maxCodeNameBytes are cut at
+// sizes, a null id or empty names; names longer than maxCodeNameBytes are cut at
 // a character boundary. Decoding returns nullopt for anything malformed and ignores
 // surrounding whitespace.
 [[nodiscard]] QString encodeInvite(const Invite &invite);

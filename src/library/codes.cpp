@@ -7,7 +7,7 @@
 namespace peerchalk {
 namespace {
 
-const QString invitePrefix = QStringLiteral("peerchalk-invite:1:");
+const QString invitePrefix = QStringLiteral("peerchalk-invite:2:");
 const QString contactPrefix = QStringLiteral("peerchalk-contact:1:");
 constexpr qsizetype uuidSize = 16;
 constexpr auto base64Options = QByteArray::Base64UrlEncoding | QByteArray::OmitTrailingEquals;
@@ -53,23 +53,29 @@ std::optional<QString> trailingName(const QByteArray &bytes, qsizetype offset) {
 
 } // namespace
 
+// Invite payload: kind byte (0 project, 1 board), id, capability, admin key, name.
 QString encodeInvite(const Invite &invite) {
-    if (invite.project.isNull() || invite.capability.size() != capabilitySize)
-        throw std::invalid_argument("An invite needs a project and a 32-byte capability");
-    const QByteArray bytes =
-        invite.project.toRfc4122() + invite.capability + nameBytes(invite.name);
+    if (invite.id.isNull() || invite.capability.size() != capabilitySize ||
+        invite.admin.size() != signingKeySize)
+        throw std::invalid_argument("An invite needs an id, a capability and an admin key");
+    const char kind = invite.kind == Invite::Kind::Board ? 1 : 0;
+    const QByteArray bytes = QByteArray(1, kind) + invite.id.toRfc4122() + invite.capability +
+                             invite.admin + nameBytes(invite.name);
     return invitePrefix + QString::fromLatin1(bytes.toBase64(base64Options));
 }
 
 std::optional<Invite> decodeInvite(const QString &text) {
+    constexpr qsizetype nameOffset = 1 + uuidSize + capabilitySize + signingKeySize;
     const std::optional<QByteArray> bytes = payload(text, invitePrefix);
-    if (!bytes || bytes->size() <= uuidSize + capabilitySize)
+    if (!bytes || bytes->size() <= nameOffset || (bytes->at(0) != 0 && bytes->at(0) != 1))
         return std::nullopt;
-    const QUuid project = QUuid::fromRfc4122(bytes->first(uuidSize));
-    const std::optional<QString> name = trailingName(*bytes, uuidSize + capabilitySize);
-    if (project.isNull() || !name)
+    const QUuid id = QUuid::fromRfc4122(bytes->mid(1, uuidSize));
+    const std::optional<QString> name = trailingName(*bytes, nameOffset);
+    if (id.isNull() || !name)
         return std::nullopt;
-    return Invite{project, *name, bytes->mid(uuidSize, capabilitySize)};
+    return Invite{bytes->at(0) == 1 ? Invite::Kind::Board : Invite::Kind::Project, id, *name,
+                  bytes->mid(1 + uuidSize, capabilitySize),
+                  bytes->mid(1 + uuidSize + capabilitySize, signingKeySize)};
 }
 
 QString encodeContactCard(const ContactCard &card) {

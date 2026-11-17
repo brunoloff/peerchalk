@@ -11,7 +11,11 @@ AbstractButton {
     required property string name
     required property date edited
 
+    required property bool admin
+    required property bool pending
+
     signal renameRequested(string boardId, string name)
+    signal shareRequested(string boardId)
     signal deleteRequested(string boardId, string name)
 
     hoverEnabled: true
@@ -60,7 +64,8 @@ AbstractButton {
 
                 Label {
                     Layout.fillWidth: true
-                    text: qsTr("Infinite board · edited %1").arg(Format.relativeTime(card.edited))
+                    text: card.pending ? qsTr("Joining · waiting to reach its members")
+                        : qsTr("Infinite board · edited %1").arg(Format.relativeTime(card.edited))
                     elide: Text.ElideRight
                     font.pixelSize: 12
                     color: Theme.muted
@@ -78,12 +83,19 @@ AbstractButton {
                     id: menu
 
                     MenuItem {
+                        text: card.admin ? qsTr("Share…") : qsTr("Who has access…")
+                        enabled: !card.pending
+                        onTriggered: card.shareRequested(card.boardId)
+                    }
+
+                    MenuItem {
                         text: qsTr("Rename…")
+                        enabled: card.admin
                         onTriggered: card.renameRequested(card.boardId, card.name)
                     }
 
                     MenuItem {
-                        text: qsTr("Delete…")
+                        text: card.admin ? qsTr("Delete for everyone…") : qsTr("Remove from this device…")
                         onTriggered: card.deleteRequested(card.boardId, card.name)
                     }
                 }

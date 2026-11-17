@@ -10,14 +10,17 @@ namespace {
 QByteArray filled(qsizetype size, char value) { return QByteArray(size, value); }
 
 TEST(Codes, InviteRoundTrips) {
-    const Invite invite{QUuid::createUuid(), QStringLiteral("Thesis — group"), filled(32, 7)};
+    const Invite invite{Invite::Kind::Board, QUuid::createUuid(), QStringLiteral("Thesis — group"),
+                        filled(32, 7), filled(32, 9)};
     const QString text = encodeInvite(invite);
-    EXPECT_TRUE(text.startsWith(QStringLiteral("peerchalk-invite:1:")));
+    EXPECT_TRUE(text.startsWith(QStringLiteral("peerchalk-invite:2:")));
     const std::optional<Invite> decoded = decodeInvite(QStringLiteral("  ") + text + "\n");
     ASSERT_TRUE(decoded.has_value());
-    EXPECT_EQ(decoded->project, invite.project);
+    EXPECT_EQ(decoded->kind, Invite::Kind::Board);
+    EXPECT_EQ(decoded->id, invite.id);
     EXPECT_EQ(decoded->name, invite.name);
     EXPECT_EQ(decoded->capability, invite.capability);
+    EXPECT_EQ(decoded->admin, invite.admin);
 }
 
 TEST(Codes, ContactCardRoundTrips) {
@@ -58,8 +61,10 @@ TEST(Codes, EncodingRejectsBadInput) {
                  std::invalid_argument);
     EXPECT_THROW(static_cast<void>(encodeContactCard({filled(32, 1), QStringLiteral("  ")})),
                  std::invalid_argument);
-    EXPECT_THROW(static_cast<void>(encodeInvite({QUuid(), QStringLiteral("P"), filled(32, 1)})),
-                 std::invalid_argument);
+    EXPECT_THROW(
+        static_cast<void>(encodeInvite(
+            {Invite::Kind::Project, QUuid(), QStringLiteral("P"), filled(32, 1), filled(32, 2)})),
+        std::invalid_argument);
 }
 
 TEST(Codes, FingerprintIsGroupedHex) {

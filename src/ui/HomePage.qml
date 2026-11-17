@@ -45,6 +45,7 @@ Item {
                 visible: !home.hasProject
                 onCreateProjectRequested: newProjectDialog.ask("")
                 onJoinProjectRequested: joinDialog.ask("")
+                onLinkDeviceRequested: linkDialog.ask("")
             }
 
             ColumnLayout {
@@ -55,10 +56,7 @@ Item {
 
                 ProjectHeader {
                     Layout.fillWidth: true
-                    onInviteRequested: {
-                        inviteDialog.code = Library.projectInvite(Library.currentProjectId);
-                        inviteDialog.open();
-                    }
+                    onMembersRequested: membersDialog.show(Library.currentProjectId, false)
                     onNewBoardRequested: newBoardDialog.ask(qsTr("Untitled board"))
                     onRenameRequested: renameProjectDialog.ask(Library.currentProjectName)
                     onDeleteRequested: deleteProjectDialog.open()
@@ -90,6 +88,8 @@ Item {
                         required property string boardId
                         required property string name
                         required property date edited
+                        required property bool admin
+                        required property bool pending
 
                         width: grid.cellWidth
                         height: grid.cellHeight
@@ -98,16 +98,26 @@ Item {
                             anchors.fill: parent
                             anchors.margins: 9
                             boardId: cell.boardId
+                            admin: cell.admin
+                            pending: cell.pending
                             name: cell.name
                             edited: cell.edited
-                            onClicked: home.openBoard(cell.boardId)
+                            onClicked: {
+                                if (!cell.pending)
+                                    home.openBoard(cell.boardId);
+                            }
                             onRenameRequested: (boardId, name) => {
                                 renameBoardDialog.boardId = boardId;
                                 renameBoardDialog.ask(name);
                             }
+                            onShareRequested: boardId => membersDialog.show(boardId, true)
                             onDeleteRequested: (boardId, name) => {
+                                const admin = Library.isBoardAdmin(boardId);
                                 deleteBoardDialog.boardId = boardId;
-                                deleteBoardDialog.message = qsTr("Delete the board “%1”? Its drawings on this device are removed and cannot be recovered.").arg(name);
+                                deleteBoardDialog.confirmText = admin ? qsTr("Delete") : qsTr("Remove");
+                                deleteBoardDialog.message = admin
+                                    ? qsTr("Delete the board “%1” for everyone? Its drawings are removed and cannot be recovered.").arg(name)
+                                    : qsTr("Remove the board “%1” from this device? You can join again with an invite.").arg(name);
                                 deleteBoardDialog.open();
                             }
                         }
@@ -141,11 +151,11 @@ Item {
     TextInputDialog {
         id: joinDialog
 
-        title: qsTr("Join a project")
-        label: qsTr("Paste the invite code someone sent you.")
-        placeholder: "peerchalk-invite:1:…"
+        title: qsTr("Join a project or board")
+        label: qsTr("Paste the invite code its admin sent you. The admin must also have added you as a member.")
+        placeholder: "peerchalk-invite:2:…"
         acceptText: qsTr("Join")
-        onSubmitted: text => Library.joinProject(text)
+        onSubmitted: text => Library.joinInvite(text)
     }
 
     TextInputDialog {
@@ -159,7 +169,10 @@ Item {
         id: deleteProjectDialog
 
         title: qsTr("Delete project")
-        message: qsTr("Delete “%1” and all its boards from this device? This cannot be undone.").arg(Library.currentProjectName)
+        confirmText: Library.currentProjectIsAdmin ? qsTr("Delete") : qsTr("Leave")
+        message: Library.currentProjectIsAdmin
+            ? qsTr("Delete “%1” for everyone? Members lose access to it. Boards you made stay with you.").arg(Library.currentProjectName)
+            : qsTr("Leave “%1”? It is removed from this device; you can join again with an invite.").arg(Library.currentProjectName)
         onConfirmed: Library.removeProject(Library.currentProjectId)
     }
 
@@ -190,10 +203,17 @@ Item {
         onConfirmed: Library.removeBoard(boardId)
     }
 
-    CodeDialog {
-        id: inviteDialog
+    MembersDialog {
+        id: membersDialog
+    }
 
-        title: qsTr("Invite to %1").arg(Library.currentProjectName)
-        explanation: qsTr("Send this code privately to the people you want in this project. Anyone who has it can join, so don't post it publicly.")
+    TextInputDialog {
+        id: linkDialog
+
+        title: qsTr("Link this device")
+        label: qsTr("On a device where you already use PeerChalk, open Identity & contacts, choose “Link another device” and paste its code here. This device then acts as you and gets your projects once both are online.")
+        placeholder: "peerchalk-identity:1:…"
+        acceptText: qsTr("Link")
+        onSubmitted: text => Library.adoptIdentity(text)
     }
 }

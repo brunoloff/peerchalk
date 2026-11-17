@@ -1,6 +1,7 @@
 #pragma once
 
 #include "library/codes.hpp"
+#include "library/user_identity.hpp"
 
 #include <QByteArray>
 #include <QString>
@@ -13,27 +14,29 @@ namespace peerchalk {
 enum class Verification { None, InPerson, Call, Shared };
 
 struct Contact {
-    QByteArray signingKey;
+    QByteArray signingKey; // their user key
     QString name;
     Verification verification{Verification::None};
 };
 
-// This device's identity and the people it knows, kept in `directory`: identity.json
-// holds the Ed25519 signing seed and X25519 recipient secret (owner-only, plain on disk
-// for now), contacts.json the known people. The identity is created on first use.
-// Read and write failures throw std::runtime_error naming the file; invalid arguments
-// throw std::invalid_argument. Every change is saved before returning.
+// This installation's identity (see UserIdentity), your profile and the people you know,
+// kept in `directory`: profile.json and contacts.json beside the key files. Read and
+// write failures throw std::runtime_error naming the file; invalid arguments throw
+// std::invalid_argument. Every change is saved before returning.
 class IdentityStore {
   public:
-    // defaultName is used when a new identity is created.
+    // defaultName is used when there is no profile yet.
     IdentityStore(QString directory, const QString &defaultName);
 
+    [[nodiscard]] const UserIdentity &identity() const { return identity_; }
     [[nodiscard]] QString displayName() const { return displayName_; }
     void setDisplayName(const QString &name);
     [[nodiscard]] int colorIndex() const { return colorIndex_; }
     void setColorIndex(int index);
-    [[nodiscard]] QByteArray signingKey() const { return signingKey_; }
-    [[nodiscard]] ContactCard contactCard() const { return {signingKey_, displayName_}; }
+    [[nodiscard]] QByteArray signingKey() const { return identity_.userKey(); }
+    [[nodiscard]] ContactCard contactCard() const { return {signingKey(), displayName_}; }
+    // Becomes the user in a transfer code (see UserIdentity::adopt) and takes its name.
+    void adoptIdentity(const QString &transferCode);
 
     [[nodiscard]] const std::vector<Contact> &contacts() const { return contacts_; }
     // Adds the person, or updates the name of someone already known. Throws
@@ -44,17 +47,15 @@ class IdentityStore {
 
   private:
     [[nodiscard]] Contact &findContact(const QByteArray &signingKey);
-    void loadIdentity(const QString &defaultName);
-    void createIdentity(const QString &defaultName);
+    void loadProfile(const QString &defaultName);
     void loadContacts();
-    void saveIdentity(const QByteArray &signingSeed, const QByteArray &recipientSecret) const;
     void saveProfile() const;
     void saveContacts() const;
 
     QString directory_;
+    UserIdentity identity_;
     QString displayName_;
     int colorIndex_{0};
-    QByteArray signingKey_;
     std::vector<Contact> contacts_;
 };
 

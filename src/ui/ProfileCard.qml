@@ -9,6 +9,7 @@ Panel {
     id: profile
 
     signal showContactCode()
+    signal linkDeviceRequested()
 
     implicitHeight: column.implicitHeight + 48
 
@@ -144,9 +145,30 @@ Panel {
             }
         }
 
+        SectionLabel {
+            text: qsTr("Devices")
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+
+            Label {
+                Layout.fillWidth: true
+                elide: Text.ElideRight
+                color: Theme.ink
+                text: qsTr("This device: %1").arg(Library.deviceName)
+            }
+
+            PaperButton {
+                text: qsTr("Link another device")
+                onClicked: profile.linkDeviceRequested()
+            }
+        }
+
         Label {
             Layout.fillWidth: true
-            text: qsTr("Your secret key stays on this device. Losing it means friends must verify a new identity.")
+            text: qsTr("Your secret key stays on your devices. Losing all of them means friends must verify a new identity.")
             wrapMode: Text.WordWrap
             font.pixelSize: 12
             lineHeight: 1.3

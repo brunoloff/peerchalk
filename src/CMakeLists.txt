@@ -8,7 +8,8 @@ target_compile_options(peerchalk_board PRIVATE
 
 # Local projects, boards and identity: Qt Core plus p2pdc for keys and secrets.
 add_library(peerchalk_library STATIC library/codes.cpp library/files.cpp
-    library/project_store.cpp library/identity_store.cpp)
+    library/identity_store.cpp library/manifest.cpp library/user_identity.cpp
+    library/workspace.cpp library/workspace_io.cpp)
 target_include_directories(peerchalk_library PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(peerchalk_library PUBLIC Qt6::Core PRIVATE p2pdc::p2pdc)
 target_compile_options(peerchalk_library PRIVATE
