@@ -1,0 +1,1078 @@
+Components included in Qt, from Qt's software bill of materials.
+
+BundledFreetype
+  License: FTL OR GPL-2.0-only
+  Copyright: Copyright (c) 2007-2014 Adobe Systems Incorporated
+Copyright (c) 2004-2026 Albert Chin-A-Young
+Copyright (c) 2018-2026 Armin Hasitzka, David Turner, Robert Wilhelm, and Werner Lemberg
+Copyright (c) 2000 Computing Research Labs, New Mexico State University
+Copyright (c) 1996-2026 David Turner, Robert Wilhelm, Dominik Röttsches, and Werner Lemberg
+Copyright (c) 2004-2026 David Turner, Robert Wilhelm, Werner Lemberg and George Williams
+Copyright (c) 2022-2026 David Turner, Robert Wilhelm, Werner Lemberg, and Moazin Khatti
+Copyright (c) 2008-2026 David Turner, Robert Wilhelm, Werner Lemberg, and suzuki toshiya
+Copyright (c) 2003-2026 David Turner, Robert Wilhelm, and Werner Lemberg
+Copyright (c) 2005-2026 David Turner
+Copyright (c) 2007-2026 Derek Clegg and Michael Toftdal
+Copyright (c) 2007 Dmitry Timoshkov for Codeweavers
+Copyright (c) 2001-2015 Francesco Zappa Nardelli
+Copyright (c) 2005, 2007, 2008, 2013 George Williams
+Copyright (c) 2013-2026 Google, Inc. Google Author(s) Behdad Esfahbod and Stuart Gill
+Copyright (c) 2013-2022 Google, Inc.
+Copyright (c) 2003 Huw D M Davies for Codeweavers
+Copyright (c) 2010-2026 Joel Klinghed
+Copyright (c) 1996-2026 Just van Rossum, David Turner, Robert Wilhelm, and Werner Lemberg
+Copyright (c) 2003-2026 Masatake YAMATO and Redhat K.K.
+Copyright (c) 2004-2026 Masatake YAMATO, Redhat K.K, David Turner, Robert Wilhelm, and Werner Lemberg
+Copyright (c) 2019-2026 Nikhil Ramakrishnan, David Turner, Robert Wilhelm, and Werner Lemberg
+Copyright (c) 2009-2026 Oran Agra and Mickey Gabel
+Copyright (c) 2007-2026 Rahul Bhalerao <rahul.bhalerao@redhat.com>
+Copyright (c) 2002-2026 Roberto Alameda
+Copyright (c) 2015-2026 Werner Lemberg
+Copyright (c) 2004-2026 suzuki toshiya, Masatake YAMATO, Red Hat K.K., David Turner, Robert Wilhelm, and Werner Lemberg
+Copyright (c) 2019 nyorain
+Copyright (c) 2022-2026 David Turner, Robert Wilhelm, Werner Lemberg, George Williams, and Dominik Röttsches
+Copyright (C) 2009, 2023  Red Hat, Inc.
+
+BundledFreetype_Attribution_freetype-bdf
+  License: MIT
+  Copyright: Copyright (c) 2000 Computing Research Labs, New Mexico State University
+Copyright (c) 2001-2014 Francesco Zappa Nardelli
+
+BundledFreetype_Attribution_freetype-pcf
+  License: MIT AND MIT-open-group
+  Copyright: Copyright (c) 2001, 2012 David Turner, Robert Wilhelm, and Werner Lemberg
+Copyright (c) 2000-2014 Francesco Zappa Nardelli
+Copyright (c) 1990, 1994, 1998 The Open Group
+
+BundledFreetype_Attribution_freetype-zlib
+  License: Zlib
+  Copyright: Copyright (C) 1995-2024 Jean-loup Gailly and Mark Adler
+
+BundledHarfbuzz
+  License: MIT
+  Copyright: Copyright © 2010-2022  Google, Inc.
+Copyright © 2015-2020  Ebrahim Byagowi
+Copyright © 2019,2020  Facebook, Inc.
+Copyright © 2012,2015  Mozilla Foundation
+Copyright © 2011  Codethink Limited
+Copyright © 2008,2010  Nokia Corporation and/or its subsidiary(-ies)
+Copyright © 2009  Keith Stribley
+Copyright © 2011  Martin Hosken and SIL International
+Copyright © 2007  Chris Wilson
+Copyright © 2005,2006,2020,2021,2022,2023  Behdad Esfahbod
+Copyright © 2004,2007,2008,2009,2010,2013,2021,2022,2023  Red Hat, Inc.
+Copyright © 1998-2005  David Turner and Werner Lemberg
+Copyright © 2016  Igalia S.L.
+Copyright © 2022  Matthias Clasen
+Copyright © 2018,2021  Khaled Hosny
+Copyright © 2018,2019,2020  Adobe, Inc
+Copyright © 2013-2015  Alexei Podtelezhnikov
+
+BundledLibjpeg
+  License: IJG AND BSD-3-Clause
+  Copyright: Copyright (C) 2009-2026 D. R. Commander
+Copyright (C) 1991-1998 Thomas G. Lane
+Copyright (C) 2009 Pierre Ossman for Cendio AB
+Copyright (C) 1999-2006 MIYASAKA Masaru
+Copyright (C) 1999 Ken Murchison
+Copyright (C) 2015-2016, 2018, 2022 Matthieu Darbois
+Copyright (C) 2018 Matthias Räncker
+Copyright (C) 2019-2020 Arm Limited
+Copyright (C) 2022 Felix Hanau
+Copyright (C) 1997-1998 Thomas G. Lane, Todd Newman
+Copyright (C) 2021 Alex Richardson
+Copyright (C) 2015, 2020 Google, Inc.
+Copyright (C) 2013 Linaro Limited
+Copyright (C) 2014 Olle Liljenzin
+Copyright (C) 1991-2020 Thomas G. Lane, Guido Vollbeding
+
+
+BundledLibjpeg12bits
+  License: IJG AND BSD-3-Clause
+  Copyright: Copyright (C) 2009-2026 D. R. Commander
+Copyright (C) 1991-1998 Thomas G. Lane
+Copyright (C) 2009 Pierre Ossman for Cendio AB
+Copyright (C) 1999-2006 MIYASAKA Masaru
+Copyright (C) 1999 Ken Murchison
+Copyright (C) 2015-2016, 2018, 2022 Matthieu Darbois
+Copyright (C) 2018 Matthias Räncker
+Copyright (C) 2019-2020 Arm Limited
+Copyright (C) 2022 Felix Hanau
+Copyright (C) 1997-1998 Thomas G. Lane, Todd Newman
+Copyright (C) 2021 Alex Richardson
+Copyright (C) 2015, 2020 Google, Inc.
+Copyright (C) 2013 Linaro Limited
+Copyright (C) 2014 Olle Liljenzin
+Copyright (C) 1991-2020 Thomas G. Lane, Guido Vollbeding
+
+
+BundledLibjpeg16bits
+  License: IJG AND BSD-3-Clause
+  Copyright: Copyright (C) 2009-2026 D. R. Commander
+Copyright (C) 1991-1998 Thomas G. Lane
+Copyright (C) 2009 Pierre Ossman for Cendio AB
+Copyright (C) 1999-2006 MIYASAKA Masaru
+Copyright (C) 1999 Ken Murchison
+Copyright (C) 2015-2016, 2018, 2022 Matthieu Darbois
+Copyright (C) 2018 Matthias Räncker
+Copyright (C) 2019-2020 Arm Limited
+Copyright (C) 2022 Felix Hanau
+Copyright (C) 1997-1998 Thomas G. Lane, Todd Newman
+Copyright (C) 2021 Alex Richardson
+Copyright (C) 2015, 2020 Google, Inc.
+Copyright (C) 2013 Linaro Limited
+Copyright (C) 2014 Olle Liljenzin
+Copyright (C) 1991-2020 Thomas G. Lane, Guido Vollbeding
+
+
+BundledLibpng
+  License: Libpng AND libpng-2.0
+  Copyright: Copyright (c) 1995-2026 The PNG Reference Library Authors
+Copyright (c) 2000-2026 Cosmin Truta
+Copyright (c) 1998-2018 Glenn Randers-Pehrson
+Copyright (c) 1996-1997 Andreas Dilger
+Copyright (c) 1995-1996 Guy Eric Schalnat, Group 42, Inc.
+Copyright (c) 2000-2017 Simon-Pierre Cadieux
+Copyright (c) 2000-2017 Eric S. Raymond
+Copyright (c) 2000-2017 Mans Rullgard
+Copyright (c) 2000-2017 Gilles Vollant
+Copyright (c) 2000-2017 James Yu
+Copyright (c) 2000-2017 Mandar Sahastrabuddhe
+Copyright (c) 1998-2000 Tom Lane
+Copyright (c) 1998-2000 Willem van Schaik
+Copyright (c) 1996-1997 John Bowler
+Copyright (c) 1996-1997 Kevin Bracey
+Copyright (c) 1996-1997 Sam Bushell
+Copyright (c) 1996-1997 Magnus Holmgren
+Copyright (c) 1996-1997 Greg Roelofs
+Copyright (c) 1996-1997 Tom Tanner
+Copyright (c) 1995-1996 Dave Martindale
+Copyright (c) 1995-1996 Paul Schmidt
+Copyright (c) 1995-1996 Tim Wegner
+
+BundledPcre2
+  License: LicenseRef-BSD-3-Clause-with-PCRE2-Binary-Like-Packages-Exception
+  Copyright: Copyright (c) 1997-2007 University of Cambridge
+Copyright (c) 2007-2024 Philip Hazel
+Copyright (c) 2010-2024 Zoltan Herczeg
+
+BundledPcre2_Attribution_pcre2-sljit
+  License: BSD-2-Clause
+  Copyright: Copyright Zoltan Herczeg
+
+BundledZLIB
+  License: Zlib
+  Copyright: (C) 1995-2026 Jean-loup Gailly and Mark Adler
+
+CMake
+  License: NOASSERTION
+  Copyright: NOASSERTION
+
+CMake generator Ninja
+  License: NOASSERTION
+  Copyright: NOASSERTION
+
+Compiler Clang
+  License: NOASSERTION
+  Copyright: NOASSERTION
+
+Concurrent
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+Core
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+Core_Attribution_blake2
+  License: CC0-1.0 OR Apache-2.0
+  Copyright: Copyright 2012, Samuel Neves <sneves@dei.uc.pt>
+
+Core_Attribution_doubleconversion
+  License: BSD-3-Clause
+  Copyright: Copyright 2006-2012, the V8 project authors
+
+Core_Attribution_easing
+  License: BSD-3-Clause
+  Copyright: Copyright (c) 2001 Robert Penner
+
+Core_Attribution_md4
+  License: CC0-1.0
+  Copyright: Written by Alexander Peslyak - better known as Solar Designer <solar@openwall.com> - in 2001, and placed in the public domain. There's absolutely no warranty.
+
+Core_Attribution_md5
+  License: CC0-1.0
+  Copyright: Written by Colin Plumb in 1993, no copyright is claimed. Ian Jackson <ian@chiark.greenend.org.uk>.
+
+Core_Attribution_rfc6234
+  License: BSD-3-Clause
+  Copyright: Copyright (c) 2011 IETF Trust and the persons identified as authors of the code.
+
+Core_Attribution_sha1
+  License: LicenseRef-SHA1-Public-Domain
+  Copyright: Copyright (C) Dominik Reichl <dominik.reichl@t-online.de>
+Copyright (C) 2016 The Qt Company Ltd
+
+Core_Attribution_sha3_endian
+  License: BSD-2-Clause
+  Copyright: Copyright (c) 1998-2013, Brian Gladman, Worcester, UK. All rights reserved.
+
+Core_Attribution_sha3_keccak
+  License: CC0-1.0
+  Copyright: Guido Bertoni, Joan Daemen, Michaël Peeters and Gilles Van Assche.
+To the extent possible under law, the implementers have waived all copyright
+and related or neighboring rights to the source code in this file.
+
+Core_Attribution_siphash
+  License: CC0-1.0
+  Copyright: Copyright (C) 2012-2014 Jean-Philippe Aumasson
+Copyright (C) 2012-2014 Daniel J. Bernstein <djb@cr.yp.to>
+Copyright (C) 2016 Intel Corporation
+
+Core_Attribution_tika-mimetypes
+  License: Apache-2.0
+  Copyright: Copyright 2026 The Apache Software Foundation
+
+Core_Attribution_tinycbor
+  License: MIT
+  Copyright: Copyright (C) 2015-2025 Intel Corporation
+
+Core_Attribution_tlexpected
+  License: CC0-1.0
+  Copyright: To the extent possible under law, Sy Brand has waived all copyright and related or neighboring rights to the expected library. This work is published from: United Kingdom.
+
+Core_Attribution_unicode-character-database
+  License: Unicode-3.0
+  Copyright: Copyright (C) 1991-2025 Unicode, Inc.
+
+Core_Attribution_unicode-cldr
+  License: Unicode-3.0
+  Copyright: Copyright (C) 2004-2025 Unicode, Inc.
+
+EGL
+  License: NOASSERTION
+  Copyright: NOASSERTION
+
+FreetypePrivate
+  License: FTL OR GPL-2.0-only
+  Copyright: Copyright (c) 2007-2014 Adobe Systems Incorporated
+Copyright (c) 2004-2026 Albert Chin-A-Young
+Copyright (c) 2018-2026 Armin Hasitzka, David Turner, Robert Wilhelm, and Werner Lemberg
+Copyright (c) 2000 Computing Research Labs, New Mexico State University
+Copyright (c) 1996-2026 David Turner, Robert Wilhelm, Dominik Röttsches, and Werner Lemberg
+Copyright (c) 2004-2026 David Turner, Robert Wilhelm, Werner Lemberg and George Williams
+Copyright (c) 2022-2026 David Turner, Robert Wilhelm, Werner Lemberg, and Moazin Khatti
+Copyright (c) 2008-2026 David Turner, Robert Wilhelm, Werner Lemberg, and suzuki toshiya
+Copyright (c) 2003-2026 David Turner, Robert Wilhelm, and Werner Lemberg
+Copyright (c) 2005-2026 David Turner
+Copyright (c) 2007-2026 Derek Clegg and Michael Toftdal
+Copyright (c) 2007 Dmitry Timoshkov for Codeweavers
+Copyright (c) 2001-2015 Francesco Zappa Nardelli
+Copyright (c) 2005, 2007, 2008, 2013 George Williams
+Copyright (c) 2013-2026 Google, Inc. Google Author(s) Behdad Esfahbod and Stuart Gill
+Copyright (c) 2013-2022 Google, Inc.
+Copyright (c) 2003 Huw D M Davies for Codeweavers
+Copyright (c) 2010-2026 Joel Klinghed
+Copyright (c) 1996-2026 Just van Rossum, David Turner, Robert Wilhelm, and Werner Lemberg
+Copyright (c) 2003-2026 Masatake YAMATO and Redhat K.K.
+Copyright (c) 2004-2026 Masatake YAMATO, Redhat K.K, David Turner, Robert Wilhelm, and Werner Lemberg
+Copyright (c) 2019-2026 Nikhil Ramakrishnan, David Turner, Robert Wilhelm, and Werner Lemberg
+Copyright (c) 2009-2026 Oran Agra and Mickey Gabel
+Copyright (c) 2007-2026 Rahul Bhalerao <rahul.bhalerao@redhat.com>
+Copyright (c) 2002-2026 Roberto Alameda
+Copyright (c) 2015-2026 Werner Lemberg
+Copyright (c) 2004-2026 suzuki toshiya, Masatake YAMATO, Red Hat K.K., David Turner, Robert Wilhelm, and Werner Lemberg
+Copyright (c) 2019 nyorain
+Copyright (c) 2022-2026 David Turner, Robert Wilhelm, Werner Lemberg, George Williams, and Dominik Röttsches
+Copyright (C) 2009, 2023  Red Hat, Inc.
+
+FreetypePrivate_Attribution_freetype-bdf
+  License: MIT
+  Copyright: Copyright (c) 2000 Computing Research Labs, New Mexico State University
+Copyright (c) 2001-2014 Francesco Zappa Nardelli
+
+FreetypePrivate_Attribution_freetype-pcf
+  License: MIT AND MIT-open-group
+  Copyright: Copyright (c) 2001, 2012 David Turner, Robert Wilhelm, and Werner Lemberg
+Copyright (c) 2000-2014 Francesco Zappa Nardelli
+Copyright (c) 1990, 1994, 1998 The Open Group
+
+FreetypePrivate_Attribution_freetype-zlib
+  License: Zlib
+  Copyright: Copyright (C) 1995-2024 Jean-loup Gailly and Mark Adler
+
+GLESv2
+  License: NOASSERTION
+  Copyright: NOASSERTION
+
+GlobalConfig
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+GlobalConfigPrivate
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+Gui
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+Gui_Attribution_aglfn
+  License: BSD-3-Clause
+  Copyright: Copyright 2002, 2003, 2005, 2006, 2008, 2010, 2015 Adobe Systems
+
+Gui_Attribution_emoji-segmenter
+  License: Apache-2.0
+  Copyright: Copyright 2019 Google LLC
+
+Gui_Attribution_grayraster
+  License: FTL OR GPL-2.0-only
+  Copyright: Copyright 2000-2016 by David Turner, Robert Wilhelm, and Werner Lemberg.
+
+Gui_Attribution_icc-srgb-color-profile
+  License: LicenseRef-ICC-License
+  Copyright: Copyright International Color Consortium, 2015
+
+Gui_Attribution_md4c
+  License: MIT
+  Copyright: Copyright © 2016-2024 Martin Mitáš
+
+Gui_Attribution_opengl-es2-headers
+  License: MIT
+  Copyright: Copyright (c) 2013-2014 The Khronos Group Inc.
+
+Gui_Attribution_opengl-headers
+  License: MIT
+  Copyright: Copyright (c) 2013-2014 The Khronos Group Inc.
+
+Gui_Attribution_pixman
+  License: MIT
+  Copyright: Copyright © 2009 Nokia Corporation
+
+Gui_Attribution_rhi-miniengine-d3d12-mipmap
+  License: MIT
+  Copyright: Copyright (c) 2015 Microsoft
+
+Gui_Attribution_smooth-scaling-algorithm
+  License: BSD-2-Clause AND Imlib2
+  Copyright: Copyright (C) 2004, 2005 Daniel M. Duley.
+(C) Carsten Haitzler and various contributors.
+(C) Willem Monsuwe <willem@stack.nl>
+
+Gui_Attribution_vulkanmemoryallocator
+  License: MIT
+  Copyright: Copyright (c) 2017-2025 Advanced Micro Devices, Inc. All rights reserved.
+
+Gui_Attribution_webgradients
+  License: MIT
+  Copyright: Copyright (c) 2017 itmeo
+
+Gui_Attribution_xserverhelper
+  License: X11 AND HPND
+  Copyright: Copyright (c) 1987, 1988 X Consortium
+Copyright 1987, 1988 by Digital Equipment Corporation, Maynard, Massachusetts.
+
+Gui_Attribution_zlib
+  License: Zlib
+  Copyright: (C) 1995-2026 Jean-loup Gailly and Mark Adler
+
+HarfbuzzPrivate
+  License: MIT
+  Copyright: Copyright © 2010-2022  Google, Inc.
+Copyright © 2015-2020  Ebrahim Byagowi
+Copyright © 2019,2020  Facebook, Inc.
+Copyright © 2012,2015  Mozilla Foundation
+Copyright © 2011  Codethink Limited
+Copyright © 2008,2010  Nokia Corporation and/or its subsidiary(-ies)
+Copyright © 2009  Keith Stribley
+Copyright © 2011  Martin Hosken and SIL International
+Copyright © 2007  Chris Wilson
+Copyright © 2005,2006,2020,2021,2022,2023  Behdad Esfahbod
+Copyright © 2004,2007,2008,2009,2010,2013,2021,2022,2023  Red Hat, Inc.
+Copyright © 1998-2005  David Turner and Werner Lemberg
+Copyright © 2016  Igalia S.L.
+Copyright © 2022  Matthias Clasen
+Copyright © 2018,2021  Khaled Hosny
+Copyright © 2018,2019,2020  Adobe, Inc
+Copyright © 2013-2015  Alexei Podtelezhnikov
+
+JpegPrivate
+  License: IJG AND BSD-3-Clause
+  Copyright: Copyright (C) 2009-2026 D. R. Commander
+Copyright (C) 1991-1998 Thomas G. Lane
+Copyright (C) 2009 Pierre Ossman for Cendio AB
+Copyright (C) 1999-2006 MIYASAKA Masaru
+Copyright (C) 1999 Ken Murchison
+Copyright (C) 2015-2016, 2018, 2022 Matthieu Darbois
+Copyright (C) 2018 Matthias Räncker
+Copyright (C) 2019-2020 Arm Limited
+Copyright (C) 2022 Felix Hanau
+Copyright (C) 1997-1998 Thomas G. Lane, Todd Newman
+Copyright (C) 2021 Alex Richardson
+Copyright (C) 2015, 2020 Google, Inc.
+Copyright (C) 2013 Linaro Limited
+Copyright (C) 2014 Olle Liljenzin
+Copyright (C) 1991-2020 Thomas G. Lane, Guido Vollbeding
+
+
+Linker
+  License: NOASSERTION
+  Copyright: NOASSERTION
+
+Network
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+Network_Attribution_zlib
+  License: Zlib
+  Copyright: (C) 1995-2026 Jean-loup Gailly and Mark Adler
+
+OpenGL
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+OpenGLWidgets
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+Platform
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+PlatformAppInternal
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+PlatformCommonInternal
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+PlatformExampleInternal
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+PlatformModuleInternal
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+PlatformPluginInternal
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+PlatformToolInternal
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+Platform_Attribution_extra-cmake-modules
+  License: BSD-3-Clause
+  Copyright: Copyright © 2011-2018 The KDE community
+
+Platform_Attribution_kwin
+  License: BSD-3-Clause
+  Copyright: Copyright 2014 Alex Merry <alex.merry@kde.org>
+Copyright 2014 Martin Gräßlin <mgraesslin@kde.org>
+Copyright (c) 2006,2007 Laurent Montel, <montel@kde.org>
+
+PngPrivate
+  License: Libpng AND libpng-2.0
+  Copyright: Copyright (c) 1995-2026 The PNG Reference Library Authors
+Copyright (c) 2000-2026 Cosmin Truta
+Copyright (c) 1998-2018 Glenn Randers-Pehrson
+Copyright (c) 1996-1997 Andreas Dilger
+Copyright (c) 1995-1996 Guy Eric Schalnat, Group 42, Inc.
+Copyright (c) 2000-2017 Simon-Pierre Cadieux
+Copyright (c) 2000-2017 Eric S. Raymond
+Copyright (c) 2000-2017 Mans Rullgard
+Copyright (c) 2000-2017 Gilles Vollant
+Copyright (c) 2000-2017 James Yu
+Copyright (c) 2000-2017 Mandar Sahastrabuddhe
+Copyright (c) 1998-2000 Tom Lane
+Copyright (c) 1998-2000 Willem van Schaik
+Copyright (c) 1996-1997 John Bowler
+Copyright (c) 1996-1997 Kevin Bracey
+Copyright (c) 1996-1997 Sam Bushell
+Copyright (c) 1996-1997 Magnus Holmgren
+Copyright (c) 1996-1997 Greg Roelofs
+Copyright (c) 1996-1997 Tom Tanner
+Copyright (c) 1995-1996 Dave Martindale
+Copyright (c) 1995-1996 Paul Schmidt
+Copyright (c) 1995-1996 Tim Wegner
+
+PrintSupport
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QGifPlugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QICOPlugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QJpegPlugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QSQLiteDriverPlugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QSQLiteDriverPlugin_Attribution_sqlite
+  License: blessing
+  Copyright: The authors disclaim copyright to the source code. However, a license can be obtained if needed.
+
+QTlsBackendCertOnlyPlugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QTuioTouchPlugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QWasmIntegrationPlugin
+  License: LicenseRef-Qt-Commercial OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QWasmIntegrationPlugin_Attribution_dejayvu
+  License: Bitstream-Vera
+  Copyright: Copyright (c) 2003 by Bitstream, Inc
+Copyright (c) 2006 by Tavmjong Bah
+(c) American Mathematical Society
+
+Sql
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+Test
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+TestInternalsPrivate
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+TestInternalsPrivate_Attribution_cmake-runcmake-test-modules
+  License: BSD-3-Clause
+  Copyright: Copyright © 2000-2024 Kitware, Inc. and Contributors
+
+Test_Attribution_catch2
+  License: BSL-1.0
+  Copyright: Copyright (c) 2022 Two Blue Cubes Ltd. All rights reserved.
+
+Test_Attribution_cycle
+  License: MIT
+  Copyright: Copyright (c) 2003, 2007-14 Matteo Frigo
+Copyright (c) 2003, 2007-14 Massachusetts Institute of Technology
+
+Test_Attribution_linuxperf
+  License: GPL-2.0-only WITH Linux-syscall-note
+  Copyright: Copyright (C) 2008-2009, Thomas Gleixner <tglx@linutronix.de>
+Copyright (C) 2008-2011, Red Hat, Inc., Ingo Molnar
+Copyright (C) 2008-2011, Red Hat, Inc., Peter Zijlstra
+
+Test_Attribution_valgrind
+  License: BSD-4-Clause
+  Copyright: Copyright (C) 2000-2017 Julian Seward
+Copyright (C) 2003-2017 Josef Weidendorfer.
+
+Widgets
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+WrapAtomic
+  License: NOASSERTION
+  Copyright: NOASSERTION
+
+WrapRt
+  License: NOASSERTION
+  Copyright: NOASSERTION
+
+Xml
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+ZlibPrivate
+  License: Zlib
+  Copyright: (C) 1995-2026 Jean-loup Gailly and Mark Adler
+
+qtbase
+  License: NOASSERTION
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+CMake
+  License: NOASSERTION
+  Copyright: NOASSERTION
+
+CMake generator Ninja
+  License: NOASSERTION
+  Copyright: NOASSERTION
+
+Compiler Clang
+  License: NOASSERTION
+  Copyright: NOASSERTION
+
+LabsAnimation
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+LabsFolderListModel
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+LabsPlatform
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+LabsPlatformplugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+LabsQmlModels
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+LabsSettings
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+LabsStyleKit
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+LabsStyleKitImpl
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+LabsStyleKitImplplugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+LabsStyleKitplugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+LabsSynchronizer
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+LabsSynchronizerplugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+LabsWavefrontMesh
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+Linker
+  License: NOASSERTION
+  Copyright: NOASSERTION
+
+Qml
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QmlCompiler
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QmlCore
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QmlDomPrivate
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QmlFormatPrivate
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QmlIntegration
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QmlLocalStorage
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QmlMeta
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QmlModels
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QmlNetwork
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QmlNetworkplugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QmlToolingSettingsPrivate
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QmlTypeRegistrarPrivate
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QmlXmlListModel
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+Qml_Attribution_masm
+  License: BSD-2-Clause
+  Copyright: Copyright (C) 2003-2018 Apple Inc. All rights reserved.
+Copyright (C) 2007 Justin Haygood (jhaygood@reaktix.com)
+Copyright (C) 2007-2009 Torch Mobile, Inc. All rights reserved. (http://www.torchmobile.com/)
+Copyright (C) 2009, 2010 University of Szeged
+Copyright (C) 2009-2011 STMicroelectronics. All rights reserved.
+Copyright (C) 2010 MIPS Technologies, Inc. All rights reserved.
+Copyright (C) 2010 Peter Varga (pvarga@inf.u-szeged.hu), University of Szeged
+Copyright (C) 2010 MIPS Technologies, Inc. All rights reserved.
+Copyright (C) 2010, 2011 Research In Motion Limited. All rights reserved.
+Copyright (C) 2011 Google Inc. All rights reserved.
+Copyright (C) 2013 Samsung Electronics. All rights reserved.
+Copyright (C) 2015 Cisco Systems, Inc. All rights reserved.
+Copyright (c) 2002-2009 Vivek Thampi
+
+QmltcPrivate
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+Quick
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QuickControls2
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QuickControls2Basic
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QuickControls2BasicStyleImpl
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QuickControls2FluentWinUI3StyleImpl
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QuickControls2Fusion
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QuickControls2FusionStyleImpl
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QuickControls2Imagine
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QuickControls2ImagineStyleImpl
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QuickControls2Impl
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QuickControls2Material
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QuickControls2MaterialStyleImpl
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QuickControls2Material_Attribution_shadow_angular_material
+  License: MIT
+  Copyright: Copyright (c) 2014-2016 Google, Inc
+
+QuickControls2Universal
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QuickControls2UniversalStyleImpl
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QuickControlsTestUtilsPrivate
+  License: LicenseRef-Qt-Commercial OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QuickControlsTestUtilsPrivateplugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QuickDialogs2
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QuickDialogs2QuickImpl
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QuickDialogs2Utils
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QuickEffects
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QuickLayouts
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QuickLayouts_Attribution_yoga
+  License: MIT
+  Copyright: Copyright (c) Facebook, Inc. and its affiliates.
+Copyright (c) Meta Platforms, Inc. and affiliates.
+
+QuickParticlesPrivate
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QuickShapes
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QuickShapesDesignHelpersPrivate
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QuickTemplates2
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QuickTest
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QuickTestUtilsPrivate
+  License: LicenseRef-Qt-Commercial OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QuickTestplugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QuickVectorImage
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QuickVectorImageGeneratorPrivate
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QuickVectorImageHelpers
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QuickWidgets
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+effectsplugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+labsanimationplugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+labsmodelsplugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+modelsplugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+particlesplugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+qmlfolderlistmodelplugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+qmllocalstorageplugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+qmlplugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+qmlsettingsplugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+qmlshapesplugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+qmlwavefrontmeshplugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+qmlxmllistmodelplugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+qquicklayoutsplugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+qquickvectorimagehelpersplugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+qquickvectorimageplugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+qtdeclarative
+  License: NOASSERTION
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+qtqmlcoreplugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+qtquick2plugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+qtquickcontrols2basicstyleimplplugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+qtquickcontrols2basicstyleplugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+qtquickcontrols2fluentwinui3styleimplplugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+qtquickcontrols2fluentwinui3styleplugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+qtquickcontrols2fusionstyleimplplugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+qtquickcontrols2fusionstyleplugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+qtquickcontrols2imaginestyleimplplugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+qtquickcontrols2imaginestyleplugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+qtquickcontrols2implplugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+qtquickcontrols2materialstyleimplplugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+qtquickcontrols2materialstyleplugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+qtquickcontrols2materialstyleplugin_Attribution_shadow_angular_material
+  License: MIT
+  Copyright: Copyright (c) 2014-2016 Google, Inc
+
+qtquickcontrols2plugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+qtquickcontrols2universalstyleimplplugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+qtquickcontrols2universalstyleplugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+qtquickdialogs2quickimplplugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+qtquickdialogsplugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+qtquickshapesdesignhelpersplugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+qtquicktemplates2plugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+quicktooling
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+quickwindow
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+CMake
+  License: NOASSERTION
+  Copyright: NOASSERTION
+
+CMake generator Ninja
+  License: NOASSERTION
+  Copyright: NOASSERTION
+
+Compiler Clang
+  License: NOASSERTION
+  Copyright: NOASSERTION
+
+Linker
+  License: NOASSERTION
+  Copyright: NOASSERTION
+
+QSvgIconPlugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+QSvgPlugin
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+Svg
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+SvgWidgets
+  License: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.
+
+Svg_Attribution_xsvg
+  License: HPND-sell-variant
+  Copyright: Copyright 2002 USC/Information Sciences Institute
+
+qtsvg
+  License: NOASSERTION
+  Copyright: Copyright (C) The Qt Company Ltd. and other contributors.

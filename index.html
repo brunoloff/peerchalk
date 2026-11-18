@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<base href="/peerchalk/">
+<meta name="viewport" content="width=device-width, height=device-height, user-scalable=0">
+<title>PeerChalk</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #f7f6f2; }
+  #screen { width: 100%; height: 100%; display: none; }
+  #status { position: fixed; inset: 0; display: grid; place-content: center; text-align: center;
+            color: #1c1b19; font: 16px/1.5 system-ui, sans-serif; }
+  #status strong { display: block; font-size: 26px; font-weight: 600; }
+</style>
+</head>
+<body>
+<div id="status"><div><strong>PeerChalk</strong><span id="message">Loading…</span></div></div>
+<div id="screen"></div>
+<script src="peerchalk.js"></script>
+<script>
+  // Starts the WebAssembly app in #screen, then runs its main function.
+  async function startPeerChalk() {
+    const screen = document.getElementById("screen");
+    const status = document.getElementById("status");
+    const fail = (text) => {
+      document.getElementById("message").textContent = "PeerChalk could not start: " + text;
+      status.style.display = "grid";
+      screen.style.display = "none";
+    };
+    screen.style.display = "block";
+    try {
+      const app = await window.peerchalk_entry({
+        qtContainerElements: [screen],
+        noInitialRun: true,
+        onRuntimeInitialized: () => { status.style.display = "none"; },
+        onAbort: (reason) => fail(String(reason)),
+      });
+      app.callMain([]);
+    } catch (error) {
+      if (error !== "unwind") { // what the app's event loop throws when it starts normally
+        console.error(error);
+        fail(error.message || String(error));
+      }
+    }
+  }
+  startPeerChalk();
+</script>
+</body>
+</html>

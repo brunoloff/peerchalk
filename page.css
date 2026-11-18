@@ -1,0 +1,7 @@
+:root { color-scheme: light; --ink: #1c1b19; --muted: #625f59; --paper: #f7f6f2; --accent: #2f5bea; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.55 system-ui, sans-serif; }
+main { max-width: 680px; margin: 0 auto; padding: 40px 20px 64px; }
+h1 { font-size: 30px; font-weight: 600; margin: 0 0 16px; }
+h2 { font-size: 19px; font-weight: 600; margin: 28px 0 8px; }
+a { color: var(--accent); }
+li { margin: 6px 0; }

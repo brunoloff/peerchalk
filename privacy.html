@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PeerChalk privacy</title>
+<link rel="stylesheet" href="page.css">
+</head>
+<body>
+<main>
+<h1>Privacy</h1>
+<p>PeerChalk is an early test version. It has no account server, no analytics and no
+advertising.</p>
+<h2>What stays on your device</h2>
+<p>Your account, its secret keys, your known people and your boards are stored in this
+browser, unencrypted, on this device, once per open tab. Clearing the site's data deletes them. Backups you save
+are encrypted with your passphrase.</p>
+<h2>Who you share boards with</h2>
+<p>Board contents, cursors and names go directly to the people you share a board with, over
+encrypted connections. They can keep what they receive, and removing someone does not delete
+their copy.</p>
+<h2>What network services can see</h2>
+<ul>
+<li>The people you connect to can see your IP address.</li>
+<li>GitHub hosts this site and receives your IP address when you load it.</li>
+<li>Jami's public OpenDHT proxy (dhtproxy.jami.net) helps devices find each other. It sees your
+    IP address and when you look for peers, but not board contents.</li>
+<li>Cloudflare's and Google's STUN servers see your IP address when connections are set up.</li>
+<li>If a TURN relay is used, it sees your IP address and how much data passes through it, but
+    not board contents.</li>
+</ul>
+<p>Anyone who has a board link can join that board while an owner is online, so share links
+only with people you trust.</p>
+</main>
+</body>
+</html>
