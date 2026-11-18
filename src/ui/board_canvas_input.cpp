@@ -36,6 +36,8 @@ void BoardCanvas::pointerPressed(QPointF position, std::optional<float> pressure
     if (gesture_ != Gesture::None)
         return;
     const Tool tool = forcePan ? Tool::Pan : tool_;
+    if (readOnly_ && tool != Tool::Pan)
+        return;
     lastPosition_ = position;
     if (tool == Tool::Pan) {
         gesture_ = Gesture::Panning;

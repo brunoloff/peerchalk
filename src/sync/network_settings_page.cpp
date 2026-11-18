@@ -22,7 +22,8 @@ QVariantMap Network::settings() const {
             {QStringLiteral("bootstrap"), saved.bootstrap},
             {QStringLiteral("dhtNetwork"), saved.dhtNetwork},
             {QStringLiteral("stun"), saved.stun},
-            {QStringLiteral("turn"), saved.turn}};
+            {QStringLiteral("turn"), saved.turn},
+            {QStringLiteral("dhtProxy"), saved.dhtProxy}};
 }
 
 QString Network::saveSettings(const QVariantMap &settings) {
@@ -32,6 +33,7 @@ QString Network::saveSettings(const QVariantMap &settings) {
     chosen.dhtNetwork = settings.value(QStringLiteral("dhtNetwork")).toString();
     chosen.stun = settings.value(QStringLiteral("stun")).toString();
     chosen.turn = settings.value(QStringLiteral("turn")).toString();
+    chosen.dhtProxy = settings.value(QStringLiteral("dhtProxy")).toString();
     try {
         chosen.save(library_.directory());
     } catch (const std::exception &error) {

@@ -18,7 +18,8 @@ RowLayout {
         elide: Text.ElideRight
         font.pixelSize: 12
         color: Theme.muted
-        text: Network.connectedDevices === 1 ? qsTr("Online · 1 device connected")
+        text: Network.updateNeeded ? qsTr("Update PeerChalk: someone here uses a newer version")
+            : Network.connectedDevices === 1 ? qsTr("Online · 1 device connected")
             : Network.connectedDevices > 1 ? qsTr("Online · %1 devices connected").arg(Network.connectedDevices)
             : Network.status
     }

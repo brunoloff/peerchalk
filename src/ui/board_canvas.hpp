@@ -37,6 +37,8 @@ class BoardCanvas : public QQuickItem {
     Q_PROPERTY(QColor gridColor READ gridColor WRITE setGridColor NOTIFY gridColorChanged)
     Q_PROPERTY(int strokeCount READ strokeCount NOTIFY strokesChanged)
     Q_PROPERTY(bool canUndo READ canUndo NOTIFY strokesChanged)
+    // Panning and zooming only; a stroke already being drawn may finish.
+    Q_PROPERTY(bool readOnly READ readOnly WRITE setReadOnly NOTIFY readOnlyChanged)
     Q_PROPERTY(QRectF contentBounds READ contentBounds NOTIFY strokesChanged)
     Q_PROPERTY(qreal zoom READ zoom NOTIFY viewChanged)
     Q_PROPERTY(QPointF viewCenter READ viewCenter NOTIFY viewChanged)
@@ -58,6 +60,8 @@ class BoardCanvas : public QQuickItem {
     void setGridColor(const QColor &color);
     [[nodiscard]] int strokeCount() const;
     [[nodiscard]] bool canUndo() const { return board().canUndo(); }
+    [[nodiscard]] bool readOnly() const { return readOnly_; }
+    void setReadOnly(bool readOnly);
     [[nodiscard]] QRectF contentBounds() const; // null when the board is empty
     [[nodiscard]] qreal zoom() const { return viewport_.scale(); }
     [[nodiscard]] QPointF viewCenter() const;
@@ -82,6 +86,7 @@ class BoardCanvas : public QQuickItem {
 
   signals:
     void documentChanged();
+    void readOnlyChanged();
     void toolChanged();
     void penColorChanged();
     void penWidthChanged();
@@ -123,6 +128,7 @@ class BoardCanvas : public QQuickItem {
     [[nodiscard]] Board &editableBoard() { return document_->board(); }
 
     Tool tool_{Tool::Pen};
+    bool readOnly_{false};
     QColor penColor_{Qt::black};
     qreal penWidth_{3.0};
     QColor gridColor_{Qt::lightGray};

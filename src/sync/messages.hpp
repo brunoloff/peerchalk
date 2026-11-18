@@ -21,13 +21,23 @@ namespace peerchalk::sync {
 // untrusted: decoding returns nullopt for anything malformed, and callers still check
 // signatures and access.
 
+// This version of the protocol, and the oldest one it can still talk to. Raise the first
+// for additions older peers can ignore, and the second only for incompatible changes.
+inline constexpr int protocolVersion = 3;
+inline constexpr int minSupportedProtocol = 3;
+
 // First message on every connection: who the device is and acts for.
 struct Hello {
     QByteArray certificatePayload;
     QByteArray certificateSignature;
     QString displayName;
     int colorIndex{0};
+    int protocol{protocolVersion};
+    int minProtocol{minSupportedProtocol};
 };
+
+// Whether a peer's versions overlap with this one's.
+[[nodiscard]] bool protocolsCompatible(const Hello &hello);
 
 // Signed access changes (payload, signature) the receiver checks and may store (see
 // Workspace::acceptOps). Anyone who has them passes them on.
@@ -46,6 +56,28 @@ struct BoardUpdate {
     QUuid board;
     QByteArray update;
 };
+
+// What the sender has of a board (a Yrs state vector), so the peer sends only the rest.
+struct BoardState {
+    QUuid board;
+    QByteArray stateVector;
+};
+
+// One piece of a message too large to send whole (see message_parts.hpp).
+struct MessagePart {
+    quint32 index{0};
+    quint32 count{0};
+    QByteArray data;
+};
+
+// Presents a board link's token to one of the board's owners, asking to be admitted.
+struct BoardLinkJoin {
+    QUuid board;
+    QByteArray token;
+};
+
+// A message of a type this version does not know: from a newer one, and ignored.
+struct UnknownMessage {};
 
 // The sender's new display name and colour, after a change.
 struct Profile {
@@ -76,8 +108,8 @@ struct LiveStroke {
     std::vector<StrokePoint> points; // at most maxLiveStrokePoints
 };
 
-using Message =
-    std::variant<Hello, AccessChanges, Personal, BoardUpdate, Presence, Profile, LiveStroke>;
+using Message = std::variant<Hello, AccessChanges, Personal, BoardUpdate, Presence, Profile,
+                             LiveStroke, BoardState, MessagePart, BoardLinkJoin, UnknownMessage>;
 
 [[nodiscard]] QByteArray encode(const Message &message);
 [[nodiscard]] std::optional<Message> decode(const QByteArray &bytes);

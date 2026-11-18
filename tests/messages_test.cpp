@@ -99,9 +99,56 @@ TEST(Messages, RejectsMalformedLiveStrokes) {
     EXPECT_FALSE(decode(bytes + 'x').has_value());
 }
 
+TEST(Messages, TypesFromNewerVersionsAreRecognisedAsUnknown) {
+    const auto decoded = decode(QByteArray("\x7f"
+                                           "anything",
+                                           9));
+    ASSERT_TRUE(decoded.has_value());
+    EXPECT_TRUE(std::holds_alternative<UnknownMessage>(*decoded));
+}
+
+TEST(Messages, HelloCarriesProtocolVersions) {
+    const Hello hello = roundTrip<Hello>(Hello{"c", "s", QStringLiteral("Ana"), 0, 7, 2});
+    EXPECT_EQ(hello.protocol, 7);
+    EXPECT_EQ(hello.minProtocol, 2);
+    EXPECT_TRUE(protocolsCompatible(hello));
+}
+
+TEST(Messages, VersionsMustOverlap) {
+    EXPECT_FALSE(protocolsCompatible(Hello{{}, {}, {}, 0, minSupportedProtocol - 1, 1}));
+    EXPECT_FALSE(
+        protocolsCompatible(Hello{{}, {}, {}, 0, protocolVersion + 2, protocolVersion + 1}));
+    // A Hello without versions comes from before they existed.
+    const auto old = decode(QByteArray("\x01{\"certificate\":\"\",\"signature\":\"\"}"));
+    ASSERT_TRUE(old.has_value());
+    EXPECT_FALSE(protocolsCompatible(std::get<Hello>(*old)));
+}
+
+TEST(Messages, BoardStatesAndPartsRoundTrip) {
+    const QUuid board = QUuid::createUuid();
+    const BoardState state = roundTrip<BoardState>(BoardState{board, "vector"});
+    EXPECT_EQ(state.board, board);
+    EXPECT_EQ(state.stateVector, QByteArray("vector"));
+    const MessagePart part = roundTrip<MessagePart>(MessagePart{1, 3, "data"});
+    EXPECT_EQ(part.index, 1U);
+    EXPECT_EQ(part.count, 3U);
+    EXPECT_EQ(part.data, QByteArray("data"));
+    EXPECT_FALSE(decode(encode(MessagePart{3, 3, "data"})).has_value());
+}
+
+TEST(Messages, BoardLinkJoinsRoundTripAndNeedAWholeToken) {
+    const QUuid board = QUuid::createUuid();
+    const QByteArray token(32, 't');
+    const BoardLinkJoin join = roundTrip<BoardLinkJoin>(BoardLinkJoin{board, token});
+    EXPECT_EQ(join.board, board);
+    EXPECT_EQ(join.token, token);
+    EXPECT_FALSE(decode(encode(BoardLinkJoin{board, "short"})).has_value());
+}
+
 TEST(Messages, RejectsMalformedInput) {
     EXPECT_FALSE(decode({}).has_value());
-    EXPECT_FALSE(decode(QByteArray("\x09{}", 3)).has_value());       // unknown type
+    EXPECT_FALSE(decode(QByteArray("\x09{}", 3)).has_value());       // board state, no id
+    EXPECT_FALSE(decode(QByteArray("\x08\0\0", 3)).has_value());     // part without a header
     EXPECT_FALSE(decode(QByteArray("\x01not json", 9)).has_value()); // bad JSON
     EXPECT_FALSE(decode(QByteArray("\x04short", 6)).has_value());    // no board id
     EXPECT_FALSE(decode(QByteArray("\x01{\"certificate\":\"%%\"}")).has_value());

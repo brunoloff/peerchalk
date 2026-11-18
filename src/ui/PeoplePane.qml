@@ -56,7 +56,7 @@ Item {
         id: linkDeviceDialog
 
         title: qsTr("Link another device")
-        explanation: qsTr("On the other device, choose “Link this device” on the welcome screen and paste this code. It contains your secret key: anyone who has it can act as you, so move it only between your own devices and never send it to anyone.")
+        explanation: qsTr("On the other device, choose “Link with another device” on the account screen and paste this code. It contains your secret key: anyone who has it can act as you, so move it only between your own devices and never send it to anyone.")
     }
 
     TextInputDialog {

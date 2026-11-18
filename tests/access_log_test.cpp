@@ -99,6 +99,41 @@ TEST_F(AccessLogTest, OnlyTheAnchoredCreatorCounts) {
     EXPECT_FALSE(forged.exists);
 }
 
+TEST_F(AccessLogTest, OwnersSetBoardLinksAndRemovalsAreRemembered) {
+    const auto board = [&](const User &signer, Action action, const QByteArray &hash = {},
+                           const QByteArray &user = {}, Role role = Role::None) {
+        AccessOp op;
+        op.kind = ResourceKind::Board;
+        op.resource = id_;
+        op.clock = ++clock_;
+        op.signer = signer.key();
+        op.action = action;
+        op.linkHash = hash;
+        op.user = user;
+        op.role = role;
+        op.name = action == Action::Create ? QStringLiteral("Board") : QString();
+        const SignedOp signedOp = signOp(op, signer.identity.signer());
+        ASSERT_TRUE(verifyOp(signedOp.payload, signedOp.signature).has_value());
+        ops_.push_back(signedOp);
+    };
+    ops_.clear();
+    const QByteArray first(32, 'a');
+    board(admin_, Action::Create);
+    board(admin_, Action::SetRole, {}, owner_.key(), Role::Owner);
+    board(admin_, Action::SetRole, {}, member_.key(), Role::Member);
+    board(member_, Action::SetLink, first); // members cannot
+    const auto current = [&] { return replay(ops_, ResourceKind::Board, id_, admin_.key(), {}); };
+    EXPECT_TRUE(current().linkHash.isEmpty());
+    board(owner_, Action::SetLink, first);
+    EXPECT_EQ(current().linkHash, first);
+    board(owner_, Action::SetRole, {}, member_.key(), Role::None);
+    EXPECT_TRUE(current().removed.contains(member_.key()));
+    board(owner_, Action::SetRole, {}, member_.key(), Role::Member);
+    EXPECT_FALSE(current().removed.contains(member_.key()));
+    board(owner_, Action::SetLink);
+    EXPECT_TRUE(current().linkHash.isEmpty());
+}
+
 TEST_F(AccessLogTest, TamperedChangesDoNotVerify) {
     QByteArray payload = ops_.front().payload;
     payload.replace("Thesis", "Thesiz");

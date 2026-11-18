@@ -84,7 +84,7 @@ void Network::flushPresence(const PeerId &id, Peer &peer) {
 
 // Peers who may not see the open board only learn that no board is open.
 Presence Network::presenceFor(const Peer &peer) const {
-    if (presenceBoard_.isNull() || !syncable(peer, presenceBoard_))
+    if (presenceBoard_.isNull() || !sharesLiveActivity(peer, presenceBoard_))
         return {QUuid(), QPointF(), false, presenceSequence_};
     return {presenceBoard_, cursor_, cursorVisible_, presenceSequence_};
 }
@@ -141,7 +141,7 @@ void Network::sendLiveStroke() {
     const QByteArray bytes = encode(*outgoingStroke_);
     std::set<SigningPublicKey> sent; // a device may be connected through several spaces
     for (const auto &[id, peer] : peers_) {
-        if (peer->ready && syncable(*peer, outgoingStroke_->board) &&
+        if (peer->ready && sharesLiveActivity(*peer, outgoingStroke_->board) &&
             peer->connection->datagrams_available() && !sent.contains(peer->device) &&
             peer->connection->send_datagram(byteView(bytes)) == SendStatus::Accepted)
             sent.insert(peer->device);
@@ -153,7 +153,7 @@ void Network::sendLiveStroke() {
 }
 
 void Network::handleLiveStroke(const Peer &peer, const LiveStroke &stroke) {
-    if (stroke.board != presenceBoard_ || !syncable(peer, stroke.board))
+    if (stroke.board != presenceBoard_ || !sharesLiveActivity(peer, stroke.board))
         return;
     const auto change =
         liveStrokes_.apply(toBytes(peer.device), stroke, LiveStrokeTracker::Clock::now());

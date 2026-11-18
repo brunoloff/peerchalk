@@ -24,6 +24,14 @@ QString path(const QString &directory, const char *name) {
 
 QString base64(const QByteArray &bytes) { return QString::fromLatin1(bytes.toBase64()); }
 
+QString newDeviceName() {
+#ifdef __EMSCRIPTEN__
+    return QStringLiteral("Web browser"); // the host name is only "emscripten" here
+#else
+    return QSysInfo::machineHostName();
+#endif
+}
+
 QByteArray newSigningSeed() {
     const p2pdc::Identity identity =
         unwrap(p2pdc::Identity::generate(), "Could not generate a signing identity");
@@ -91,7 +99,7 @@ void UserIdentity::loadDevice() {
         const SecretBytes secret{newRecipientSecret()};
         stored = QJsonObject{{"signingSeed", base64(seed.bytes)},
                              {"recipientSecret", base64(secret.bytes)},
-                             {"name", QSysInfo::machineHostName()}};
+                             {"name", newDeviceName()}};
         writeJsonObject(file, *stored, formatVersion, true);
     }
     try {

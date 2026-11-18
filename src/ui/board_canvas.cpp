@@ -115,7 +115,16 @@ QRectF BoardCanvas::visibleArea() const {
         viewport_.visibleWorld(static_cast<float>(width()), static_cast<float>(height())));
 }
 
+void BoardCanvas::setReadOnly(bool readOnly) {
+    if (readOnly == readOnly_)
+        return;
+    readOnly_ = readOnly;
+    emit readOnlyChanged();
+}
+
 void BoardCanvas::undo() {
+    if (readOnly_)
+        return;
     pointerCancelled();
     if (editableBoard().undo())
         redrawStrokes();

@@ -36,6 +36,22 @@ TEST_F(NetworkSettingsTest, DefaultsToThePublicNetwork) {
     ASSERT_NE(stun, nullptr);
     EXPECT_EQ(stun->host, "stun.cloudflare.com");
     EXPECT_EQ(stun->port, 3478);
+    EXPECT_EQ(config.dhtProxy, "https://dhtproxy.jami.net");
+}
+
+TEST_F(NetworkSettingsTest, DhtProxyIsSavedAndMustBeSecureUnlessLocal) {
+    NetworkSettings settings;
+    settings.dhtProxy = QStringLiteral(" https://proxy.example:8443 ");
+    settings.save(dir_.path());
+    const NetworkSettings loaded = NetworkSettings::load(dir_.path());
+    EXPECT_EQ(NetworkConfig::from(loaded).dhtProxy, "https://proxy.example:8443");
+    settings.dhtProxy = QStringLiteral("http://127.0.0.1:8080");
+    EXPECT_EQ(NetworkConfig::from(settings).dhtProxy, "http://127.0.0.1:8080");
+    for (const char *rejected : {"http://proxy.example", "proxy.example", "https://"}) {
+        settings.dhtProxy = QString::fromLatin1(rejected);
+        EXPECT_THROW(static_cast<void>(NetworkConfig::from(settings)), std::invalid_argument)
+            << rejected;
+    }
 }
 
 TEST_F(NetworkSettingsTest, SavedSettingsAreLoadedAgain) {

@@ -83,7 +83,7 @@ AbstractButton {
                     id: menu
 
                     MenuItem {
-                        text: card.admin ? qsTr("Share & projects…") : qsTr("Who has access…")
+                        text: card.admin ? qsTr("Share and projects…") : qsTr("Who has access…")
                         enabled: !card.pending
                         onTriggered: card.shareRequested(card.boardId)
                     }

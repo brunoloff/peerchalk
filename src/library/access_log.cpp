@@ -17,9 +17,10 @@ namespace {
 // never be replayed as another.
 const QString opType = QStringLiteral("peerchalk/access-op/v1");
 constexpr qsizetype maxPayloadSize = 16 * 1024;
-const std::array<QString, 6> actionNames = {QStringLiteral("create"), QStringLiteral("rename"),
+const std::array<QString, 7> actionNames = {QStringLiteral("create"), QStringLiteral("rename"),
                                             QStringLiteral("role"),   QStringLiteral("admin"),
-                                            QStringLiteral("board"),  QStringLiteral("delete")};
+                                            QStringLiteral("board"),  QStringLiteral("delete"),
+                                            QStringLiteral("link")};
 const std::array<QString, 3> roleNames = {QStringLiteral("none"), QStringLiteral("member"),
                                           QStringLiteral("owner")};
 
@@ -53,6 +54,8 @@ QJsonObject toJson(const AccessOp &op) {
         object["user"] = base64(op.user);
     if (op.action == AccessOp::Action::SetRole)
         object["role"] = roleNames.at(static_cast<std::size_t>(op.role));
+    if (op.action == AccessOp::Action::SetLink && !op.linkHash.isEmpty())
+        object["linkHash"] = base64(op.linkHash);
     if (op.action == AccessOp::Action::SetBoard) {
         object["board"] = op.board.toString(QUuid::WithoutBraces);
         object["included"] = op.included;
@@ -83,6 +86,16 @@ bool parseFields(const QJsonObject &object, AccessOp &op) {
         op.included = object["included"].toBool();
         if (op.board.isNull() || op.kind != ResourceKind::Project)
             return false;
+    }
+    if (op.action == Action::SetLink) {
+        if (op.kind != ResourceKind::Board)
+            return false;
+        if (object.contains("linkHash")) {
+            const std::optional<QByteArray> hash = key(object["linkHash"]);
+            if (!hash)
+                return false;
+            op.linkHash = *hash;
+        }
     }
     return (op.action != Action::Create && op.action != Action::Rename) || !op.name.isEmpty();
 }

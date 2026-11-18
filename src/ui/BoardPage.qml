@@ -12,6 +12,8 @@ Item {
 
     required property string boardId
     readonly property string boardName: Library.boardName(boardId)
+    // "edit", "offline" (no owner connected) or "waiting" (not let in yet).
+    property string access: "waiting"
     // Other devices showing this board, from Network.boardPresence.
     property var people: []
 
@@ -39,8 +41,11 @@ Item {
     Component.onCompleted: {
         Network.setPresence(page.boardId, Qt.point(0, 0), false);
         page.refreshPeople();
+        page.access = Network.boardAccess(page.boardId);
     }
-    Component.onDestruction: {
+    // Not on destruction: while the app closes, the views these calls update are going away
+    // too, and the library saves unsaved boards itself.
+    StackView.onRemoved: {
         Network.setPresence("", Qt.point(0, 0), false);
         Library.saveBoards();
     }
@@ -50,6 +55,10 @@ Item {
 
         function onPresenceChanged() {
             page.refreshPeople();
+        }
+
+        function onBoardAccessChanged() {
+            page.access = Network.boardAccess(page.boardId);
         }
     }
 
@@ -75,6 +84,7 @@ Item {
             penWidth: Theme.penWidths[1]
             gridColor: Theme.gridDot
             document: Library.openBoard(page.boardId)
+            readOnly: page.access !== "edit"
             onCursorMoved: (point, inside) => Network.setPresence(page.boardId, point, inside)
         }
 
@@ -119,6 +129,29 @@ Item {
                         color: Theme.muted
                     }
                 }
+            }
+        }
+
+        Panel {
+            objectName: "boardAccessNotice"
+            visible: page.access !== "edit"
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.top: parent.top
+            anchors.topMargin: Theme.gap + 64 // below the title
+            width: Math.min(accessLabel.implicitWidth + 28, parent.width - 32)
+            implicitHeight: accessLabel.implicitHeight + 16
+
+            Label {
+                id: accessLabel
+
+                anchors.fill: parent
+                anchors.margins: 8
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.WordWrap
+                color: Theme.ink
+                text: page.access === "waiting"
+                    ? qsTr("Waiting for an owner of this board to come online and let you in.")
+                    : qsTr("No owner is online. This is your last copy; you can draw again when one connects.")
             }
         }
 

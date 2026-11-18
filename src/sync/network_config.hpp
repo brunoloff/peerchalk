@@ -5,7 +5,9 @@
 #include <p2pdc/discovery_config.h>
 #include <p2pdc/ice_config.h>
 
+#include <chrono>
 #include <cstdint>
+#include <string>
 #include <vector>
 
 namespace peerchalk::sync {
@@ -17,9 +19,12 @@ struct NetworkConfig {
     std::uint32_t networkId{0}; // 0: the public OpenDHT network
     bool loopbackOnly{false};   // bind to 127.0.0.1 and ::1 only (local tests)
     p2pdc::IceConfig ice;
+    std::string dhtProxy{}; // how the browser build reaches OpenDHT
+    // How often another waiting project or board gets a turn when there are too many.
+    std::chrono::milliseconds spaceRotation{std::chrono::minutes(2)};
 
     // The configuration the settings describe, defaulting to the public OpenDHT network
-    // through Jami's bootstrap node, Cloudflare's and Google's public STUN servers and no
+    // through Jami's bootstrap node and proxy, Cloudflare's and Google's public STUN servers and no
     // TURN server. Throws
     // std::invalid_argument naming the setting when a value is malformed.
     [[nodiscard]] static NetworkConfig from(const NetworkSettings &settings);

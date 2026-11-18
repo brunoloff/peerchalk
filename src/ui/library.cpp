@@ -2,6 +2,7 @@
 
 #include <QClipboard>
 #include <QGuiApplication>
+#include <QQmlEngine>
 #include <QStandardPaths>
 #include <QTimer>
 
@@ -15,12 +16,6 @@ namespace {
 const std::array<QString, 4> verificationNames = {QStringLiteral("none"),
                                                   QStringLiteral("in-person"),
                                                   QStringLiteral("call"), QStringLiteral("shared")};
-
-QString dataDirectory() {
-    const QString overridden = qEnvironmentVariable("PEERCHALK_DATA_DIR");
-    return overridden.isEmpty() ? QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
-                                : overridden;
-}
 
 // The login name with a capital first letter, or "Me".
 QString defaultDisplayName() {
@@ -59,9 +54,16 @@ Library::Library(const QString &directory, QObject *parent)
     refreshContacts();
 }
 
-Library *Library::create(QQmlEngine *, QJSEngine *) {
+QString Library::defaultDataDirectory() {
+    const QString overridden = qEnvironmentVariable("PEERCHALK_DATA_DIR");
+    return overridden.isEmpty() ? QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
+                                : overridden;
+}
+
+Library *Library::create(QQmlEngine *engine, QJSEngine *) {
     try {
-        return new Library(dataDirectory());
+        const QString account = engine->property("accountDirectory").toString();
+        return new Library(account.isEmpty() ? defaultDataDirectory() : account);
     } catch (const std::exception &error) {
         qFatal("PeerChalk cannot read its data: %s", error.what());
     }
@@ -153,6 +155,7 @@ void Library::workspaceUpdated() {
     refreshProjects();
     refreshBoards();
     emit currentProjectChanged();
+    ++workspaceRevision_;
     emit workspaceChanged();
 }
 

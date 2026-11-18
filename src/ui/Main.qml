@@ -12,6 +12,16 @@ ApplicationWindow {
         stack.push(boardPage, { boardId: boardId });
     }
 
+    // Opens the board link this app was started with, if any.
+    function openPendingBoardLink() {
+        const link = Accounts.takePendingBoardLink();
+        if (link.length === 0)
+            return;
+        const boardId = Library.openBoardLink(link);
+        if (boardId.length > 0)
+            window.openBoard(boardId);
+    }
+
     function openSettings(tab: int) {
         stack.push(settingsPage, { currentTab: tab });
     }
@@ -24,6 +34,7 @@ ApplicationWindow {
         : qsTr("PeerChalk")
     color: Theme.background
     font.family: Theme.bodyFont
+    Component.onCompleted: Qt.callLater(window.openPendingBoardLink)
 
     StackView {
         id: stack

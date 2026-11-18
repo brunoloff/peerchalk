@@ -8,7 +8,6 @@ ColumnLayout {
 
     signal createProjectRequested()
     signal joinProjectRequested()
-    signal linkDeviceRequested()
 
     width: Math.min(420, parent.width - 64)
     spacing: 16
@@ -45,13 +44,5 @@ ColumnLayout {
             text: qsTr("Join with an invite")
             onClicked: welcome.joinProjectRequested()
         }
-    }
-
-    PaperButton {
-        Layout.alignment: Qt.AlignHCenter
-        visible: Library.canAdoptIdentity
-        flat: true
-        text: qsTr("Already use PeerChalk on another device? Link this one")
-        onClicked: welcome.linkDeviceRequested()
     }
 }

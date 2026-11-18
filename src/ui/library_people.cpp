@@ -87,6 +87,16 @@ QVariantList Library::projectPeople(const QString &projectId) {
     return result;
 }
 
+int Library::projectMemberCount(const QString &projectId) {
+    int count = 0;
+    attempt([&] {
+        const AccessState &state = workspace_.project(parseId(projectId)).state;
+        count = static_cast<int>(std::ranges::count_if(
+            state.roles, [](const auto &entry) { return entry.second != Role::None; }));
+    });
+    return count;
+}
+
 QVariantList Library::boardPeople(const QString &boardId) {
     QVariantList result;
     attempt([&] { result = people(workspace_.board(parseId(boardId)).state); });
@@ -212,6 +222,11 @@ QString Library::identityTransferCode() {
     QString code;
     attempt([&] { code = identity_.identity().transferCode(identity_.displayName()); });
     return code;
+}
+
+void Library::importPeople(const QVariantMap &people) {
+    if (attempt([&] { identity_.mergeContacts(QJsonObject::fromVariantMap(people)); }))
+        contactsUpdated();
 }
 
 bool Library::adoptIdentity(const QString &code) {

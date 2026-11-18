@@ -72,5 +72,31 @@ TEST(Codes, FingerprintIsGroupedHex) {
               QStringLiteral("1A2B 3C4D 5E6F"));
 }
 
+TEST(BoardLinks, RoundTripKeepingSecretsAfterTheHash) {
+    const BoardLink link{QUuid::createUuid(), QStringLiteral("Sketch é"), QByteArray(32, 'c'),
+                         QByteArray(32, 'k'), QByteArray(32, 't')};
+    const QString url = encodeBoardLink(link, QStringLiteral("https://a.example/peerchalk/"));
+    const QString id = link.id.toString(QUuid::WithoutBraces);
+    EXPECT_TRUE(url.startsWith(QStringLiteral("https://a.example/peerchalk/board/") + id +
+                               QLatin1Char('#')));
+    const std::optional<BoardLink> decoded = decodeBoardLink(url);
+    ASSERT_TRUE(decoded.has_value());
+    EXPECT_EQ(decoded->id, link.id);
+    EXPECT_EQ(decoded->name, link.name);
+    EXPECT_EQ(decoded->capability, link.capability);
+    EXPECT_EQ(decoded->creator, link.creator);
+    EXPECT_EQ(decoded->token, link.token);
+}
+
+TEST(BoardLinks, AnAddressWithoutItsSecretStillNamesTheBoard) {
+    const QUuid id = QUuid::createUuid();
+    const QString url =
+        QStringLiteral("https://a.example/board/") + id.toString(QUuid::WithoutBraces);
+    EXPECT_FALSE(decodeBoardLink(url).has_value());
+    EXPECT_EQ(boardIdFromLink(url), id);
+    EXPECT_FALSE(boardIdFromLink(QStringLiteral("https://a.example/")).has_value());
+    EXPECT_FALSE(decodeBoardLink(url + QStringLiteral("#tooshort")).has_value());
+}
+
 } // namespace
 } // namespace peerchalk

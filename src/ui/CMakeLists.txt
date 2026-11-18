@@ -2,6 +2,11 @@
 # so the executable imports its plugin with Q_IMPORT_QML_PLUGIN(PeerChalkPlugin).
 set_source_files_properties(Theme.qml Icons.qml Format.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 qt_add_library(peerchalk_ui STATIC)
+# Browsers save and choose files through web_files.cpp instead of system dialogs.
+set(peerchalk_native_qml)
+if(NOT EMSCRIPTEN)
+    set(peerchalk_native_qml NativeBackupFiles.qml)
+endif()
 qt_add_qml_module(peerchalk_ui URI PeerChalk VERSION 1.0
     OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/qml/PeerChalk"
     SOURCES
@@ -9,14 +14,17 @@ qt_add_qml_module(peerchalk_ui URI PeerChalk VERSION 1.0
         board_minimap.cpp board_minimap.hpp
         conversions.hpp scene_nodes.cpp scene_nodes.hpp stroke_layer.cpp stroke_layer.hpp
         board_preview.cpp board_preview.hpp library.cpp library.hpp library_people.cpp
-        library_boards.cpp board_document.cpp board_document.hpp
+        library_boards.cpp library_links.cpp board_document.cpp board_document.hpp
         ../sync/messages.cpp ../sync/messages.hpp ../sync/network.cpp ../sync/network.hpp
         ../sync/network_config.cpp ../sync/network_config.hpp ../sync/network_peers.cpp
         ../sync/network_settings.cpp ../sync/network_settings.hpp ../sync/network_settings_page.cpp
         ../sync/network_live.cpp ../sync/live_strokes.cpp ../sync/live_strokes.hpp
-        ../sync/network_sync.cpp
+        ../sync/network_sync.cpp ../sync/network_spaces.cpp ../sync/network_boards.cpp
+        ../sync/message_parts.cpp ../sync/message_parts.hpp
+        ../sync/space_schedule.cpp ../sync/space_schedule.hpp
         row_model.cpp row_model.hpp
         app_style.cpp app_style.hpp
+        account_manager.cpp account_manager.hpp web_files.cpp web_files.hpp
     QML_FILES
         Main.qml Theme.qml Icons.qml Format.qml Icon.qml Panel.qml RailButton.qml ToolRail.qml
         Inspector.qml SectionLabel.qml ColorSwatch.qml WidthButton.qml NavigatorPanel.qml
@@ -25,7 +33,10 @@ qt_add_qml_module(peerchalk_ui URI PeerChalk VERSION 1.0
         PersonRow.qml VerifyPanel.qml Avatar.qml PaperButton.qml TextInputDialog.qml
         ConfirmDialog.qml CodeDialog.qml Toast.qml MembersDialog.qml RemoteCursor.qml
         NetworkStatus.qml PersonRoleRow.qml RequestsDialog.qml SettingsPage.qml
-        NetworkPane.qml SettingField.qml PaperTab.qml ColorPalette.qml)
+        NetworkPane.qml SettingField.qml PaperTab.qml ColorPalette.qml
+        AccountsWindow.qml AccountRow.qml AccountPane.qml BackupFlow.qml PassphraseDialog.qml
+        BoardLinkSection.qml
+        CreateAccountDialog.qml RemoveAccountDialog.qml ${peerchalk_native_qml})
 target_include_directories(peerchalk_ui PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/..")
 # The generated QML type registrations include headers by file name.
 target_include_directories(peerchalk_ui PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../sync")

@@ -28,6 +28,7 @@ Dialog {
         myRole = board ? Library.boardRole(itemId) : Library.projectRole(itemId);
         people = board ? Library.boardPeople(itemId) : Library.projectPeople(itemId);
         projects = board ? Library.boardProjects(itemId) : [];
+        linkSection.refresh();
     }
 
     function setRole(key: string, role: string) {
@@ -111,6 +112,14 @@ Dialog {
                         dialog.refresh();
                     }
                 }
+            }
+
+            BoardLinkSection {
+                id: linkSection
+
+                Layout.fillWidth: true
+                visible: dialog.board && dialog.canManage
+                boardId: dialog.board ? dialog.itemId : ""
             }
 
             RowLayout {

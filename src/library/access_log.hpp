@@ -9,6 +9,7 @@
 #include <functional>
 #include <map>
 #include <optional>
+#include <set>
 #include <vector>
 
 namespace peerchalk {
@@ -20,7 +21,7 @@ enum class ResourceKind { Project, Board };
 
 // One signed change to who may do what with a project or board.
 struct AccessOp {
-    enum class Action { Create, Rename, SetRole, TransferAdmin, SetBoard, Delete };
+    enum class Action { Create, Rename, SetRole, TransferAdmin, SetBoard, Delete, SetLink };
 
     ResourceKind kind{ResourceKind::Project};
     QUuid resource;
@@ -33,6 +34,7 @@ struct AccessOp {
     Role role{Role::None}; // SetRole: Member, Owner, or None to remove
     QUuid board;           // SetBoard (projects only)
     bool included{false};  // SetBoard
+    QByteArray linkHash;   // SetLink (boards only): the valid link's hash; empty turns it off
 };
 
 // A change together with the exact bytes its signer signed.
@@ -61,7 +63,9 @@ struct AccessState {
     // own changes for members who learn of it through the project.
     std::map<QUuid, QByteArray> boardCreators;
     bool deleted{false};
-    quint64 clock{0}; // highest clock seen, valid or not
+    QByteArray linkHash;          // boards: hash of the link that admits people, if any
+    std::set<QByteArray> removed; // people taken off and not added back: links do not readmit
+    quint64 clock{0};             // highest clock seen, valid or not
 
     [[nodiscard]] Role role(const QByteArray &user) const;
 };
@@ -76,7 +80,7 @@ using BoardRoleLookup =
 // applies only if its signer had the right at that point:
 // - the admin may add, remove, promote and demote anyone but themself, hand the admin
 //   role to someone (staying an owner), rename, and delete;
-// - an owner may add and remove members (not owners);
+// - an owner may add and remove members (not owners) and set or turn off a board's link;
 // - on projects, someone who owns both the project and a board may add or remove that
 //   board; the project admin may also remove any board.
 [[nodiscard]] AccessState replay(const std::vector<SignedOp> &ops, ResourceKind kind,

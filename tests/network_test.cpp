@@ -10,6 +10,7 @@
 
 #include <gtest/gtest.h>
 
+#include <functional>
 #include <future>
 #include <memory>
 
@@ -20,6 +21,7 @@ using namespace std::chrono_literals;
 
 constexpr std::uint32_t networkId = 0x50434b31; // private to these tests
 constexpr int timeoutMs = 90000;
+constexpr qsizetype maxBoardMessageBytes = 1024 * 1024;
 
 // Two bootstrap nodes forming a private DHT on 127.0.0.1.
 class LocalDht {
@@ -51,18 +53,29 @@ class LocalDht {
 
 // One PeerChalk installation with networking on the local DHT.
 struct Device {
-    explicit Device(LocalDht &dht, const QString &transferCode = {}) : library(dir.path()) {
+    explicit Device(LocalDht &dht, const QString &transferCode = {},
+                    const std::function<void(Library &)> &prepare = {})
+        : library(dir.path()) {
         if (!transferCode.isEmpty()) {
             EXPECT_TRUE(library.adoptIdentity(transferCode));
         }
-        sync::NetworkConfig config;
+        if (prepare)
+            prepare(library);
         config.bootstrap = {{"127.0.0.1", dht.port()}};
         config.networkId = networkId;
         config.loopbackOnly = true;
+        goOnline();
+    }
+    ~Device() { goOffline(); }
+
+    void goOnline() {
         network = std::make_unique<sync::Network>(library, config);
         network->start();
     }
-    ~Device() { network->shutdown(3s); }
+    void goOffline() {
+        network->shutdown(3s);
+        network.reset();
+    }
 
     [[nodiscard]] std::size_t strokesOn(const QString &board) {
         const QUuid id = QUuid::fromString(board);
@@ -78,7 +91,19 @@ struct Device {
         library.document(QUuid::fromString(board)).board().addStroke(stroke);
     }
 
+    void drawLongStrokes(const QString &board, int strokes, int points) {
+        auto &document = library.document(QUuid::fromString(board)).board();
+        for (int s = 0; s < strokes; ++s) {
+            Stroke stroke(0xFF000000U, 2.0F);
+            for (int p = 0; p < points; ++p)
+                stroke.addPoint({static_cast<float>(s) + static_cast<float>(p) * 0.37F,
+                                 static_cast<float>(p * p % 9973) * 0.11F, 1.0F});
+            document.addStroke(stroke);
+        }
+    }
+
     QTemporaryDir dir;
+    sync::NetworkConfig config;
     Library library;
     std::unique_ptr<sync::Network> network;
 };
@@ -88,6 +113,87 @@ class NetworkTest : public ::testing::Test {
     void SetUp() override { ASSERT_TRUE(dht_.ready()) << "the local DHT did not start"; }
     LocalDht dht_;
 };
+
+// Alice and Bob in one project with one board, connected and in step.
+struct TwoMembers {
+    explicit TwoMembers(LocalDht &dht) : alice(dht), bob(dht) {
+        EXPECT_TRUE(alice.library.addContact(bob.library.contactCode()));
+        project = alice.library.createProject(QStringLiteral("Thesis"));
+        alice.library.setProjectRole(project, bob.library.userKey(), QStringLiteral("member"));
+        board = alice.library.createBoard(QStringLiteral("Sketch"));
+        EXPECT_FALSE(bob.library.joinInvite(alice.library.projectInvite(project)).isEmpty());
+    }
+    Device alice;
+    Device bob;
+    QString project;
+    QString board;
+};
+
+TEST_F(NetworkTest, BoardsTooLargeForOneMessageStillArrive) {
+    TwoMembers shared(dht_);
+    shared.alice.drawLongStrokes(shared.board, 150, 2000);
+    shared.alice.library.saveBoards();
+    ASSERT_GT(shared.alice.library.boardState(shared.board).size(), 2 * maxBoardMessageBytes);
+    EXPECT_TRUE(
+        QTest::qWaitFor([&] { return shared.bob.strokesOn(shared.board) == 150; }, timeoutMs))
+        << "the large board never arrived";
+}
+
+TEST_F(NetworkTest, EditsMadeWhileApartMergeAfterReconnecting) {
+    TwoMembers shared(dht_);
+    shared.alice.draw(shared.board, 0.0F);
+    ASSERT_TRUE(
+        QTest::qWaitFor([&] { return shared.bob.strokesOn(shared.board) == 1; }, timeoutMs));
+    shared.bob.goOffline();
+    shared.alice.draw(shared.board, 20.0F);
+    shared.bob.draw(shared.board, 40.0F);
+    shared.bob.goOnline();
+    EXPECT_TRUE(
+        QTest::qWaitFor([&] { return shared.bob.strokesOn(shared.board) == 3; }, timeoutMs));
+    EXPECT_TRUE(
+        QTest::qWaitFor([&] { return shared.alice.strokesOn(shared.board) == 3; }, timeoutMs));
+}
+
+TEST_F(NetworkTest, TheProjectOnScreenConnectsEvenWithTooManyProjects) {
+    QString project;
+    Device bob(dht_);
+    Device alice(dht_, {}, [&](Library &library) {
+        EXPECT_TRUE(library.addContact(bob.library.contactCode()));
+        project = library.createProject(QStringLiteral("Shared"));
+        library.setProjectRole(project, bob.library.userKey(), QStringLiteral("member"));
+        for (int i = 0; i < 20; ++i)
+            library.createProject(QStringLiteral("Other %1").arg(i));
+        library.setCurrentProjectId(project);
+    });
+    const QString board = [&] {
+        const QString id = alice.library.createBoard(QStringLiteral("Sketch"));
+        alice.draw(id, 0.0F);
+        return id;
+    }();
+    ASSERT_FALSE(bob.library.joinInvite(alice.library.projectInvite(project)).isEmpty());
+    EXPECT_TRUE(QTest::qWaitFor([&] { return bob.strokesOn(board) == 1; }, timeoutMs));
+}
+
+TEST_F(NetworkTest, StoppingWithoutWaitingReportsWhenDone) {
+    Device alice(dht_);
+    ASSERT_TRUE(QTest::qWaitFor([&] { return alice.network->online(); }, timeoutMs));
+    bool done = false;
+    alice.network->shutdownThen(3s, [&] { done = true; });
+    EXPECT_FALSE(done); // never from inside the call
+    ASSERT_TRUE(QTest::qWaitFor([&] { return done; }, 5000));
+    EXPECT_FALSE(alice.network->online());
+}
+
+TEST(NetworkShutdownTest, ReportsDoneWhenNothingWasRunning) {
+    QTemporaryDir dir;
+    Library library(dir.path());
+    sync::NetworkConfig config;
+    config.enabled = false;
+    sync::Network network(library, config);
+    bool done = false;
+    network.shutdownThen(3s, [&] { done = true; });
+    EXPECT_TRUE(QTest::qWaitFor([&] { return done; }, 1000));
+}
 
 TEST_F(NetworkTest, ProjectMembersShareBoardsLive) {
     Device alice(dht_);
@@ -222,6 +328,48 @@ TEST_F(NetworkTest, AnOwnerApprovesWhileTheAdminIsOffline) {
     EXPECT_EQ(dave.library.projectRole(project), QStringLiteral("member"));
 }
 
+TEST_F(NetworkTest, ABoardLinkAdmitsItsHolderWhileAnOwnerIsOnline) {
+    Device alice(dht_);
+    Device bob(dht_);
+    alice.library.createProject(QStringLiteral("Thesis"));
+    const QString board = alice.library.createBoard(QStringLiteral("Sketch"));
+    alice.draw(board, 0.0F);
+    const QString link = alice.library.createBoardLink(board, QStringLiteral("https://x.example"));
+    ASSERT_FALSE(link.isEmpty());
+    ASSERT_EQ(bob.library.openBoardLink(link), board);
+    EXPECT_EQ(bob.network->boardAccess(board), QStringLiteral("waiting"));
+    ASSERT_TRUE(QTest::qWaitFor([&] { return bob.strokesOn(board) == 1; }, timeoutMs));
+    EXPECT_EQ(bob.library.boardRole(board), QStringLiteral("member"));
+    EXPECT_TRUE(QTest::qWaitFor(
+        [&] { return bob.network->boardAccess(board) == QStringLiteral("edit"); }, timeoutMs));
+}
+
+TEST_F(NetworkTest, MembersExchangeBoardsOnlyWhileAnOwnerIsConnected) {
+    auto alice = std::make_unique<Device>(dht_);
+    Device bob(dht_);
+    Device carol(dht_);
+    ASSERT_TRUE(alice->library.addContact(bob.library.contactCode()));
+    ASSERT_TRUE(alice->library.addContact(carol.library.contactCode()));
+    const QString project = alice->library.createProject(QStringLiteral("Thesis"));
+    const QString board = alice->library.createBoard(QStringLiteral("Sketch"));
+    alice->draw(board, 0.0F);
+    alice->library.setProjectRole(project, bob.library.userKey(), QStringLiteral("member"));
+    alice->library.setProjectRole(project, carol.library.userKey(), QStringLiteral("member"));
+    const QString invite = alice->library.projectInvite(project);
+    bob.library.joinInvite(invite);
+    carol.library.joinInvite(invite);
+    ASSERT_TRUE(QTest::qWaitFor([&] { return bob.strokesOn(board) == 1; }, timeoutMs));
+    ASSERT_TRUE(QTest::qWaitFor([&] { return carol.strokesOn(board) == 1; }, timeoutMs));
+    alice->goOffline();
+    ASSERT_TRUE(QTest::qWaitFor(
+        [&] { return bob.network->boardAccess(board) == QStringLiteral("offline"); }, timeoutMs));
+    bob.draw(board, 20.0F); // what a modified app could do; the editor itself refuses
+    QTest::qWait(3000);
+    EXPECT_EQ(carol.strokesOn(board), 1U);
+    alice->goOnline();
+    EXPECT_TRUE(QTest::qWaitFor([&] { return carol.strokesOn(board) == 2; }, timeoutMs));
+}
+
 // The admin's signed changes travel through anyone who has them.
 TEST_F(NetworkTest, MembersPassOnTheAdminsChanges) {
     auto alice = std::make_unique<Device>(dht_);
@@ -239,8 +387,10 @@ TEST_F(NetworkTest, MembersPassOnTheAdminsChanges) {
     ASSERT_TRUE(QTest::qWaitFor([&] { return bob.strokesOn(board) == 1; }, timeoutMs));
     alice.reset(); // Carol only ever meets Bob
     carol.library.joinInvite(invite);
-    ASSERT_TRUE(QTest::qWaitFor([&] { return carol.strokesOn(board) == 1; }, timeoutMs))
-        << "Carol never received the board through Bob";
+    ASSERT_TRUE(QTest::qWaitFor(
+        [&] { return carol.library.projectRole(project) == QStringLiteral("member"); }, timeoutMs))
+        << "Carol never received her role through Bob";
+    EXPECT_EQ(carol.strokesOn(board), 0U); // contents need an owner
 }
 
 Stroke unfinishedStroke() {

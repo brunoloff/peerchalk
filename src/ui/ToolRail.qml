@@ -48,7 +48,7 @@ Panel {
         RailButton {
             text: qsTr("Undo (Ctrl+Z)")
             iconPath: Icons.undo
-            enabled: rail.canvas.canUndo
+            enabled: rail.canvas.canUndo && !rail.canvas.readOnly
             onClicked: rail.canvas.undo()
         }
     }

@@ -5,8 +5,11 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 
+#include <QtEndian>
+
 #include <cmath>
 #include <limits>
+#include <stdexcept>
 
 namespace peerchalk::sync {
 namespace {
@@ -18,9 +21,13 @@ enum Type : char {
     BoardType = 4,
     PresenceType = 5,
     ProfileType = 6,
-    LiveStrokeType = 7
+    LiveStrokeType = 7,
+    PartType = 8,
+    BoardStateType = 9,
+    BoardLinkJoinType = 10
 };
 constexpr qsizetype uuidSize = 16;
+constexpr qsizetype partHeaderSize = 1 + 4 + 4;
 
 QString base64(const QByteArray &bytes) { return QString::fromLatin1(bytes.toBase64()); }
 
@@ -57,7 +64,9 @@ struct Encoder {
         return json(HelloType, {{"certificate", base64(hello.certificatePayload)},
                                 {"signature", base64(hello.certificateSignature)},
                                 {"name", hello.displayName},
-                                {"color", hello.colorIndex}});
+                                {"color", hello.colorIndex},
+                                {"protocol", hello.protocol},
+                                {"minProtocol", hello.minProtocol}});
     }
     QByteArray operator()(const AccessChanges &message) const {
         QJsonArray ops;
@@ -71,6 +80,22 @@ struct Encoder {
     }
     QByteArray operator()(const BoardUpdate &update) const {
         return QByteArray(1, BoardType) + update.board.toRfc4122() + update.update;
+    }
+    QByteArray operator()(const BoardState &state) const {
+        return QByteArray(1, BoardStateType) + state.board.toRfc4122() + state.stateVector;
+    }
+    QByteArray operator()(const BoardLinkJoin &join) const {
+        return QByteArray(1, BoardLinkJoinType) + join.board.toRfc4122() + join.token;
+    }
+    QByteArray operator()(const MessagePart &part) const {
+        QByteArray bytes(partHeaderSize, '\0');
+        bytes[0] = PartType;
+        qToLittleEndian(part.index, bytes.data() + 1);
+        qToLittleEndian(part.count, bytes.data() + 5);
+        return bytes + part.data;
+    }
+    QByteArray operator()(const UnknownMessage &) const {
+        throw std::logic_error("Unknown messages are never sent");
     }
     QByteArray operator()(const Profile &profile) const {
         return json(ProfileType, {{"name", profile.displayName}, {"color", profile.colorIndex}});
@@ -103,8 +128,45 @@ std::optional<Message> decodeHello(const QJsonObject &object) {
     const auto signature = fromBase64(object[QStringLiteral("signature")]);
     if (!payload || !signature)
         return std::nullopt;
-    return Hello{*payload, *signature, object[QStringLiteral("name")].toString().left(200),
-                 object[QStringLiteral("color")].toInt()};
+    return Hello{*payload,
+                 *signature,
+                 object[QStringLiteral("name")].toString().left(200),
+                 object[QStringLiteral("color")].toInt(),
+                 object[QStringLiteral("protocol")].toInt(1),
+                 object[QStringLiteral("minProtocol")].toInt(1)};
+}
+
+std::optional<Message> decodePart(const QByteArray &bytes) {
+    if (bytes.size() <= partHeaderSize)
+        return std::nullopt;
+    MessagePart part{qFromLittleEndian<quint32>(bytes.constData() + 1),
+                     qFromLittleEndian<quint32>(bytes.constData() + 5), bytes.mid(partHeaderSize)};
+    if (part.index >= part.count)
+        return std::nullopt;
+    return part;
+}
+
+std::optional<Message> decodeBoardState(const QByteArray &bytes) {
+    if (bytes.size() <= 1 + uuidSize)
+        return std::nullopt;
+    const QUuid board = QUuid::fromRfc4122(bytes.mid(1, uuidSize));
+    if (board.isNull())
+        return std::nullopt;
+    return BoardState{board, bytes.mid(1 + uuidSize)};
+}
+
+std::optional<Message> decodeBoardLinkJoin(const QByteArray &bytes) {
+    if (bytes.size() != 1 + uuidSize + 32)
+        return std::nullopt;
+    const QUuid board = QUuid::fromRfc4122(bytes.mid(1, uuidSize));
+    if (board.isNull())
+        return std::nullopt;
+    return BoardLinkJoin{board, bytes.mid(1 + uuidSize)};
+}
+
+bool isJsonType(char type) {
+    return type == HelloType || type == AccessType || type == PersonalType ||
+           type == PresenceType || type == ProfileType;
 }
 
 std::optional<Message> decodeAccess(const QJsonObject &object) {
@@ -172,6 +234,10 @@ std::optional<Message> decodeLiveStroke(const QByteArray &bytes) {
 
 QByteArray encode(const Message &message) { return std::visit(Encoder{}, message); }
 
+bool protocolsCompatible(const Hello &hello) {
+    return hello.protocol >= minSupportedProtocol && hello.minProtocol <= protocolVersion;
+}
+
 std::optional<Message> decode(const QByteArray &bytes) {
     if (bytes.isEmpty())
         return std::nullopt;
@@ -186,6 +252,14 @@ std::optional<Message> decode(const QByteArray &bytes) {
     }
     if (type == LiveStrokeType)
         return decodeLiveStroke(bytes);
+    if (type == PartType)
+        return decodePart(bytes);
+    if (type == BoardStateType)
+        return decodeBoardState(bytes);
+    if (type == BoardLinkJoinType)
+        return decodeBoardLinkJoin(bytes);
+    if (!isJsonType(type))
+        return UnknownMessage{};
     const std::optional<QJsonObject> object = jsonBody(bytes);
     if (!object)
         return std::nullopt;

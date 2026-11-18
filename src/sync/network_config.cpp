@@ -1,6 +1,7 @@
 #include "sync/network_config.hpp"
 
 #include <QStringList>
+#include <QUrl>
 
 #include <stdexcept>
 #include <string>
@@ -11,6 +12,8 @@ namespace {
 const QString defaultBootstrap = QStringLiteral("bootstrap.jami.net:4222");
 // Free public STUN servers from Cloudflare, with Google's as a fallback.
 const QString defaultStun = QStringLiteral("stun.cloudflare.com:3478, stun.l.google.com:19302");
+
+const QString defaultDhtProxy = QStringLiteral("https://dhtproxy.jami.net");
 
 struct HostPort {
     std::string host;
@@ -33,6 +36,19 @@ p2pdc::TurnServer turnServer(const QString &turn) {
         throw std::invalid_argument("TURN server must be user:password@host:port");
     const HostPort server = hostPort(turn.mid(at + 1), "TURN server");
     return {server.host, server.port, credentials[0].toStdString(), credentials[1].toStdString()};
+}
+
+// Browsers only reach a proxy over HTTPS, or plain HTTP on this computer.
+std::string dhtProxyUrl(const QString &text) {
+    const QString value = text.trimmed().isEmpty() ? defaultDhtProxy : text.trimmed();
+    const QUrl url(value, QUrl::StrictMode);
+    const bool local =
+        url.scheme() == QStringLiteral("http") &&
+        (url.host() == QStringLiteral("localhost") || url.host() == QStringLiteral("127.0.0.1"));
+    if (!url.isValid() || url.host().isEmpty() ||
+        (url.scheme() != QStringLiteral("https") && !local))
+        throw std::invalid_argument("DHT proxy must be an https:// address");
+    return value.toStdString();
 }
 
 } // namespace
@@ -59,6 +75,7 @@ NetworkConfig NetworkConfig::from(const NetworkSettings &settings) {
     }
     if (!settings.turn.trimmed().isEmpty())
         config.ice.servers.emplace_back(turnServer(settings.turn.trimmed()));
+    config.dhtProxy = dhtProxyUrl(settings.dhtProxy);
     return config;
 }
 

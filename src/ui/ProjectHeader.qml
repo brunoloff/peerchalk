@@ -8,12 +8,12 @@ RowLayout {
 
     readonly property bool isShared: Library.currentProjectId === Library.sharedId
     readonly property int memberCount: {
-        Library.workspaceChanged; // re-evaluate when members change
-        return isShared ? 0 : Library.projectPeople(Library.currentProjectId).filter(p => p.member).length;
+        Library.workspaceRevision; // re-evaluate when members change
+        return isShared ? 0 : Library.projectMemberCount(Library.currentProjectId);
     }
 
     readonly property string myRole: {
-        Library.workspaceChanged; // re-evaluate when roles change
+        Library.workspaceRevision; // re-evaluate when roles change
         return isShared ? "none" : Library.projectRole(Library.currentProjectId);
     }
     readonly property bool canManage: myRole === "owner" || myRole === "admin"
@@ -48,6 +48,7 @@ RowLayout {
             Layout.fillWidth: true
             elide: Text.ElideRight
             color: Theme.muted
+            objectName: "projectSubtitle"
             text: header.isShared ? qsTr("Boards shared with you on their own, and boards you made outside projects")
                 : Library.currentProjectPending ? qsTr("Waiting for the admin to let you in · keep PeerChalk open")
                 : header.memberCount <= 1 ? qsTr("Only you so far")

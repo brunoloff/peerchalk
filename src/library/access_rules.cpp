@@ -24,8 +24,10 @@ bool applyRole(AccessState &state, const AccessOp &op, Role signerRole) {
         return false;
     if (op.role == Role::None) {
         state.roles.erase(op.user);
+        state.removed.insert(op.user);
         return true;
     }
+    state.removed.erase(op.user);
     state.roles[op.user] = op.role;
     if (!op.name.isEmpty())
         state.names[op.user] = op.name;
@@ -72,6 +74,11 @@ bool apply(AccessState &state, const AccessOp &op, const BoardRoleLookup &boardR
         return true;
     case Action::SetBoard:
         return applyBoard(state, op, signerRole, boardRole);
+    case Action::SetLink:
+        if (signerRole < Role::Owner)
+            return false;
+        state.linkHash = op.linkHash;
+        return true;
     case Action::Delete:
         if (signerRole != Role::Admin)
             return false;

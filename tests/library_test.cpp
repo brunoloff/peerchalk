@@ -59,6 +59,18 @@ TEST_F(LibraryTest, InvitesJoinAnotherLibrary) {
     EXPECT_TRUE(bob.projectInvite(project).isEmpty()); // only owners invite
 }
 
+TEST_F(LibraryTest, CountsThePeopleWithARoleInAProject) {
+    QTemporaryDir other;
+    Library alice(dir_.path());
+    Library bob(other.path());
+    ASSERT_TRUE(alice.addContact(bob.contactCode()));
+    const QString project = alice.createProject(QStringLiteral("Thesis"));
+    EXPECT_EQ(alice.projectMemberCount(project), 1); // a known person without a role is not counted
+    alice.setProjectRole(project, bob.userKey(), QStringLiteral("member"));
+    EXPECT_EQ(alice.projectMemberCount(project), 2);
+    EXPECT_GT(alice.workspaceRevision(), 0);
+}
+
 // Delivers the signed access changes `from` holds to `to`, as a connection would.
 void deliver(Library &from, Library &to) {
     std::vector<std::pair<QByteArray, QByteArray>> ops;

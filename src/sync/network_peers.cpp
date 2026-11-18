@@ -9,20 +9,8 @@ namespace peerchalk::sync {
 
 using namespace p2pdc;
 
-namespace {
-
-// A Yrs v1 update that changes nothing: no structs and an empty delete set.
-bool isEmptyUpdate(const Bytes &update) {
-    return update.size() <= 2 &&
-           std::ranges::all_of(update, [](std::byte b) { return b == std::byte{0}; });
-}
-
-const Bytes emptyStateVector{std::byte{0}};
-
-} // namespace
-
-// A board's first sync is one Yrs update of the whole board, so allow large messages
-// (p2pdc caps pending bytes at 4 MiB, which must hold at least one message).
+// Larger messages travel in parts (see message_parts.hpp). p2pdc caps pending bytes at
+// 4 MiB, which must hold at least one message.
 ConnectOptions Network::connectOptions() {
     ConnectOptions options;
     options.max_message_bytes = 2 * 1024 * 1024;
@@ -116,7 +104,10 @@ int Network::connectedDevices() const {
     return static_cast<int>(devices.size());
 }
 
-void Network::queue(Peer &peer, const Message &message) { peer.outbox.push_back(encode(message)); }
+void Network::queue(Peer &peer, const Message &message) {
+    for (QByteArray &part : splitMessage(encode(message)))
+        peer.outbox.push_back(std::move(part));
+}
 
 // Sends what is pending in order: queued messages, board changes, then presence.
 void Network::flush(const PeerId &id) {
@@ -124,39 +115,15 @@ void Network::flush(const PeerId &id) {
     if (it == peers_.end() || !it->second->ready || !it->second->connection)
         return;
     Peer &peer = *it->second;
-    while (!peer.outbox.empty()) {
-        if (!sendOne(id, peer, peer.outbox.front()))
-            return;
-        peer.outbox.pop_front();
-    }
-    if (!peer.user || !flushBoards(id, peer))
-        return;
-    if (peer.presenceDirty)
-        flushPresence(id, peer);
-}
-
-// Sends each dirty board as the changes since what this peer was last sent.
-bool Network::flushBoards(const PeerId &id, Peer &peer) {
-    while (!peer.dirtyBoards.empty()) {
-        const QUuid board = *peer.dirtyBoards.begin();
-        if (!syncable(peer, board)) {
-            peer.dirtyBoards.erase(board);
-            continue;
+    do {
+        while (!peer.outbox.empty()) {
+            if (!sendOne(id, peer, peer.outbox.front()))
+                return;
+            peer.outbox.pop_front();
         }
-        const Board &document = library_.document(board).board();
-        const auto sent = peer.sentState.find(board);
-        const Bytes update =
-            document.difference(sent != peer.sentState.end() ? sent->second : emptyStateVector);
-        if (!isEmptyUpdate(update) &&
-            !sendOne(
-                id, peer,
-                encode(BoardUpdate{board, QByteArray(reinterpret_cast<const char *>(update.data()),
-                                                     static_cast<qsizetype>(update.size()))})))
-            return false;
-        peer.sentState[board] = document.stateVector();
-        peer.dirtyBoards.erase(board);
-    }
-    return true;
+    } while (peer.user && queueNextBoard(id, peer));
+    if (peer.ready && peer.user && peer.presenceDirty)
+        flushPresence(id, peer);
 }
 
 // Returns true when the message was accepted or must be dropped; false to retry later.

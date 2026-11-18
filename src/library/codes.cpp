@@ -1,6 +1,7 @@
 #include "library/codes.hpp"
 
 #include <QStringList>
+#include <QUrl>
 
 #include <stdexcept>
 
@@ -93,6 +94,46 @@ std::optional<ContactCard> decodeContactCard(const QString &text) {
     if (!name)
         return std::nullopt;
     return ContactCard{bytes->first(signingKeySize), *name};
+}
+
+QString encodeBoardLink(const BoardLink &link, const QString &siteUrl) {
+    if (link.id.isNull() || link.capability.size() != capabilitySize ||
+        link.creator.size() != signingKeySize || link.token.size() != linkTokenSize)
+        throw std::invalid_argument("A board link needs an id, secrets and a creator key");
+    QString site = siteUrl.trimmed();
+    while (site.endsWith(QLatin1Char('/')))
+        site.chop(1);
+    const QByteArray bytes = link.capability + link.creator + link.token + nameBytes(link.name);
+    return site + QStringLiteral("/board/") + link.id.toString(QUuid::WithoutBraces) +
+           QLatin1Char('#') + QString::fromLatin1(bytes.toBase64(base64Options));
+}
+
+std::optional<QUuid> boardIdFromLink(const QString &url) {
+    const QString path = QUrl(url.trimmed()).path();
+    const qsizetype marker = path.lastIndexOf(QStringLiteral("/board/"));
+    if (marker < 0)
+        return std::nullopt;
+    const QUuid id = QUuid::fromString(path.mid(marker + 7));
+    if (id.isNull())
+        return std::nullopt;
+    return id;
+}
+
+std::optional<BoardLink> decodeBoardLink(const QString &url) {
+    constexpr qsizetype nameOffset = capabilitySize + signingKeySize + linkTokenSize;
+    const std::optional<QUuid> id = boardIdFromLink(url);
+    const QByteArray::FromBase64Result decoded = QByteArray::fromBase64Encoding(
+        QUrl(url.trimmed()).fragment().toLatin1(),
+        QByteArray::Base64UrlEncoding | QByteArray::AbortOnBase64DecodingErrors);
+    if (!id || !decoded || decoded.decoded.size() <= nameOffset)
+        return std::nullopt;
+    const QByteArray &bytes = decoded.decoded;
+    const std::optional<QString> name = trailingName(bytes, nameOffset);
+    if (!name)
+        return std::nullopt;
+    return BoardLink{*id, *name, bytes.first(capabilitySize),
+                     bytes.mid(capabilitySize, signingKeySize),
+                     bytes.mid(capabilitySize + signingKeySize, linkTokenSize)};
 }
 
 QString formatFingerprint(const QByteArray &signingKey) {

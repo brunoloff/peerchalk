@@ -39,6 +39,7 @@ struct BoardEntry {
     QDateTime edited;
     std::vector<SignedOp> ops;
     AccessState state;
+    QByteArray linkToken{}; // the secret of the board's link, if known here
 
     [[nodiscard]] QString name() const { return state.exists ? state.name : inviteName; }
     [[nodiscard]] bool deleted() const { return state.deleted; }
@@ -50,7 +51,7 @@ struct BoardEntry {
 // may change what). A project is a collection of boards: its members are members of all
 // its boards; its owners add and remove boards they also own. A user may access a project
 // they have a role on, and a board they have a role on or that belongs to a project they
-// may access. All members of a board may edit it.
+// may access. Members may edit a board while one of its owners is connected.
 //
 // Data lives in `directory`: workspace.json (owner-only; it holds capabilities) and
 // boards/<id>.yrs. Files from earlier versions are migrated on first load. Failures to
@@ -76,6 +77,9 @@ class Workspace {
     [[nodiscard]] Role boardRole(const QUuid &id, const QByteArray &user) const;
     [[nodiscard]] bool mayAccessProject(const QByteArray &user, const QUuid &projectId) const;
     [[nodiscard]] bool mayAccessBoard(const QByteArray &user, const QUuid &boardId) const;
+    // An owner of the board, or of a project it is in. Members can see and change a board
+    // only while one of these is connected.
+    [[nodiscard]] bool isBoardOwner(const QByteArray &user, const QUuid &boardId) const;
     // Boards shown in a project, and boards shown in none of your projects: accessible
     // ones, and ones you joined by invite (which may still await approval).
     [[nodiscard]] std::vector<QUuid> boardsInProject(const QUuid &projectId) const;
@@ -105,6 +109,19 @@ class Workspace {
     // Records an invite; throws std::invalid_argument if the item is already here.
     void join(const Invite &invite);
 
+    // Board links, for owners: making a new one replaces the old one.
+    BoardLink createBoardLink(const QUuid &id);
+    // The working link, if this device knows its secret.
+    [[nodiscard]] std::optional<BoardLink> currentBoardLink(const QUuid &id) const;
+    [[nodiscard]] bool boardHasLink(const QUuid &id) const;
+    void disableBoardLink(const QUuid &id);
+    // Records a link you were given; an owner still has to admit you.
+    void joinByLink(const BoardLink &link);
+    // As an owner, makes someone a member if their token matches the link and they were
+    // not removed from the board. Returns whether they were admitted.
+    bool admitByLink(const QUuid &id, const QByteArray &user, const QString &name,
+                     const QByteArray &token);
+
     // Takes in access changes from a peer: changes to known projects and boards, and to
     // boards listed by a project you may access. Returns true when something changed.
     bool acceptOps(const std::vector<std::pair<QByteArray, QByteArray>> &signedOps);
@@ -125,6 +142,7 @@ class Workspace {
 
   private:
     ProjectEntry &findProject(const QUuid &id);
+    void recordBoardLink(const QUuid &id, const QByteArray &hash);
     BoardEntry &findBoard(const QUuid &id);
     // Signs a change with the next clock after `clock`, adds it and recomputes.
     void record(std::vector<SignedOp> &ops, quint64 clock, AccessOp op);

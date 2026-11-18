@@ -244,5 +244,38 @@ TEST(Workspace, RejectsMisuse) {
                  std::invalid_argument);
 }
 
+TEST(Workspace, BoardLinksAdmitOnlyWithTheCurrentTokenAndNotRemovedPeople) {
+    Person alice("Alice"), bob("Bob"), carol("Carol");
+    const QUuid board = alice.workspace->createBoard(QStringLiteral("Sketch"), {}, alice.name);
+    EXPECT_FALSE(alice.workspace->currentBoardLink(board).has_value());
+    const BoardLink first = alice.workspace->createBoardLink(board);
+    EXPECT_EQ(alice.workspace->currentBoardLink(board)->token, first.token);
+    EXPECT_THROW(bob.workspace->createBoardLink(board), std::invalid_argument);
+    bob.workspace->joinByLink(first);
+    bob.workspace->acceptOps(wire(alice.workspace->opsForBoard(board)));
+    EXPECT_FALSE(bob.workspace->isBoardOwner(bob.key(), board));
+    EXPECT_FALSE(alice.workspace->admitByLink(board, bob.key(), bob.name, QByteArray(32, 'x')));
+    EXPECT_TRUE(alice.workspace->admitByLink(board, bob.key(), bob.name, first.token));
+    EXPECT_EQ(alice.workspace->boardRole(board, bob.key()), Role::Member);
+    alice.workspace->setBoardRole(board, bob.key(), bob.name, Role::None);
+    EXPECT_FALSE(alice.workspace->admitByLink(board, bob.key(), bob.name, first.token));
+    const BoardLink second = alice.workspace->createBoardLink(board);
+    EXPECT_FALSE(alice.workspace->admitByLink(board, carol.key(), carol.name, first.token));
+    EXPECT_TRUE(alice.workspace->admitByLink(board, carol.key(), carol.name, second.token));
+    alice.workspace->disableBoardLink(board);
+    EXPECT_FALSE(alice.workspace->currentBoardLink(board).has_value());
+    alice.reload();
+    EXPECT_FALSE(alice.workspace->boardHasLink(board));
+}
+
+TEST(Workspace, ProjectOwnersOwnItsBoards) {
+    Person alice("Alice"), bob("Bob");
+    const QUuid project = alice.workspace->createProject(QStringLiteral("P"), alice.name);
+    const QUuid board = alice.workspace->createBoard(QStringLiteral("B"), project, alice.name);
+    EXPECT_FALSE(alice.workspace->isBoardOwner(bob.key(), board));
+    alice.workspace->setProjectRole(project, bob.key(), bob.name, Role::Owner);
+    EXPECT_TRUE(alice.workspace->isBoardOwner(bob.key(), board));
+}
+
 } // namespace
 } // namespace peerchalk

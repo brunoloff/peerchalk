@@ -16,16 +16,9 @@ using namespace p2pdc;
 
 namespace {
 
-constexpr std::size_t maxSpaces = 16; // p2pdc's limit on subscriptions per node
 constexpr auto retryInterval = std::chrono::milliseconds(1500);
 constexpr auto presenceInterval = std::chrono::milliseconds(100);
-
-DiscoveryCapability toCapability(const QByteArray &bytes) {
-    DiscoveryCapability capability{};
-    std::copy_n(reinterpret_cast<const std::byte *>(bytes.constData()), capability.size(),
-                capability.begin());
-    return capability;
-}
+constexpr auto incompatibleRetry = std::chrono::minutes(5);
 
 } // namespace
 
@@ -40,11 +33,15 @@ Network::Network(Library &library, NetworkConfig config, QObject *parent)
     presenceTimer_.setSingleShot(true);
     presenceTimer_.setInterval(presenceInterval);
     connect(&presenceTimer_, &QTimer::timeout, this, [this] { sendPresence(); });
+    rotationTimer_.setInterval(config_.spaceRotation);
+    connect(&rotationTimer_, &QTimer::timeout, this, &Network::rotateSpaces);
     setUpLiveUpdates();
     connect(&library_, &Library::workspaceChanged, this, &Network::workspaceChanged);
     connect(&library_, &Library::boardChanged, this, &Network::boardChanged);
     connect(&library_, &Library::profileChanged, this, &Network::profileChanged);
     connect(this, &Network::peersChanged, this, &Network::requestsChanged);
+    connect(this, &Network::peersChanged, this, &Network::boardAccessChanged);
+    connect(&library_, &Library::workspaceChanged, this, &Network::boardAccessChanged);
     connect(&library_, &Library::workspaceChanged, this, &Network::requestsChanged);
     setStatus(config_.enabled ? tr("Not started") : tr("Offline: networking is turned off"));
 }
@@ -123,6 +120,8 @@ void Network::start() {
     DiscoveryConfig discovery;
     discovery.network_id = config_.networkId;
     discovery.bootstrap_servers = config_.bootstrap;
+    if (!config_.dhtProxy.empty())
+        discovery.browser_proxy_urls.push_back(config_.dhtProxy);
     discovery.max_connections = 64;
     if (config_.loopbackOnly)
         discovery.bind_addresses = NativeBindAddresses{"127.0.0.1", "::1"};
@@ -150,14 +149,16 @@ void Network::nodeStarted(NodeStartResult result) {
     started_ = true;
     reconcileSpaces();
     retryTimer_.start();
+    rotationTimer_.start();
     setStatus(tr("Online"));
 }
 
-void Network::shutdown(std::chrono::milliseconds timeout) {
+bool Network::beginShutdown(std::function<void()> stopped) {
     if (!node_ || stopping_)
-        return;
+        return false;
     stopping_ = true;
     retryTimer_.stop();
+    rotationTimer_.stop();
     peers_.clear();
     for (auto &[key, space] : spaces_) {
         space->listener.reset();
@@ -165,72 +166,61 @@ void Network::shutdown(std::chrono::milliseconds timeout) {
         space->lease.reset();
     }
     spaces_.clear();
-    QEventLoop loop;
-    const bool begun = node_->shutdown([&loop](NodeStopResult) { loop.quit(); });
-    if (begun) {
-        QTimer::singleShot(timeout, &loop, &QEventLoop::quit);
-        loop.exec();
-    }
+    return node_->shutdown([stopped = std::move(stopped)](NodeStopResult) { stopped(); });
+}
+
+void Network::finishShutdown() {
     node_.reset();
     started_ = false;
     setStatus(tr("Offline"));
 }
 
-bool Network::isOwnDevice(const SigningPublicKey &key) const {
-    return node_ && node_->identity() && node_->identity()->signing_key == key;
+void Network::shutdown(std::chrono::milliseconds timeout) {
+    if (!node_ || stopping_)
+        return;
+    QEventLoop loop;
+    if (beginShutdown([&loop] { loop.quit(); })) {
+        QTimer::singleShot(timeout, &loop, &QEventLoop::quit);
+        loop.exec();
+    }
+    finishShutdown();
 }
 
-// Opens a space for every project and board this device can find peers for, and closes
-// spaces that are no longer needed.
-void Network::reconcileSpaces() {
-    if (!started_ || stopping_)
-        return;
-    std::map<QString, std::tuple<SpaceKind, QUuid, QByteArray>> wanted;
-    const Workspace &workspace = library_.workspace();
-    wanted[QStringLiteral("personal")] = {SpaceKind::Personal, QUuid(),
-                                          library_.identityStore().identity().personalCapability()};
-    for (const ProjectEntry &project : workspace.projects())
-        if (!project.deleted())
-            wanted[QStringLiteral("p:") + project.id.toString(QUuid::WithoutBraces)] = {
-                SpaceKind::Project, project.id, project.capability};
-    for (const BoardEntry &board : workspace.boards())
-        if (!board.deleted() && board.capability.size() == 32)
-            wanted[QStringLiteral("b:") + board.id.toString(QUuid::WithoutBraces)] = {
-                SpaceKind::Board, board.id, board.capability};
-    std::vector<QString> obsolete;
-    for (const auto &[key, space] : spaces_)
-        if (!wanted.contains(key))
-            obsolete.push_back(key);
-    for (const QString &key : obsolete)
-        closeSpace(key);
-    for (const auto &[key, spec] : wanted) {
-        if (spaces_.contains(key))
-            continue;
-        if (spaces_.size() >= maxSpaces) {
-            setStatus(
-                tr("Online, but only %1 projects and boards can be shared at once").arg(maxSpaces));
-            break;
-        }
-        openSpace(key, std::get<0>(spec), std::get<1>(spec), std::get<2>(spec));
+void Network::shutdownThen(std::chrono::milliseconds timeout, std::function<void()> done) {
+    auto finished = std::make_shared<bool>(false);
+    // Runs from the event loop: the node must not be destroyed inside its own callback.
+    auto finish = [this, finished, done = std::move(done)] {
+        if (std::exchange(*finished, true))
+            return;
+        finishShutdown();
+        done();
+    };
+    if (beginShutdown([this, finish] { QTimer::singleShot(0, this, finish); }))
+        QTimer::singleShot(timeout, this, finish);
+    else
+        QTimer::singleShot(0, this, finish);
+}
+
+bool Network::isIncompatible(const SigningPublicKey &device) {
+    const auto found = incompatible_.find(device);
+    if (found == incompatible_.end())
+        return false;
+    if (!found->second.hasExpired())
+        return true;
+    incompatible_.erase(found); // it may have been updated by now
+    return false;
+}
+
+void Network::markIncompatible(const SigningPublicKey &device, bool theyAreNewer) {
+    incompatible_[device] = QDeadlineTimer(incompatibleRetry);
+    if (theyAreNewer && !updateNeeded_) {
+        updateNeeded_ = true;
+        emit updateNeededChanged();
     }
 }
 
-void Network::openSpace(const QString &key, SpaceKind kind, const QUuid &id,
-                        const QByteArray &capability) {
-    auto space = std::make_unique<Space>();
-    space->kind = kind;
-    space->id = id;
-    space->capability = toCapability(capability);
-    spaces_[key] = std::move(space);
-    if (!watch(key) || !announce(key))
-        spaces_.erase(key); // retried by the next reconcile
-}
-
-void Network::closeSpace(const QString &key) {
-    std::erase_if(peers_, [&key](const auto &entry) { return entry.first.first == key; });
-    spaces_.erase(key);
-    emit peersChanged();
-    emit presenceChanged();
+bool Network::isOwnDevice(const SigningPublicKey &key) const {
+    return node_ && node_->identity() && node_->identity()->signing_key == key;
 }
 
 bool Network::watch(const QString &key) {
@@ -328,7 +318,8 @@ void Network::tryConnect(const QString &key) {
     for (const auto &[device, advertisement] : space.advertisements) {
         const auto peer = peers_.find({key, device});
         const bool connected = peer != peers_.end() && peer->second->connection;
-        if (own < device && !connected && space.watch->is_current(advertisement))
+        if (own < device && !connected && !isIncompatible(device) &&
+            space.watch->is_current(advertisement))
             connectPeer(key, advertisement);
     }
 }
@@ -342,7 +333,7 @@ void Network::request(const QString &key, IncomingRequestId id, Advertisement ad
     const auto existing = peers_.find({key, device});
     const bool busy = existing != peers_.end() && existing->second->connection;
     if (!node_->identity() || !space.watch->is_current(advertisement) ||
-        device >= node_->identity()->signing_key || busy) {
+        device >= node_->identity()->signing_key || busy || isIncompatible(device)) {
         static_cast<void>(space.listener->reject(id));
         return;
     }

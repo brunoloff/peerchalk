@@ -10,16 +10,27 @@ target_compile_options(peerchalk_board PRIVATE
 add_library(peerchalk_library STATIC library/codes.cpp library/files.cpp
     library/identity_store.cpp library/signatures.cpp library/user_identity.cpp
     library/access_log.cpp library/access_rules.cpp library/workspace.cpp
-    library/workspace_roles.cpp library/workspace_io.cpp library/workspace_migration.cpp)
+    library/workspace_roles.cpp library/workspace_io.cpp library/workspace_migration.cpp
+    library/account_store.cpp library/account_import.cpp library/backup.cpp
+    library/workspace_links.cpp)
 target_include_directories(peerchalk_library PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
-target_link_libraries(peerchalk_library PUBLIC Qt6::Core PRIVATE p2pdc::p2pdc)
+target_include_directories(peerchalk_library SYSTEM PRIVATE "${SODIUM_INCLUDE_DIR}")
+target_link_libraries(peerchalk_library PUBLIC Qt6::Core PRIVATE peerchalk_board p2pdc::p2pdc)
 target_compile_options(peerchalk_library PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:${peerchalk_warning_flags}>)
 
 add_subdirectory(ui)
 
-qt_add_executable(peerchalk app/main.cpp)
+qt_add_executable(peerchalk app/main.cpp app/app_controller.cpp app/app_controller.hpp)
 target_link_libraries(peerchalk PRIVATE peerchalk_uiplugin peerchalk_ui p2pdc::p2pdc
     Qt6::Gui Qt6::Qml Qt6::Quick Qt6::QuickControls2)
 target_compile_options(peerchalk PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:${peerchalk_warning_flags}>)
+if(EMSCRIPTEN)
+    set(peerchalk_web_storage "${CMAKE_CURRENT_SOURCE_DIR}/app/web_storage.js")
+    set(peerchalk_web_files "${CMAKE_CURRENT_SOURCE_DIR}/app/web_files.js")
+    target_link_options(peerchalk PRIVATE -lidbfs.js "SHELL:--pre-js \"${peerchalk_web_storage}\""
+        "SHELL:--pre-js \"${peerchalk_web_files}\"")
+    set_property(TARGET peerchalk APPEND PROPERTY LINK_DEPENDS "${peerchalk_web_storage}"
+        "${peerchalk_web_files}")
+endif()

@@ -9,6 +9,8 @@ import QtQuick.Layouts
 Item {
     id: pane
 
+    // Browsers cannot join the DHT themselves, so they reach it through a proxy.
+    readonly property bool inBrowser: Qt.platform.os === "wasm"
     property string error
 
     function load() {
@@ -18,6 +20,7 @@ Item {
         dhtField.text = saved.dhtNetwork;
         stunField.text = saved.stun;
         turnField.text = saved.turn;
+        proxyField.text = saved.dhtProxy;
         error = "";
     }
 
@@ -27,7 +30,8 @@ Item {
             bootstrap: bootstrapField.text,
             dhtNetwork: dhtField.text,
             stun: stunField.text,
-            turn: turnField.text
+            turn: turnField.text,
+            dhtProxy: proxyField.text
         });
     }
 
@@ -68,8 +72,18 @@ Item {
                 }
 
                 SettingField {
+                    id: proxyField
+
+                    visible: pane.inBrowser
+                    label: qsTr("OpenDHT proxy")
+                    hint: qsTr("The https:// server this browser finds peers through. Empty uses dhtproxy.jami.net.")
+                    placeholder: "https://dhtproxy.jami.net"
+                }
+
+                SettingField {
                     id: bootstrapField
 
+                    visible: !pane.inBrowser
                     label: qsTr("Bootstrap nodes")
                     hint: qsTr("OpenDHT nodes to start from, as host:port separated by commas. Empty uses bootstrap.jami.net:4222.")
                     placeholder: "bootstrap.jami.net:4222"

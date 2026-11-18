@@ -31,32 +31,75 @@ void Network::receive(const PeerId &id, std::uint64_t generation, const QByteArr
     if (peer == nullptr)
         return;
     const std::optional<Message> message = decode(bytes);
+    if (message && std::holds_alternative<MessagePart>(*message))
+        receivePart(id, *peer, std::get<MessagePart>(*message));
+    else
+        dispatch(id, *peer, message);
+}
+
+// Only someone who has signed in may send parts, and only people with access much data.
+void Network::receivePart(const PeerId &id, Peer &peer, const MessagePart &part) {
+    const qsizetype limit = peerHasAccess(peer) ? maxMessageBytes : maxUntrustedMessageBytes;
+    const auto status =
+        peer.user ? peer.assembler.add(part, limit) : MessageAssembler::Status::Invalid;
+    if (status == MessageAssembler::Status::Invalid) {
+        disconnectPeer(id, peer.generation);
+    } else if (status == MessageAssembler::Status::Complete) {
+        const std::optional<Message> message = decode(peer.assembler.take());
+        if (message && std::holds_alternative<MessagePart>(*message))
+            disconnectPeer(id, peer.generation);
+        else
+            dispatch(id, peer, message);
+    }
+}
+
+void Network::dispatch(const PeerId &id, Peer &peer, const std::optional<Message> &message) {
     const bool hello = message && std::holds_alternative<Hello>(*message);
     // A device must say who it is first, and only once; anything malformed ends the call.
-    if (!message || hello == peer->user.has_value()) {
-        disconnectPeer(id, generation);
+    if (!message || hello == peer.user.has_value()) {
+        disconnectPeer(id, peer.generation);
         return;
     }
     if (hello) {
-        if (!handleHello(*peer, std::get<Hello>(*message))) {
-            disconnectPeer(id, generation);
+        if (!handleHello(peer, std::get<Hello>(*message))) {
+            disconnectPeer(id, peer.generation);
             return;
         }
-        peerAuthenticated(id, *peer);
+        peerAuthenticated(id, peer);
     } else if (const auto *changes = std::get_if<AccessChanges>(&*message)) {
         handleAccess(*changes);
     } else if (const auto *personal = std::get_if<Personal>(&*message)) {
-        handlePersonal(*peer, *personal);
+        handlePersonal(peer, *personal);
     } else if (const auto *update = std::get_if<BoardUpdate>(&*message)) {
-        handleBoardUpdate(*peer, *update);
+        handleBoardUpdate(peer, *update);
+    } else if (const auto *join = std::get_if<BoardLinkJoin>(&*message)) {
+        handleLinkJoin(peer, *join);
+    } else if (const auto *state = std::get_if<BoardState>(&*message)) {
+        handleBoardState(id, peer, *state);
     } else if (const auto *presence = std::get_if<Presence>(&*message)) {
-        applyPresence(*peer, *presence);
+        applyPresence(peer, *presence);
     } else if (const auto *profile = std::get_if<Profile>(&*message)) {
-        peer->user->name = profile->displayName.trimmed();
-        peer->user->colorIndex = profile->colorIndex;
+        peer.user->name = profile->displayName.trimmed();
+        peer.user->colorIndex = profile->colorIndex;
         emit presenceChanged();
         emit peersChanged();
+    } // anything else comes from a newer version and is ignored
+}
+
+bool Network::peerHasAccess(const Peer &peer) const {
+    if (!peer.user)
+        return false;
+    const Space &space = *spaces_.at(peer.space);
+    const Workspace &workspace = library_.workspace();
+    switch (space.kind) {
+    case SpaceKind::Personal:
+        return true; // handleHello accepted only this same user
+    case SpaceKind::Project:
+        return workspace.mayAccessProject(peer.user->userKey, space.id);
+    case SpaceKind::Board:
+        return workspace.mayAccessBoard(peer.user->userKey, space.id);
     }
+    return false;
 }
 
 // Accepts the device if its certificate is valid for the key p2pdc authenticated, and,
@@ -66,6 +109,10 @@ bool Network::handleHello(Peer &peer, const Hello &hello) {
         hello.certificatePayload, hello.certificateSignature, keyBytes(peer.device));
     if (!certificate)
         return false;
+    if (!protocolsCompatible(hello)) {
+        markIncompatible(peer.device, hello.minProtocol > protocolVersion);
+        return false;
+    }
     const bool sameUser = certificate->userKey == library_.workspace().user();
     if (spaces_.at(peer.space)->kind == SpaceKind::Personal && !sameUser)
         return false;
@@ -74,9 +121,14 @@ bool Network::handleHello(Peer &peer, const Hello &hello) {
 }
 
 void Network::peerAuthenticated(const PeerId &id, Peer &peer) {
-    if (const std::optional<QString> item = requestedItemName(peer))
+    const Space &space = *spaces_.at(peer.space);
+    const bool mayUseLink =
+        space.kind == SpaceKind::Board && library_.workspace().boardHasLink(space.id);
+    if (const std::optional<QString> item = requestedItemName(peer); item && !mayUseLink)
         emit joinRequested(peer.user->name, *item);
     offerAccess(peer);
+    offerLinkJoin(peer);
+    offerBoardStates(peer);
     for (const QUuid &board : syncableBoards(peer))
         peer.dirtyBoards.insert(board);
     peer.presenceDirty = true;
@@ -132,7 +184,7 @@ void Network::handleBoardUpdate(const Peer &peer, const BoardUpdate &update) {
     settleLiveStrokes(peer, update.board);
 }
 
-bool Network::syncable(const Peer &peer, const QUuid &board) const {
+bool Network::sharesBoard(const Peer &peer, const QUuid &board) const {
     if (!peer.user)
         return false;
     const Workspace &workspace = library_.workspace();
@@ -154,6 +206,18 @@ bool Network::syncable(const Peer &peer, const QUuid &board) const {
     return false;
 }
 
+bool Network::syncable(const Peer &peer, const QUuid &board) const {
+    if (!sharesBoard(peer, board))
+        return false;
+    const Workspace &workspace = library_.workspace();
+    return workspace.isBoardOwner(workspace.user(), board) ||
+           workspace.isBoardOwner(peer.user->userKey, board);
+}
+
+bool Network::sharesLiveActivity(const Peer &peer, const QUuid &board) const {
+    return sharesBoard(peer, board) && boardLive(board);
+}
+
 std::vector<QUuid> Network::syncableBoards(const Peer &peer) const {
     std::vector<QUuid> result;
     for (const BoardEntry &board : library_.workspace().boards())
@@ -170,8 +234,10 @@ void Network::workspaceChanged() {
         if (!peer->ready || !peer->user)
             continue;
         offerAccess(*peer);
+        offerLinkJoin(*peer);
+        offerBoardStates(*peer);
         for (const QUuid &board : syncableBoards(*peer))
-            if (!peer->sentState.contains(board))
+            if (!peer->sentBoards.contains(board))
                 peer->dirtyBoards.insert(board);
         flush(id);
     }

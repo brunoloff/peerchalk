@@ -46,7 +46,6 @@ Item {
                 visible: !home.hasProject
                 onCreateProjectRequested: newProjectDialog.ask("")
                 onJoinProjectRequested: joinDialog.ask("")
-                onLinkDeviceRequested: linkDialog.ask("")
             }
 
             ColumnLayout {
@@ -211,15 +210,5 @@ Item {
 
     RequestsDialog {
         id: requestsDialog
-    }
-
-    TextInputDialog {
-        id: linkDialog
-
-        title: qsTr("Link this device")
-        label: qsTr("On a device where you already use PeerChalk, open Settings → People, choose “Link another device” and paste its code here. This device then acts as you and gets your projects once both are online.")
-        placeholder: "peerchalk-identity:1:…"
-        acceptText: qsTr("Link")
-        onSubmitted: text => Library.adoptIdentity(text)
     }
 }

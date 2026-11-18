@@ -9,6 +9,7 @@
 #include <QObject>
 #include <QString>
 #include <QVariantList>
+#include <QVariantMap>
 #include <QtQml/qqmlregistration.h>
 
 #include <functional>
@@ -20,10 +21,10 @@ class QTimer;
 
 namespace peerchalk {
 
-// The app's projects, boards, identity and contacts for QML. Data lives in the folder
-// named by the PEERCHALK_DATA_DIR environment variable, or else the platform's app data
-// folder. Operations that fail emit errorOccurred with a message for the user and return
-// an empty value instead of throwing into QML.
+// One account's projects, boards, identity and contacts for QML. Its folder comes from
+// the engine's accountDirectory property, or else is defaultDataDirectory(). Operations that fail
+// emit errorOccurred with a message for the user and return an empty value instead of throwing into
+// QML.
 //
 // The board list shows the current selection: a project, or `sharedId` for boards
 // shared with you directly.
@@ -51,6 +52,8 @@ class Library : public QObject {
     Q_PROPERTY(QString contactCode READ contactCode NOTIFY profileChanged)
     Q_PROPERTY(QString deviceName READ deviceName CONSTANT)
     Q_PROPERTY(bool canAdoptIdentity READ canAdoptIdentity NOTIFY workspaceChanged)
+    // Changes with every workspace change, for QML bindings that depend on it.
+    Q_PROPERTY(int workspaceRevision READ workspaceRevision NOTIFY workspaceChanged)
 
   public:
     // Throws std::runtime_error when the stored data cannot be read.
@@ -58,6 +61,8 @@ class Library : public QObject {
     // Saves boards with unsaved changes.
     ~Library() override;
     static Library *create(QQmlEngine *engine, QJSEngine *scriptEngine);
+    // PEERCHALK_DATA_DIR, or else the platform's app data folder; accounts live inside it.
+    [[nodiscard]] static QString defaultDataDirectory();
 
     [[nodiscard]] RowModel *projects() const { return projects_; }
     [[nodiscard]] RowModel *boards() const { return boards_; }
@@ -81,6 +86,7 @@ class Library : public QObject {
     [[nodiscard]] QString contactCode() const;
     [[nodiscard]] QString deviceName() const { return identity_.identity().deviceName(); }
     [[nodiscard]] bool canAdoptIdentity() const;
+    [[nodiscard]] int workspaceRevision() const { return workspaceRevision_; }
 
     // The data folder this library reads and writes.
     [[nodiscard]] QString directory() const { return directory_; }
@@ -95,6 +101,13 @@ class Library : public QObject {
     Q_INVOKABLE QString joinInvite(const QString &code);
     Q_INVOKABLE QString projectInvite(const QString &projectId);
     Q_INVOKABLE QString boardInvite(const QString &boardId);
+    // Board links: the working one ("" if none is known here), a new one replacing it, and
+    // turning links off. siteUrl is where the app is hosted (see Accounts.siteUrl).
+    Q_INVOKABLE QString boardLink(const QString &boardId, const QString &siteUrl);
+    Q_INVOKABLE QString createBoardLink(const QString &boardId, const QString &siteUrl);
+    Q_INVOKABLE void disableBoardLink(const QString &boardId);
+    // Joins through a link if needed and returns the board's id, or "" on failure.
+    Q_INVOKABLE QString openBoardLink(const QString &url);
     Q_INVOKABLE void renameProject(const QString &projectId, const QString &name);
     Q_INVOKABLE void removeProject(const QString &projectId);
     Q_INVOKABLE bool isProjectAdmin(const QString &projectId);
@@ -121,6 +134,8 @@ class Library : public QObject {
     // The people with a role, then your other contacts (who can be added), each
     // {key, name, fingerprint, role, you}.
     Q_INVOKABLE QVariantList projectPeople(const QString &projectId);
+    // How many people have a role in the project, you included.
+    Q_INVOKABLE int projectMemberCount(const QString &projectId);
     Q_INVOKABLE QVariantList boardPeople(const QString &boardId);
     // role: "member", "owner" or "none" (remove), as your own role allows.
     Q_INVOKABLE void setProjectRole(const QString &projectId, const QString &keyHex,
@@ -150,9 +165,15 @@ class Library : public QObject {
     // Makes this device one of yours using a code from another device; only possible
     // before this device has any projects or boards.
     Q_INVOKABLE bool adoptIdentity(const QString &code);
+    // Adds the people from a backup (see Accounts.importPeople) to your known people.
+    Q_INVOKABLE void importPeople(const QVariantMap &people);
     // Remembers a pen colour ("#RRGGBB") you picked yourself.
     Q_INVOKABLE void addCustomColor(const QString &color);
     Q_INVOKABLE void copyToClipboard(const QString &text);
+
+    // As an owner, admits someone who presented the board link's token (sync).
+    bool admitByLink(const QUuid &board, const QByteArray &user, const QString &name,
+                     const QByteArray &token);
 
     // Refreshes the lists after the workspace or contacts changed elsewhere (sync).
     void workspaceUpdated();
@@ -182,6 +203,7 @@ class Library : public QObject {
     void ensureValidSelection();
 
     QString directory_;
+    int workspaceRevision_{0};
     IdentityStore identity_;
     Workspace workspace_;
     QString currentProject_;

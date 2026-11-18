@@ -2,6 +2,7 @@
 
 #include "board/stroke_codec.hpp"
 #include "sync/live_strokes.hpp"
+#include "sync/message_parts.hpp"
 #include "sync/messages.hpp"
 #include "sync/network_config.hpp"
 
@@ -10,6 +11,8 @@
 #include <p2pdc/incoming.h>
 #include <p2pdc/node.h>
 
+#include <QDateTime>
+#include <QDeadlineTimer>
 #include <QObject>
 #include <QPointF>
 #include <QTimer>
@@ -20,6 +23,7 @@
 
 #include <atomic>
 #include <deque>
+#include <functional>
 #include <map>
 #include <memory>
 #include <optional>
@@ -61,6 +65,8 @@ class Network : public QObject {
     Q_PROPERTY(bool settingsOverridden READ settingsOverridden CONSTANT)
     // Settings were saved that apply once PeerChalk starts again.
     Q_PROPERTY(bool restartNeeded READ restartNeeded NOTIFY settingsChanged)
+    // Someone here runs a version this one is too old to talk to.
+    Q_PROPERTY(bool updateNeeded READ updateNeeded NOTIFY updateNeededChanged)
 
   public:
     Network(Library &library, NetworkConfig config, QObject *parent = nullptr);
@@ -72,6 +78,9 @@ class Network : public QObject {
     // Closes every connection and stops the node, waiting up to `timeout` for p2pdc to
     // finish; call before the application exits.
     void shutdown(std::chrono::milliseconds timeout);
+    // The same without waiting here, for when the app keeps running: done is called on
+    // the main thread once the network has stopped or timeout has passed.
+    void shutdownThen(std::chrono::milliseconds timeout, std::function<void()> done);
 
     [[nodiscard]] QString status() const { return status_; }
     [[nodiscard]] bool online() const { return started_ && !stopping_; }
@@ -79,6 +88,7 @@ class Network : public QObject {
     [[nodiscard]] int joinRequestCount() const;
     [[nodiscard]] static bool settingsOverridden();
     [[nodiscard]] bool restartNeeded() const { return restartNeeded_; }
+    [[nodiscard]] bool updateNeeded() const { return updateNeeded_; }
     // The saved settings: {enabled, bootstrap, dhtNetwork, stun, turn}.
     Q_INVOKABLE QVariantMap settings() const;
     // Checks and saves settings for the next start; returns what is wrong, or "".
@@ -89,6 +99,10 @@ class Network : public QObject {
     // Every request across projects and boards you own: {itemId, itemName, board, key,
     // name, fingerprint}.
     Q_INVOKABLE QVariantList allJoinRequests() const;
+
+    // What you can do with a board now: "edit"; "offline" for a member with no owner
+    // connected, who sees their last copy; "waiting" until an owner has let you in.
+    Q_INVOKABLE QString boardAccess(const QString &boardId) const;
 
     // Tells peers which board this device shows and where the pointer is (world
     // coordinates); an empty boardId means no board.
@@ -102,6 +116,9 @@ class Network : public QObject {
     void presenceChanged();
     void requestsChanged();
     void settingsChanged();
+    void updateNeededChanged();
+    // boardAccess may give a different answer now.
+    void boardAccessChanged();
     // Someone without access reached a project or board you own.
     void joinRequested(const QString &name, const QString &itemName);
 
@@ -118,6 +135,12 @@ class Network : public QObject {
         bool caught{false};
         std::map<p2pdc::SigningPublicKey, p2pdc::Advertisement> advertisements;
     };
+    struct SpaceSpec {
+        SpaceKind kind{SpaceKind::Personal};
+        QUuid id;
+        QByteArray capability;
+        QDateTime lastEdited;
+    };
     struct RemoteUser {
         QByteArray userKey;
         QString name;
@@ -131,8 +154,12 @@ class Network : public QObject {
         bool ready{false};
         std::optional<RemoteUser> user;
         std::deque<QByteArray> outbox;
-        std::map<QUuid, Bytes> sentState;
+        MessageAssembler assembler;
+        std::map<QUuid, Bytes> sentState; // what the peer is known to have
+        std::set<QUuid> offeredStates;    // boards whose state it was told
+        std::set<QUuid> sentBoards;
         std::set<QUuid> dirtyBoards;
+        bool linkJoinSent{false};
         bool presenceDirty{false};
         bool presenceReliable{true}; // the next presence must not be lost
         std::optional<Presence> presence;
@@ -143,17 +170,36 @@ class Network : public QObject {
     [[nodiscard]] p2pdc::Executor executor() const;
     [[nodiscard]] p2pdc::Scheduler scheduler() const;
     void setStatus(const QString &status);
+    // Drops connections and asks the node to stop; false when there is nothing to wait for.
+    bool beginShutdown(std::function<void()> stopped);
+    void finishShutdown();
     void nodeStarted(p2pdc::NodeStartResult result);
-    void reconcileSpaces();
-    void openSpace(const QString &key, SpaceKind kind, const QUuid &id,
-                   const QByteArray &capability);
-    void closeSpace(const QString &key);
     bool watch(const QString &key);
     bool announce(const QString &key);
     bool listen(const QString &key);
     void tryConnect(const QString &key);
     void request(const QString &key, p2pdc::IncomingRequestId id, p2pdc::Advertisement peer);
     [[nodiscard]] bool isOwnDevice(const p2pdc::SigningPublicKey &key) const;
+    [[nodiscard]] bool isIncompatible(const p2pdc::SigningPublicKey &device);
+    void markIncompatible(const p2pdc::SigningPublicKey &device, bool theyAreNewer);
+
+    // network_spaces.cpp: which spaces are open
+    [[nodiscard]] std::map<QString, SpaceSpec> wantedSpaces() const;
+    [[nodiscard]] std::set<QString> essentialSpaces() const;
+    void reconcileSpaces();
+    void rotateSpaces();
+    bool openSpace(const QString &key, SpaceKind kind, const QUuid &id,
+                   const QByteArray &capability);
+    void closeSpace(const QString &key);
+
+    // network_boards.cpp: sending each peer what it lacks
+    void offerBoardStates(Peer &peer);
+    void handleBoardState(const PeerId &id, Peer &peer, const BoardState &state);
+    bool queueNextBoard(const PeerId &id, Peer &peer);
+    void offerLinkJoin(Peer &peer);
+    void handleLinkJoin(const Peer &peer, const BoardLinkJoin &join);
+    // An owner of the board, here or connected and sharing it.
+    [[nodiscard]] bool boardLive(const QUuid &board) const;
 
     // network_peers.cpp: connections and sending
     [[nodiscard]] static p2pdc::ConnectOptions connectOptions();
@@ -164,7 +210,6 @@ class Network : public QObject {
     [[nodiscard]] Peer *livePeer(const PeerId &id, std::uint64_t generation);
     void queue(Peer &peer, const Message &message);
     void flush(const PeerId &id);
-    bool flushBoards(const PeerId &id, Peer &peer);
     bool sendOne(const PeerId &id, Peer &peer, const QByteArray &bytes);
 
     // network_live.cpp: what may be lost, sent as datagrams
@@ -183,13 +228,21 @@ class Network : public QObject {
 
     // network_sync.cpp: what flows between authenticated peers
     void receive(const PeerId &id, std::uint64_t generation, const QByteArray &bytes);
+    void receivePart(const PeerId &id, Peer &peer, const MessagePart &part);
+    void dispatch(const PeerId &id, Peer &peer, const std::optional<Message> &message);
+    [[nodiscard]] bool peerHasAccess(const Peer &peer) const;
     bool handleHello(Peer &peer, const Hello &hello);
     void peerAuthenticated(const PeerId &id, Peer &peer);
     void offerAccess(Peer &peer);
     void handleAccess(const AccessChanges &message);
     void handlePersonal(const Peer &peer, const Personal &message);
     void handleBoardUpdate(const Peer &peer, const BoardUpdate &update);
+    // Both sides may access the board and the connection's space covers it.
+    [[nodiscard]] bool sharesBoard(const Peer &peer, const QUuid &board) const;
+    // Board contents flow only between a board's owners and others: never member to member.
     [[nodiscard]] bool syncable(const Peer &peer, const QUuid &board) const;
+    // Cursors and strokes being drawn, while the board is live.
+    [[nodiscard]] bool sharesLiveActivity(const Peer &peer, const QUuid &board) const;
     [[nodiscard]] std::vector<QUuid> syncableBoards(const Peer &peer) const;
     void workspaceChanged();
     void boardChanged(const QUuid &board);
@@ -208,6 +261,11 @@ class Network : public QObject {
     std::map<PeerId, std::unique_ptr<Peer>> peers_;
     std::uint64_t nextGeneration_{0};
     QTimer retryTimer_;
+    QTimer rotationTimer_;
+    std::uint64_t rotationStep_{0};
+    QDeadlineTimer spaceOpenDelay_; // expired: spaces may be opened
+    std::map<p2pdc::SigningPublicKey, QDeadlineTimer> incompatible_;
+    bool updateNeeded_{false};
     QTimer presenceTimer_;
     QUuid presenceBoard_;
     QPointF cursor_;

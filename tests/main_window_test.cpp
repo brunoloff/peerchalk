@@ -16,6 +16,32 @@ Q_IMPORT_QML_PLUGIN(PeerChalkPlugin)
 namespace peerchalk {
 namespace {
 
+TEST(MainWindowLifetimeTest, ClosingWithAnOpenBoardKeepsItsChanges) {
+    QTemporaryDir dir;
+    qputenv("PEERCHALK_DATA_DIR", dir.path().toUtf8());
+    QString boardId;
+    {
+        QQmlApplicationEngine engine;
+        engine.loadFromModule("PeerChalk", "Main");
+        ASSERT_EQ(engine.rootObjects().size(), 1);
+        auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().front());
+        ASSERT_TRUE(QTest::qWaitForWindowExposed(window));
+        auto *library = engine.singletonInstance<Library *>("PeerChalk", "Library");
+        library->createProject(QStringLiteral("Project"));
+        boardId = library->createBoard(QStringLiteral("Board"));
+        QMetaObject::invokeMethod(window, "openBoard", Q_ARG(QString, boardId));
+        ASSERT_TRUE(QTest::qWaitFor(
+            [&] { return window->findChild<QQuickItem *>("boardPage") != nullptr; }));
+        Stroke stroke(0xFF000000U, 2.0F);
+        stroke.addPoint({0.0F, 0.0F, 1.0F});
+        stroke.addPoint({5.0F, 5.0F, 1.0F});
+        library->openBoard(boardId)->board().addStroke(stroke);
+    } // destroyed with the board open and its change not yet saved
+    qunsetenv("PEERCHALK_DATA_DIR");
+    Library reopened(dir.path());
+    EXPECT_EQ(reopened.openBoard(boardId)->board().strokes().size(), 1U);
+}
+
 // Loads the whole app with its data in a fresh temporary folder.
 class MainWindowTest : public ::testing::Test {
   protected:
@@ -72,6 +98,28 @@ class MainWindowTest : public ::testing::Test {
     QQuickWindow *window_{nullptr};
     Library *library_{nullptr};
 };
+
+TEST_F(MainWindowTest, OwnersSeeNoAccessNoticeOnTheirBoards) {
+    QQuickItem *page = openNewBoard();
+    ASSERT_NE(page, nullptr);
+    EXPECT_EQ(page->property("access").toString(), QStringLiteral("edit"));
+    auto *notice = page->findChild<QQuickItem *>(QStringLiteral("boardAccessNotice"));
+    ASSERT_NE(notice, nullptr);
+    EXPECT_FALSE(notice->isVisible());
+}
+
+TEST_F(MainWindowTest, ProjectHeaderCountsNewMembers) {
+    QTemporaryDir other;
+    Library friendLibrary(other.path());
+    ASSERT_TRUE(library_->addContact(friendLibrary.contactCode()));
+    const QString project = library_->createProject(QStringLiteral("Project"));
+    auto *subtitle = window_->findChild<QObject *>(QStringLiteral("projectSubtitle"));
+    ASSERT_NE(subtitle, nullptr);
+    EXPECT_EQ(subtitle->property("text").toString(), QStringLiteral("Only you so far"));
+    library_->setProjectRole(project, friendLibrary.userKey(), QStringLiteral("member"));
+    EXPECT_TRUE(QTest::qWaitFor(
+        [&] { return subtitle->property("text").toString() == QStringLiteral("2 people"); }));
+}
 
 TEST_F(MainWindowTest, LoadsWithoutQmlWarnings) {
     openNewBoard();

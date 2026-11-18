@@ -35,6 +35,19 @@ ctest --test-dir build-native -j 1
 
 Run the app with `bin/peerchalk`.
 
+Browser build, using the Qt WebAssembly kit and the dependencies prepared in
+p2p-discovery-connect's `.deps` (see its `examples/shared-text/README.md`):
+
+```sh
+deploy/web/build.sh
+bin/peerchalk-web
+```
+
+Browsers find peers through an OpenDHT proxy, by default `https://dhtproxy.jami.net`
+(Settings → Network). Your identity and boards stay in that site's browser storage, and
+each `--port` is a separate user. Use one tab per site: two tabs would overwrite each
+other's data.
+
 ## Sharing and access
 
 Projects are collections of boards, and projects and boards each have an admin,
@@ -63,8 +76,9 @@ Your devices then share your projects, boards and contacts automatically.
 
 PeerChalk finds peers through p2p-discovery-connect: every project, every board shared
 on its own, and your own set of devices has a discovery secret, and devices holding it
-find each other on the OpenDHT network and connect directly over WebRTC. Boards sync as
-Yrs updates, live, with the other people's cursors and the strokes they are still drawing
+find each other on the OpenDHT network and connect directly over WebRTC. Peers first
+check that their protocol versions overlap and say what they have of each board, so only
+missing changes travel; large ones are sent in parts. Boards sync as Yrs updates, live, with the other people's cursors and the strokes they are still drawing
 shown on the board; those two go out as datagrams, which may be lost but never wait
 behind board updates. By default it
 uses the public OpenDHT network through Jami's bootstrap node and Cloudflare's and
@@ -96,7 +110,9 @@ under Requests (comparing fingerprints if you like) and the boards start syncing
 ## Data on this device
 
 PeerChalk keeps its data in the platform's app data folder (on Linux
-`~/.local/share/PeerChalk`), or in the folder named by `PEERCHALK_DATA_DIR`:
+`~/.local/share/PeerChalk`), or in the folder named by `PEERCHALK_DATA_DIR`. Accounts are
+local: there is no account server. `session.json` names the signed-in account and each
+account has a folder `accounts/<id>/`, with `account.json` and:
 
 - `identity.json`: your user key's Ed25519 seed; `device.json`: this device's Ed25519
   seed and X25519 secret. Both are readable only by you but not encrypted; an OS
@@ -106,6 +122,12 @@ PeerChalk keeps its data in the platform's app data folder (on Linux
 - `workspace.json`: projects and boards with their signed access changes and discovery
   secrets (readable only by you).
 - `boards/<id>.yrs`: each board's Yrs document.
+
+Settings → Account saves encrypted `.peerchalk` backups (Argon2id and
+XChaCha20-Poly1305) of everything, of your identity and known people, or of known people
+alone. Device keys are never included; restoring creates a new one. Importing a backup of
+an account already on the device merges it. See
+[the public release requirements](docs/PUBLIC_RELEASE.md) for what is still needed.
 
 ## Layout
 

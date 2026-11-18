@@ -58,6 +58,25 @@ TEST_F(BoardCanvasTest, PenDragRecordsOneStroke) {
     EXPECT_FLOAT_EQ(stroke.points().back().y, 50.0F);
 }
 
+TEST_F(BoardCanvasTest, ReadOnlyBoardsCannotBeChangedButCanBeMoved) {
+    drag({10, 10}, {100, 50});
+    ASSERT_EQ(canvas_.strokeCount(), 1);
+    canvas_.setReadOnly(true);
+    drag({20, 20}, {120, 60});
+    EXPECT_EQ(canvas_.strokeCount(), 1);
+    canvas_.undo();
+    EXPECT_EQ(canvas_.strokeCount(), 1);
+    canvas_.setTool(BoardCanvas::Tool::Eraser);
+    drag({10, 10}, {100, 50});
+    EXPECT_EQ(canvas_.strokeCount(), 1);
+    const QPointF center = canvas_.viewCenter();
+    drag({50, 50}, {90, 90}, Qt::RightButton);
+    EXPECT_NE(canvas_.viewCenter(), center);
+    canvas_.setReadOnly(false);
+    canvas_.undo();
+    EXPECT_EQ(canvas_.strokeCount(), 0);
+}
+
 TEST_F(BoardCanvasTest, HighlighterIsWideWithConstantWidth) {
     canvas_.setTool(BoardCanvas::Tool::Highlighter);
     canvas_.setPenColor(Qt::yellow);
