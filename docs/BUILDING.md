@@ -14,7 +14,7 @@ On Ubuntu 24.04:
 ```sh
 sudo apt-get install build-essential cmake ninja-build git pkg-config meson python3-venv \
   libglib2.0-dev libssl-dev libgnutls28-dev nettle-dev libargon2-dev libfmt-dev libgtest-dev \
-  libgmock-dev libgl1-mesa-dev libegl1 libxkbcommon0 libdbus-1-3 libfontconfig1 libfreetype6
+  libgmock-dev libgl1-mesa-dev libegl1 libxkbcommon-dev libvulkan-dev libdbus-1-3 libfontconfig1 libfreetype6
 ```
 
 On Arch Linux or Manjaro:
