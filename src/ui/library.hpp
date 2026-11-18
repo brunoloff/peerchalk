@@ -44,6 +44,8 @@ class Library : public QObject {
     Q_PROPERTY(QString boardFilter READ boardFilter WRITE setBoardFilter NOTIFY boardFilterChanged)
     Q_PROPERTY(QString displayName READ displayName WRITE setDisplayName NOTIFY profileChanged)
     Q_PROPERTY(int colorIndex READ colorIndex WRITE setColorIndex NOTIFY profileChanged)
+    // Pen colours picked with the custom colour button, most recent first.
+    Q_PROPERTY(QStringList customColors READ customColors NOTIFY customColorsChanged)
     Q_PROPERTY(QString fingerprint READ fingerprint NOTIFY profileChanged)
     Q_PROPERTY(QString userKey READ userKey NOTIFY profileChanged)
     Q_PROPERTY(QString contactCode READ contactCode NOTIFY profileChanged)
@@ -73,6 +75,7 @@ class Library : public QObject {
     void setDisplayName(const QString &name);
     [[nodiscard]] int colorIndex() const { return identity_.colorIndex(); }
     void setColorIndex(int index);
+    [[nodiscard]] QStringList customColors() const { return identity_.customColors(); }
     [[nodiscard]] QString fingerprint() const;
     [[nodiscard]] QString userKey() const;
     [[nodiscard]] QString contactCode() const;
@@ -144,6 +147,8 @@ class Library : public QObject {
     // Makes this device one of yours using a code from another device; only possible
     // before this device has any projects or boards.
     Q_INVOKABLE bool adoptIdentity(const QString &code);
+    // Remembers a pen colour ("#RRGGBB") you picked yourself.
+    Q_INVOKABLE void addCustomColor(const QString &color);
     Q_INVOKABLE void copyToClipboard(const QString &text);
 
     // Refreshes the lists after the workspace or contacts changed elsewhere (sync).
@@ -158,6 +163,7 @@ class Library : public QObject {
     // A board's contents changed, here or from a peer (C++ only, for sync).
     void boardChanged(const QUuid &boardId);
     void errorOccurred(const QString &message);
+    void customColorsChanged();
 
   private:
     // Runs action, reporting a thrown error through errorOccurred; returns success.

@@ -154,6 +154,17 @@ TEST_F(LibraryTest, ContactsAndVerification) {
     EXPECT_EQ(alice.contacts()->rowCount(), 0);
 }
 
+TEST_F(LibraryTest, CustomColoursAreRememberedAndAnnounced) {
+    Library library(dir_.path());
+    QSignalSpy changed(&library, &Library::customColorsChanged);
+    QSignalSpy errors(&library, &Library::errorOccurred);
+    library.addCustomColor(QStringLiteral("#123456"));
+    EXPECT_EQ(library.customColors(), QStringList{QStringLiteral("#123456")});
+    library.addCustomColor(QStringLiteral("not a colour"));
+    EXPECT_EQ(changed.count(), 1);
+    EXPECT_EQ(errors.count(), 1);
+}
+
 TEST_F(LibraryTest, FailuresAreReportedNotThrown) {
     Library library(dir_.path());
     QSignalSpy errors(&library, &Library::errorOccurred);

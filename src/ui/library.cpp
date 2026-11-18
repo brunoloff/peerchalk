@@ -200,6 +200,11 @@ void Library::setDisplayName(const QString &name) {
         emit profileChanged();
 }
 
+void Library::addCustomColor(const QString &color) {
+    if (attempt([&] { identity_.addCustomColor(color); }))
+        emit customColorsChanged();
+}
+
 void Library::setColorIndex(int index) {
     if (attempt([&] { identity_.setColorIndex(index); }))
         emit profileChanged();

@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <stdexcept>
 
 namespace peerchalk {
@@ -24,6 +25,11 @@ QString requireName(const QString &name) {
     if (trimmed.isEmpty())
         throw std::invalid_argument("Names cannot be empty");
     return trimmed;
+}
+
+bool isHexColor(const QString &text) {
+    return text.size() == 7 && text.front() == QLatin1Char('#') &&
+           std::ranges::all_of(text.mid(1), [](QChar c) { return isxdigit(c.toLatin1()) != 0; });
 }
 
 Verification verificationFromName(const QString &name) {
@@ -46,6 +52,10 @@ void IdentityStore::loadProfile(const QString &defaultName) {
         readJsonObject(QDir(directory_).filePath(QStringLiteral("profile.json")), formatVersion);
     displayName_ = profile ? profile->value(QStringLiteral("name")).toString().trimmed() : "";
     colorIndex_ = profile ? profile->value(QStringLiteral("color")).toInt() % colorCount : 0;
+    if (profile)
+        for (const QJsonValue &value : profile->value(QStringLiteral("customColors")).toArray())
+            if (isHexColor(value.toString()) && customColors_.size() < maxCustomColors)
+                customColors_.append(value.toString().toUpper());
     if (displayName_.isEmpty()) {
         displayName_ = requireName(defaultName);
         saveProfile();
@@ -53,10 +63,11 @@ void IdentityStore::loadProfile(const QString &defaultName) {
 }
 
 void IdentityStore::saveProfile() const {
-    writeJsonObject(
-        QDir(directory_).filePath(QStringLiteral("profile.json")),
-        {{QStringLiteral("name"), displayName_}, {QStringLiteral("color"), colorIndex_}},
-        formatVersion, false);
+    writeJsonObject(QDir(directory_).filePath(QStringLiteral("profile.json")),
+                    {{QStringLiteral("name"), displayName_},
+                     {QStringLiteral("color"), colorIndex_},
+                     {QStringLiteral("customColors"), QJsonArray::fromStringList(customColors_)}},
+                    formatVersion, false);
 }
 
 void IdentityStore::adoptIdentity(const QString &transferCode) {
@@ -143,6 +154,17 @@ void IdentityStore::setColorIndex(int index) {
     if (index < 0 || index >= colorCount)
         throw std::invalid_argument("Unknown colour");
     colorIndex_ = index;
+    saveProfile();
+}
+
+void IdentityStore::addCustomColor(const QString &color) {
+    if (!isHexColor(color))
+        throw std::invalid_argument("Colours must be #RRGGBB");
+    const QString normalized = color.toUpper();
+    customColors_.removeAll(normalized);
+    customColors_.prepend(normalized);
+    while (customColors_.size() > maxCustomColors)
+        customColors_.removeLast();
     saveProfile();
 }
 

@@ -22,7 +22,17 @@ QtObject {
     readonly property int controlRadius: 10
     readonly property int gap: 16
 
-    readonly property var penColors: ["#1C1B19", "#2F5BEA", "#C2410C", "#15803D", "#7E22CE"]
+    // Eight hue columns (red, orange, yellow, green, teal, blue, purple, pink) under a row
+    // of greys; rows go from pale (good for the highlighter) to deep. The first is the
+    // default pen colour.
+    readonly property int penColorColumns: 8
+    readonly property var penColors: [
+        "#1C1B19", "#333333", "#525252", "#737373", "#A3A3A3", "#C4C4C4", "#E5E5E5", "#FFFFFF",
+        "#FECACA", "#FED7AA", "#FEF08A", "#BBF7D0", "#99F6E4", "#BFDBFE", "#E9D5FF", "#FBCFE8",
+        "#F87171", "#FB923C", "#FACC15", "#4ADE80", "#2DD4BF", "#60A5FA", "#C084FC", "#F472B6",
+        "#DC2626", "#EA580C", "#CA8A04", "#16A34A", "#0D9488", "#2563EB", "#9333EA", "#DB2777",
+        "#991B1B", "#9A3412", "#854D0E", "#166534", "#115E59", "#1E40AF", "#6B21A8", "#9D174D"
+    ]
     // Avatar colours for people (index from the profile, or from the key for others).
     readonly property var personColors: ["#2F5BEA", "#C2410C", "#15803D", "#7E22CE", "#0F766E"]
     // Marker colours for projects.

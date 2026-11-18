@@ -33,6 +33,30 @@ TEST_F(IdentityStoreTest, CreatesAnIdentityOnceAndKeepsIt) {
     EXPECT_EQ(reloaded.colorIndex(), 3);
 }
 
+TEST_F(IdentityStoreTest, RemembersRecentCustomColours) {
+    {
+        IdentityStore store(dir_.path(), QStringLiteral("Me"));
+        for (int i = 0; i < IdentityStore::maxCustomColors + 2; ++i)
+            store.addCustomColor(QStringLiteral("#0000%1").arg(i, 2, 10, QLatin1Char('0')));
+        store.addCustomColor(QStringLiteral("#abcdef"));
+        store.addCustomColor(QStringLiteral("#000005")); // already there: moves to the front
+    }
+    const IdentityStore reloaded(dir_.path(), QStringLiteral("Me"));
+    const QStringList &colors = reloaded.customColors();
+    ASSERT_EQ(colors.size(), IdentityStore::maxCustomColors);
+    EXPECT_EQ(colors[0], QStringLiteral("#000005"));
+    EXPECT_EQ(colors[1], QStringLiteral("#ABCDEF"));
+    EXPECT_EQ(colors.count(QStringLiteral("#000005")), 1);
+    EXPECT_FALSE(colors.contains(QStringLiteral("#000000"))); // the oldest fell off
+}
+
+TEST_F(IdentityStoreTest, RejectsMalformedCustomColours) {
+    IdentityStore store(dir_.path(), QStringLiteral("Me"));
+    for (const char *bad : {"red", "#12345", "#1234567", "#GGGGGG", "123456#"})
+        EXPECT_THROW(store.addCustomColor(QString::fromLatin1(bad)), std::invalid_argument) << bad;
+    EXPECT_TRUE(store.customColors().isEmpty());
+}
+
 TEST_F(IdentityStoreTest, SecretsAreReadableOnlyByTheOwner) {
     const IdentityStore store(dir_.path(), QStringLiteral("Me"));
     const QFile::Permissions permissions =

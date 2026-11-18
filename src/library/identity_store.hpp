@@ -6,6 +6,7 @@
 #include <QByteArray>
 #include <QJsonObject>
 #include <QString>
+#include <QStringList>
 
 #include <vector>
 
@@ -34,6 +35,12 @@ class IdentityStore {
     void setDisplayName(const QString &name);
     [[nodiscard]] int colorIndex() const { return colorIndex_; }
     void setColorIndex(int index);
+    // Pen colours you picked yourself ("#RRGGBB"), most recent first, at most
+    // maxCustomColors. Adding one already there moves it to the front; throws
+    // std::invalid_argument for anything but "#RRGGBB".
+    static constexpr int maxCustomColors = 8;
+    [[nodiscard]] const QStringList &customColors() const { return customColors_; }
+    void addCustomColor(const QString &color);
     [[nodiscard]] QByteArray signingKey() const { return identity_.userKey(); }
     [[nodiscard]] ContactCard contactCard() const { return {signingKey(), displayName_}; }
     // Becomes the user in a transfer code (see UserIdentity::adopt) and takes its name.
@@ -62,6 +69,7 @@ class IdentityStore {
     UserIdentity identity_;
     QString displayName_;
     int colorIndex_{0};
+    QStringList customColors_;
     std::vector<Contact> contacts_;
 };
 

@@ -115,6 +115,17 @@ TEST_F(MainWindowTest, TheSettingsPageOpensOnTheChosenTab) {
     EXPECT_FALSE(item("networkPane")->isVisible());
 }
 
+TEST_F(MainWindowTest, ThePaletteShowsCustomColoursBeforeTheAddButton) {
+    openNewBoard();
+    QQuickItem *add = item("customColorButton");
+    ASSERT_NE(add, nullptr);
+    EXPECT_TRUE(add->isVisible());
+    const qreal before = add->y() * 1000 + add->x();
+    library_->addCustomColor(QStringLiteral("#123456"));
+    ASSERT_TRUE(QTest::qWaitFor([&] { return add->y() * 1000 + add->x() > before; }))
+        << "the new colour should take the add button's place";
+}
+
 TEST_F(MainWindowTest, StartsWithAnIdentityAndNoProjects) {
     EXPECT_FALSE(library_->displayName().isEmpty());
     EXPECT_FALSE(library_->fingerprint().isEmpty());

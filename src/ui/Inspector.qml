@@ -79,18 +79,9 @@ Rectangle {
             text: qsTr("Colour")
         }
 
-        Flow {
-            Layout.fillWidth: true
+        ColorPalette {
             visible: inspector.drawing
-            spacing: 10
-
-            Repeater {
-                model: Theme.penColors
-
-                delegate: ColorSwatch {
-                    canvas: inspector.canvas
-                }
-            }
+            canvas: inspector.canvas
         }
 
         SectionLabel {
