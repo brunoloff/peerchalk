@@ -32,6 +32,8 @@ Item {
 
             Layout.fillWidth: true
             leftPadding: 24
+            topPadding: 8
+            spacing: 4
 
             background: Rectangle {
                 color: Theme.surface
@@ -45,13 +47,11 @@ Item {
                 }
             }
 
-            TabButton {
-                width: implicitWidth + 24
+            PaperTab {
                 text: qsTr("People")
             }
 
-            TabButton {
-                width: implicitWidth + 24
+            PaperTab {
                 text: qsTr("Network")
             }
         }
