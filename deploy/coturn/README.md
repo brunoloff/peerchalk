@@ -25,8 +25,7 @@ ssh ubuntu@SERVER sudo ./setup-coturn.sh
 It installs coturn, writes `/etc/turnserver.conf` (backing up an existing one), opens
 the ports in the server's own firewall (Oracle's Ubuntu images block them by default)
 and starts the service. Options: `--public-ip` if it cannot detect the address,
-`--user` and `--password` to choose the credentials (otherwise a random password is
-made), and `--print-config` to see the configuration without changing anything.
+`--user` and `--password` to choose the credentials, and `--print-config` to see the configuration without changing anything.
 
 The relay refuses to forward to private and link-local addresses (including the cloud
 metadata service), and limits sessions and bandwidth per session.
@@ -36,10 +35,11 @@ metadata service), and limits sessions and bandwidth per session.
 The script ends by printing a line like `peerchalk:PASSWORD@203.0.113.7:3478`. Paste it
 into Settings → Network → TURN server on each device and restart PeerChalk.
 
-These credentials let anyone who has them relay traffic through your server, so share
-them only with people you trust and never build them into the app. Serving every
-PeerChalk user safely needs short-lived credentials handed out by a small service,
-which is not built yet.
+The relay is open: its credentials are meant to be shared, like a public STUN server. To
+keep it useful for whiteboards and unattractive for anything else, nftables limits each IP
+address to 40 KB/s (with an 8 MB burst for loading boards) and 1 GB per day in each direction,
+and the whole server to 3.5 MB/s, about 9 TB per 30 days. Very low-quality video could fit in
+40 KB/s, so these limits discourage it rather than make it impossible.
 
 To change the password later, run the script again with `--password`, or edit the
 `user=` line in `/etc/turnserver.conf` and run `sudo systemctl restart coturn`.

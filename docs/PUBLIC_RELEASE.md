@@ -63,7 +63,21 @@ also still to do.
 ## Infrastructure
 
 - Run our own OpenDHT bootstrap nodes and at least two HTTPS proxies, with browser failover.
-- Run TURN with short-lived credentials issued by a small service, with abuse limits.
+- Run an open TURN relay on an Oracle Always Free server (**Decided**). Its credentials ship
+  in the app, like a public STUN server, so nobody needs an account or a pass. Limits make it
+  ample for whiteboards and poor for anything else:
+  - each IP address, in each direction: 40 KB/s, an 8 MB burst for loading boards, and 1 GB
+    per day; at most 32 connections per address;
+  - the whole server: 3.5 MB/s, about 9 TB per 30 days, inside the 10 TB monthly allowance.
+- These limits discourage video and bulk traffic but cannot rule them out: very low-quality
+  video fits in 40 KB/s, and someone can spread across addresses. Watch real use, and consider
+  short-lived credentials from a small service if the relay is abused.
+- Someone drawing to several people through the relay can reach 40 KB/s. If that hurts in
+  practice, make live strokes more compact rather than raising the limit.
+- Add TURN over TLS on port 443 (needs a domain name and certificate), since strict networks
+  often block port 3478.
+- Let one instance on a device do discovery for the others. Today every open tab or window
+  polls the DHT proxy on its own, which multiplies the load.
 
 ## Security
 

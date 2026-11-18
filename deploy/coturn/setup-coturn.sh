@@ -6,10 +6,11 @@
 #                          [--realm NAME] [--print-config]
 #
 # It installs coturn, writes /etc/turnserver.conf (keeping a backup of any existing
-# one), opens the TURN ports in the server's own firewall and starts the service. It
-# finishes by printing the value to paste into PeerChalk's Settings → Network → TURN
-# server. The cloud provider's firewall (Oracle: the subnet's security list) must be
-# opened separately; see README.md next to this script.
+# one), opens the TURN ports in the server's own firewall, limits what each IP address
+# may use and starts the service. The relay is meant to be open: its credentials ship in
+# the app, and the limits leave room for whiteboards but not for sustained video or bulk
+# traffic. It finishes by printing the TURN setting for PeerChalk. The cloud provider's
+# firewall (Oracle: the subnet's security list) must be opened separately; see README.md.
 #
 # --print-config only prints the configuration it would write, without root and
 # without changing anything.
@@ -18,10 +19,19 @@ set -euo pipefail
 readonly turn_port=3478
 readonly relay_min_port=49160
 readonly relay_max_port=49999
+# Per IP address and direction. A busy whiteboard uses about 25 KB/s per person it reaches;
+# the burst covers loading a board.
+readonly ip_rate_kbytes=40
+readonly ip_burst_mbytes=8
+readonly ip_daily_mbytes=1024
+readonly ip_max_flows=32
+# The whole server: 3.5 MB/s is about 9 TB in 30 days, inside Oracle's 10 TB allowance.
+readonly server_rate_kbytes=3500
+readonly limits_file=/etc/peerchalk-turn-limits.nft
 
 public_ip=""
 user="peerchalk"
-password=""
+password="peerchalk-open-relay"
 realm="peerchalk"
 print_only=false
 
@@ -53,9 +63,6 @@ parse_arguments() {
 # or '@'; letters, digits, '-', '_' and '.' are always safe.
 check_credentials() {
     [[ $user =~ ^[A-Za-z0-9._-]+$ ]] || fail "the user name may only use letters, digits, '.', '_' and '-'"
-    if [ -z "$password" ]; then
-        password=$(head -c 48 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 32)
-    fi
     [[ $password =~ ^[A-Za-z0-9._-]{16,}$ ]] ||
         fail "the password needs at least 16 letters, digits, '.', '_' or '-'"
 }
@@ -113,10 +120,11 @@ denied-peer-ip=::1
 denied-peer-ip=fc00::-fdff:ffff:ffff:ffff:ffff:ffff:ffff:ffff
 denied-peer-ip=fe80::-febf:ffff:ffff:ffff:ffff:ffff:ffff:ffff
 
-# Limits: sessions per user and overall, and bandwidth per session (bytes/second).
-user-quota=24
-total-quota=200
-max-bps=1000000
+# Everyone shares one user, so limits here are per session and per server; the limits per
+# IP address are in $limits_file.
+total-quota=500
+max-bps=$((ip_rate_kbytes * 1000))
+bps-capacity=$((server_rate_kbytes * 1000))
 stale-nonce=600
 
 syslog
@@ -124,10 +132,66 @@ simple-log
 EOF
 }
 
+# Rates are enforced in both directions, for the address on the far side of the server.
+write_limits() {
+    cat <<EOF
+table inet peerchalk_turn
+delete table inet peerchalk_turn
+table inet peerchalk_turn {
+    set rate_in { type ipv4_addr; flags dynamic, timeout; timeout 1h; }
+    set rate_out { type ipv4_addr; flags dynamic, timeout; timeout 1h; }
+    set day_in { type ipv4_addr; flags dynamic, timeout; timeout 1d; }
+    set day_out { type ipv4_addr; flags dynamic, timeout; timeout 1d; }
+    set flows { type ipv4_addr; flags dynamic; }
+
+    chain input {
+        type filter hook input priority filter - 5; policy accept;
+        th dport { $turn_port, $relay_min_port-$relay_max_port } jump turn_in
+    }
+    chain output {
+        type filter hook output priority filter - 5; policy accept;
+        th sport { $turn_port, $relay_min_port-$relay_max_port } jump turn_out
+    }
+    chain turn_in {
+        limit rate over $server_rate_kbytes kbytes/second drop
+        ct state new add @flows { ip saddr ct count over $ip_max_flows } drop
+        add @rate_in { ip saddr limit rate over $ip_rate_kbytes kbytes/second burst $ip_burst_mbytes mbytes } drop
+        add @day_in { ip saddr quota over $ip_daily_mbytes mbytes } drop
+    }
+    chain turn_out {
+        limit rate over $server_rate_kbytes kbytes/second drop
+        add @rate_out { ip daddr limit rate over $ip_rate_kbytes kbytes/second burst $ip_burst_mbytes mbytes } drop
+        add @day_out { ip daddr quota over $ip_daily_mbytes mbytes } drop
+    }
+}
+EOF
+}
+
+install_limits() {
+    write_limits >"$limits_file"
+    cat >/etc/systemd/system/peerchalk-turn-limits.service <<EOF
+[Unit]
+Description=Per-address limits for the PeerChalk TURN relay
+After=network-pre.target
+Before=coturn.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/nft -f $limits_file
+ExecStop=/usr/sbin/nft delete table inet peerchalk_turn
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    systemctl daemon-reload
+    systemctl enable --now peerchalk-turn-limits.service
+}
+
 install_coturn() {
     command -v apt-get >/dev/null || fail "this script expects Ubuntu or Debian (apt-get)"
     DEBIAN_FRONTEND=noninteractive apt-get update -q
-    DEBIAN_FRONTEND=noninteractive apt-get install -y -q coturn
+    DEBIAN_FRONTEND=noninteractive apt-get install -y -q coturn nftables curl iptables iproute2
     # Older packages start the service only when this is set.
     if [ -f /etc/default/coturn ]; then
         sed -i 's/^#\?TURNSERVER_ENABLED=.*/TURNSERVER_ENABLED=1/' /etc/default/coturn
@@ -193,7 +257,8 @@ Then paste this into PeerChalk's Settings → Network → TURN server:
 
   $user:$password@$public_ip:$turn_port
 
-Keep it private: anyone who has it can relay traffic through this server.
+This relay is open by design; each IP address is limited to $ip_rate_kbytes KB/s and
+$ip_daily_mbytes MB per day in each direction.
 EOF
 }
 
@@ -204,11 +269,13 @@ main() {
     detect_addresses
     if $print_only; then
         write_config
+        write_limits
         return
     fi
     install_coturn
     install_config
     open_firewall
+    install_limits
     start_service
     report
 }
