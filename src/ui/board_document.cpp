@@ -20,4 +20,19 @@ BoardDocument::BoardDocument(QObject *parent) : QObject(parent) {
     });
 }
 
+void BoardDocument::publishDraft(const Stroke &stroke, DraftState state) const {
+    if (draftListener_)
+        draftListener_(stroke, state);
+}
+
+void BoardDocument::setRemoteDraft(const QString &key, const Stroke &stroke) {
+    remoteDrafts_.insert_or_assign(key, stroke);
+    emit remoteDraftsChanged();
+}
+
+void BoardDocument::removeRemoteDraft(const QString &key) {
+    if (remoteDrafts_.erase(key) > 0)
+        emit remoteDraftsChanged();
+}
+
 } // namespace peerchalk

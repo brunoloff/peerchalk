@@ -45,6 +45,7 @@ void BoardCanvas::setDocument(BoardDocument *document) {
     document_ = next;
     // Remote changes (and saved state loading) arrive through the document.
     connect(document_, &BoardDocument::changed, this, &BoardCanvas::strokesUpdated);
+    connect(document_, &BoardDocument::remoteDraftsChanged, this, &BoardCanvas::updateDrafts);
     connect(document_, &QObject::destroyed, this, [this] { setDocument(nullptr); });
     strokesUpdated();
     emit documentChanged();
@@ -192,9 +193,15 @@ void BoardCanvas::redrawStrokes() {
     penLayer_->markStrokesDirty();
 }
 
-void BoardCanvas::activeStrokeUpdated() {
+void BoardCanvas::updateDrafts() {
     highlighterLayer_->update();
     penLayer_->update();
+}
+
+void BoardCanvas::activeStrokeUpdated() {
+    if (activeStroke_)
+        document_->publishDraft(activeStroke_->stroke(), DraftState::Drawing);
+    updateDrafts();
 }
 
 } // namespace peerchalk

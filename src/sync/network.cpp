@@ -39,7 +39,8 @@ Network::Network(Library &library, NetworkConfig config, QObject *parent)
     });
     presenceTimer_.setSingleShot(true);
     presenceTimer_.setInterval(presenceInterval);
-    connect(&presenceTimer_, &QTimer::timeout, this, &Network::sendPresence);
+    connect(&presenceTimer_, &QTimer::timeout, this, [this] { sendPresence(); });
+    setUpLiveUpdates();
     connect(&library_, &Library::workspaceChanged, this, &Network::workspaceChanged);
     connect(&library_, &Library::boardChanged, this, &Network::boardChanged);
     connect(&library_, &Library::profileChanged, this, &Network::profileChanged);
@@ -51,6 +52,7 @@ Network::Network(Library &library, NetworkConfig config, QObject *parent)
 Network::~Network() {
     // Without a shutdown, pending p2pdc callbacks are dropped rather than delivered.
     alive_->store(false);
+    library_.setDraftListener({});
 }
 
 Network *Network::create(QQmlEngine *engine, QJSEngine *) {

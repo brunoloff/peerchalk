@@ -84,6 +84,9 @@ class Library : public QObject {
 
     // The data folder this library reads and writes.
     [[nodiscard]] QString directory() const { return directory_; }
+    // Told about the strokes being drawn on any board of this library (for sync).
+    using DraftListener = std::function<void(const QUuid &, const Stroke &, DraftState)>;
+    void setDraftListener(DraftListener listener) { draftListener_ = std::move(listener); }
     [[nodiscard]] Workspace &workspace() { return workspace_; }
     [[nodiscard]] IdentityStore &identityStore() { return identity_; }
 
@@ -185,6 +188,7 @@ class Library : public QObject {
     QString boardFilter_;
     std::map<QUuid, BoardDocument *> documents_;
     std::map<QUuid, quint64> savedRevisions_;
+    DraftListener draftListener_;
     QTimer *saveTimer_;
     RowModel *projects_;
     RowModel *boards_;

@@ -61,7 +61,12 @@ ConnectionHandlers Network::handlers(PeerId id, std::uint64_t generation) {
                 flush(id);
         },
         [this, id, generation](ConnectError) { disconnectPeer(id, generation); },
-        [](ConnectionStatus) {}};
+        [](ConnectionStatus) {},
+        [this, id, generation](Bytes message) {
+            receiveDatagram(id, generation,
+                            QByteArray(reinterpret_cast<const char *>(message.data()),
+                                       static_cast<qsizetype>(message.size())));
+        }};
 }
 
 Network::Peer *Network::livePeer(const PeerId &id, std::uint64_t generation) {
@@ -126,8 +131,8 @@ void Network::flush(const PeerId &id) {
     }
     if (!peer.user || !flushBoards(id, peer))
         return;
-    if (peer.presenceDirty && sendOne(id, peer, encode(presenceFor(peer))))
-        peer.presenceDirty = false;
+    if (peer.presenceDirty)
+        flushPresence(id, peer);
 }
 
 // Sends each dirty board as the changes since what this peer was last sent.

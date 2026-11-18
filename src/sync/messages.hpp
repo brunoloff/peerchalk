@@ -1,5 +1,7 @@
 #pragma once
 
+#include "board/stroke.hpp"
+
 #include <utility>
 
 #include <QByteArray>
@@ -56,9 +58,26 @@ struct Presence {
     QUuid board; // null: no board open
     QPointF cursor;
     bool cursorVisible{false};
+    // Grows with every change, so a late datagram cannot undo a newer position.
+    quint32 sequence{0};
 };
 
-using Message = std::variant<Hello, AccessChanges, Personal, BoardUpdate, Presence, Profile>;
+// The newest part of a stroke someone is drawing, sent as a datagram. The finished
+// stroke still reaches everyone through the board; this only shows it sooner.
+inline constexpr std::size_t maxLiveStrokePoints = 64;
+struct LiveStroke {
+    QUuid board;
+    quint32 stroke{0};     // identifies the stroke among the sender's
+    quint32 firstPoint{0}; // index of points.front() within the stroke
+    DraftState state{DraftState::Drawing};
+    std::uint32_t argb{0};
+    float width{1.0F};
+    StrokeKind kind{StrokeKind::Pen};
+    std::vector<StrokePoint> points; // at most maxLiveStrokePoints
+};
+
+using Message =
+    std::variant<Hello, AccessChanges, Personal, BoardUpdate, Presence, Profile, LiveStroke>;
 
 [[nodiscard]] QByteArray encode(const Message &message);
 [[nodiscard]] std::optional<Message> decode(const QByteArray &bytes);

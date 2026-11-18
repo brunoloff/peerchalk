@@ -29,7 +29,7 @@ gtest_discover_tests(peerchalk_ui_tests
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(PEERCHALK_TEST_OPENDHT REQUIRED IMPORTED_TARGET opendht)
 add_executable(peerchalk_network_tests qt_test_main.cpp network_test.cpp messages_test.cpp
-    network_settings_test.cpp)
+    network_settings_test.cpp live_strokes_test.cpp)
 target_link_libraries(peerchalk_network_tests PRIVATE peerchalk_ui Qt6::Test GTest::gtest
     PkgConfig::PEERCHALK_TEST_OPENDHT)
 target_compile_options(peerchalk_network_tests PRIVATE

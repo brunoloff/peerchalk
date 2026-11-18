@@ -243,6 +243,72 @@ TEST_F(NetworkTest, MembersPassOnTheAdminsChanges) {
         << "Carol never received the board through Bob";
 }
 
+Stroke unfinishedStroke() {
+    Stroke stroke(0xFF000000U, 2.0F);
+    stroke.addPoint({1.0F, 1.0F, 1.0F});
+    stroke.addPoint({2.0F, 2.0F, 1.0F});
+    return stroke;
+}
+
+// Both people have the board open and are connected.
+struct SharedBoard {
+    SharedBoard(LocalDht &dht) : alice(dht), bob(dht) {
+        EXPECT_TRUE(alice.library.addContact(bob.library.contactCode()));
+        project = alice.library.createProject(QStringLiteral("Thesis"));
+        alice.library.setProjectRole(project, bob.library.userKey(), QStringLiteral("member"));
+        board = alice.library.createBoard(QStringLiteral("Sketch"));
+        alice.draw(board, 0.0F);
+        bob.library.joinInvite(alice.library.projectInvite(project));
+        ready = QTest::qWaitFor([&] { return bob.strokesOn(board) == 1; }, timeoutMs);
+        alice.network->setPresence(board, QPointF(), true);
+        bob.network->setPresence(board, QPointF(), true);
+    }
+    [[nodiscard]] BoardDocument &document(Device &device) const {
+        return device.library.document(QUuid::fromString(board));
+    }
+    // Keeps reporting the draft, as drawing does, until Bob shows it.
+    [[nodiscard]] bool bobSeesDraft(const Stroke &stroke) {
+        return QTest::qWaitFor(
+            [&] {
+                document(alice).publishDraft(stroke, DraftState::Drawing);
+                return !document(bob).remoteDrafts().empty();
+            },
+            timeoutMs);
+    }
+    Device alice;
+    Device bob;
+    QString project;
+    QString board;
+    bool ready{false};
+};
+
+TEST_F(NetworkTest, StrokesAppearWhileTheyAreDrawn) {
+    SharedBoard shared(dht_);
+    ASSERT_TRUE(shared.ready);
+    const Stroke stroke = unfinishedStroke();
+    ASSERT_TRUE(shared.bobSeesDraft(stroke)) << "Bob never saw the stroke being drawn";
+    EXPECT_EQ(shared.document(shared.bob).remoteDrafts().begin()->second.points().size(), 2U);
+    EXPECT_EQ(shared.bob.strokesOn(shared.board), 1U); // not part of the board yet
+    shared.document(shared.alice).publishDraft(stroke, DraftState::Finished);
+    shared.document(shared.alice).board().addStroke(stroke);
+    ASSERT_TRUE(
+        QTest::qWaitFor([&] { return shared.bob.strokesOn(shared.board) == 2; }, timeoutMs));
+    EXPECT_TRUE(QTest::qWaitFor([&] { return shared.document(shared.bob).remoteDrafts().empty(); },
+                                timeoutMs))
+        << "the preview should give way to the finished stroke";
+}
+
+TEST_F(NetworkTest, AnAbandonedStrokeDisappears) {
+    SharedBoard shared(dht_);
+    ASSERT_TRUE(shared.ready);
+    const Stroke stroke = unfinishedStroke();
+    ASSERT_TRUE(shared.bobSeesDraft(stroke));
+    shared.document(shared.alice).publishDraft(stroke, DraftState::Cancelled);
+    EXPECT_TRUE(QTest::qWaitFor([&] { return shared.document(shared.bob).remoteDrafts().empty(); },
+                                timeoutMs));
+    EXPECT_EQ(shared.bob.strokesOn(shared.board), 1U);
+}
+
 TEST_F(NetworkTest, ALinkedDeviceGetsEverything) {
     Device phone(dht_);
     const QString project = phone.library.createProject(QStringLiteral("Mine"));

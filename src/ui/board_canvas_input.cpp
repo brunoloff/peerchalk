@@ -78,6 +78,7 @@ void BoardCanvas::pointerMoved(QPointF position, std::optional<float> pressure) 
 void BoardCanvas::pointerReleased(QPointF position, std::optional<float> pressure) {
     pointerMoved(position, pressure);
     if (gesture_ == Gesture::Drawing && activeStroke_) {
+        document_->publishDraft(activeStroke_->stroke(), DraftState::Finished);
         editableBoard().addStroke(activeStroke_->stroke());
         activeStroke_.reset();
         redrawStrokes();
@@ -89,6 +90,8 @@ void BoardCanvas::pointerReleased(QPointF position, std::optional<float> pressur
 void BoardCanvas::pointerCancelled() {
     if (gesture_ == Gesture::None)
         return;
+    if (activeStroke_)
+        document_->publishDraft(activeStroke_->stroke(), DraftState::Cancelled);
     activeStroke_.reset();
     editableBoard().endGesture();
     gesture_ = Gesture::None;

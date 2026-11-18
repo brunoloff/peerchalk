@@ -21,7 +21,7 @@ QSGNode *StrokeLayer::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *) {
     if (transform == nullptr) {
         transform = new QSGTransformNode;
         transform->appendChildNode(new QSGNode); // committed strokes
-        transform->appendChildNode(new QSGNode); // stroke being drawn
+        transform->appendChildNode(new QSGNode); // strokes being drawn, here and elsewhere
         strokesDirty_ = true;
     }
     transform->setMatrix(viewMatrix(canvas_.viewport()));
@@ -34,6 +34,9 @@ QSGNode *StrokeLayer::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *) {
     const Stroke *drawing = canvas_.activeStroke();
     if (drawing != nullptr && !drawing->points().empty() && selects(selection_, *drawing))
         active->appendChildNode(createStrokeNode(*drawing, strokeColor(*drawing, selection_)));
+    for (const auto &[key, draft] : canvas_.document()->remoteDrafts())
+        if (!draft.points().empty() && selects(selection_, draft))
+            active->appendChildNode(createStrokeNode(draft, strokeColor(draft, selection_)));
     return transform;
 }
 

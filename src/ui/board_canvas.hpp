@@ -119,6 +119,7 @@ class BoardCanvas : public QQuickItem {
     // notification follows and announces the change (strokesChanged).
     void redrawStrokes();
     void activeStrokeUpdated();
+    void updateDrafts();
     [[nodiscard]] Board &editableBoard() { return document_->board(); }
 
     Tool tool_{Tool::Pen};

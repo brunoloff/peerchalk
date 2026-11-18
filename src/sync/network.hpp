@@ -1,6 +1,7 @@
 #pragma once
 
 #include "board/stroke_codec.hpp"
+#include "sync/live_strokes.hpp"
 #include "sync/messages.hpp"
 #include "sync/network_config.hpp"
 
@@ -133,6 +134,7 @@ class Network : public QObject {
         std::map<QUuid, Bytes> sentState;
         std::set<QUuid> dirtyBoards;
         bool presenceDirty{false};
+        bool presenceReliable{true}; // the next presence must not be lost
         std::optional<Presence> presence;
     };
     using PeerId = std::pair<QString, p2pdc::SigningPublicKey>;
@@ -165,6 +167,20 @@ class Network : public QObject {
     bool flushBoards(const PeerId &id, Peer &peer);
     bool sendOne(const PeerId &id, Peer &peer, const QByteArray &bytes);
 
+    // network_live.cpp: what may be lost, sent as datagrams
+    void setUpLiveUpdates();
+    void sendPresence(bool mustArrive = false);
+    void flushPresence(const PeerId &id, Peer &peer);
+    [[nodiscard]] Presence presenceFor(const Peer &peer) const;
+    void applyPresence(Peer &peer, const Presence &presence);
+    void receiveDatagram(const PeerId &id, std::uint64_t generation, const QByteArray &bytes);
+    void draftUpdated(const QUuid &board, const Stroke &stroke, DraftState state);
+    void sendLiveStroke();
+    void handleLiveStroke(const Peer &peer, const LiveStroke &stroke);
+    void applyLiveChange(const LiveStrokeTracker::Change &change);
+    void settleLiveStrokes(const Peer &peer, const QUuid &board);
+    void expireLiveStrokes();
+
     // network_sync.cpp: what flows between authenticated peers
     void receive(const PeerId &id, std::uint64_t generation, const QByteArray &bytes);
     bool handleHello(Peer &peer, const Hello &hello);
@@ -178,8 +194,6 @@ class Network : public QObject {
     void workspaceChanged();
     void boardChanged(const QUuid &board);
     void profileChanged();
-    void sendPresence();
-    [[nodiscard]] Presence presenceFor(const Peer &peer) const;
     // The item a peer's space is about, if you own it and the peer has no access.
     [[nodiscard]] std::optional<QString> requestedItemName(const Peer &peer) const;
 
@@ -198,6 +212,16 @@ class Network : public QObject {
     QUuid presenceBoard_;
     QPointF cursor_;
     bool cursorVisible_{false};
+    quint32 presenceSequence_{0};
+    bool presenceMustArrive_{false};
+    QTimer presenceSettleTimer_;
+    QTimer liveStrokeTimer_;
+    QTimer liveExpiryTimer_;
+    LiveStrokeTracker liveStrokes_;
+    std::optional<LiveStroke> outgoingStroke_;
+    int outgoingRepeats_{0};
+    quint32 nextLiveStroke_{0};
+    bool drafting_{false};
     bool restartNeeded_{false};
 };
 

@@ -14,6 +14,12 @@ class LibraryTest : public ::testing::Test {
     QTemporaryDir dir_;
 };
 
+Stroke dot(float x) {
+    Stroke stroke(0xFF000000U, 2.0F);
+    stroke.addPoint({x, 0.0F, 1.0F});
+    return stroke;
+}
+
 QString role(const RowModel *model, int row, const char *name) {
     const int roleId = model->roleNames().key(name);
     return model->data(model->index(row), roleId).toString();
@@ -154,6 +160,34 @@ TEST_F(LibraryTest, ContactsAndVerification) {
     EXPECT_EQ(alice.contacts()->rowCount(), 0);
 }
 
+TEST_F(LibraryTest, StrokesBeingDrawnReachTheDraftListener) {
+    Library library(dir_.path());
+    library.createProject(QStringLiteral("P"));
+    const QString board = library.createBoard(QStringLiteral("B"));
+    std::vector<std::pair<QUuid, DraftState>> seen;
+    library.setDraftListener(
+        [&](const QUuid &id, const Stroke &, DraftState state) { seen.emplace_back(id, state); });
+    BoardDocument *document = library.openBoard(board);
+    document->publishDraft(dot(1.0F), DraftState::Drawing);
+    document->publishDraft(dot(1.0F), DraftState::Finished);
+    ASSERT_EQ(seen.size(), 2U);
+    EXPECT_EQ(seen[0].first, QUuid::fromString(board));
+    EXPECT_EQ(seen[1].second, DraftState::Finished);
+    EXPECT_TRUE(document->board().strokes().empty()); // drafts are not board content
+}
+
+TEST_F(LibraryTest, OtherPeoplesDraftsCanBeShownAndRemoved) {
+    BoardDocument document;
+    QSignalSpy changed(&document, &BoardDocument::remoteDraftsChanged);
+    document.setRemoteDraft(QStringLiteral("a"), dot(1.0F));
+    document.setRemoteDraft(QStringLiteral("a"), dot(2.0F));
+    EXPECT_EQ(document.remoteDrafts().size(), 1U);
+    document.removeRemoteDraft(QStringLiteral("missing"));
+    document.removeRemoteDraft(QStringLiteral("a"));
+    EXPECT_TRUE(document.remoteDrafts().empty());
+    EXPECT_EQ(changed.count(), 3);
+}
+
 TEST_F(LibraryTest, CustomColoursAreRememberedAndAnnounced) {
     Library library(dir_.path());
     QSignalSpy changed(&library, &Library::customColorsChanged);
@@ -173,12 +207,6 @@ TEST_F(LibraryTest, FailuresAreReportedNotThrown) {
     library.setVerification(QStringLiteral("zz"), QStringLiteral("call"));
     library.renameBoard(QStringLiteral("nope"), QStringLiteral("x"));
     EXPECT_EQ(errors.count(), 4);
-}
-
-Stroke dot(float x) {
-    Stroke stroke(0xFF000000U, 2.0F);
-    stroke.addPoint({x, 0.0F, 1.0F});
-    return stroke;
 }
 
 TEST_F(LibraryTest, BoardDocumentsAreSharedSavedAndReloaded) {

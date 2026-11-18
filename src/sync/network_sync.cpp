@@ -50,8 +50,7 @@ void Network::receive(const PeerId &id, std::uint64_t generation, const QByteArr
     } else if (const auto *update = std::get_if<BoardUpdate>(&*message)) {
         handleBoardUpdate(*peer, *update);
     } else if (const auto *presence = std::get_if<Presence>(&*message)) {
-        peer->presence = *presence;
-        emit presenceChanged();
+        applyPresence(*peer, *presence);
     } else if (const auto *profile = std::get_if<Profile>(&*message)) {
         peer->user->name = profile->displayName.trimmed();
         peer->user->colorIndex = profile->colorIndex;
@@ -126,8 +125,11 @@ void Network::handleBoardUpdate(const Peer &peer, const BoardUpdate &update) {
     const auto *data = reinterpret_cast<const std::byte *>(update.update.constData());
     if (!library_.document(update.board)
              .board()
-             .apply(ByteView(data, static_cast<std::size_t>(update.update.size()))))
+             .apply(ByteView(data, static_cast<std::size_t>(update.update.size())))) {
         qWarning("PeerChalk: ignoring a malformed board update");
+        return;
+    }
+    settleLiveStrokes(peer, update.board);
 }
 
 bool Network::syncable(const Peer &peer, const QUuid &board) const {
@@ -193,30 +195,6 @@ void Network::profileChanged() {
             flush(id);
         }
     }
-}
-
-void Network::setPresence(const QString &boardId, QPointF cursor, bool cursorVisible) {
-    presenceBoard_ = QUuid::fromString(boardId);
-    cursor_ = cursor;
-    cursorVisible_ = cursorVisible;
-    if (!presenceTimer_.isActive())
-        presenceTimer_.start();
-}
-
-void Network::sendPresence() {
-    for (auto &[id, peer] : peers_) {
-        if (peer->ready && peer->user) {
-            peer->presenceDirty = true;
-            flush(id);
-        }
-    }
-}
-
-// Peers who may not see the open board only learn that no board is open.
-Presence Network::presenceFor(const Peer &peer) const {
-    if (presenceBoard_.isNull() || !syncable(peer, presenceBoard_))
-        return {};
-    return {presenceBoard_, cursor_, cursorVisible_};
 }
 
 QVariantList Network::boardPresence(const QString &boardId) const {

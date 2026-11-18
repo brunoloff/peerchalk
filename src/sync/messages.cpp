@@ -1,9 +1,12 @@
 #include "sync/messages.hpp"
 
+#include <QDataStream>
+#include <QIODevice>
 #include <QJsonArray>
 #include <QJsonDocument>
 
 #include <cmath>
+#include <limits>
 
 namespace peerchalk::sync {
 namespace {
@@ -14,7 +17,8 @@ enum Type : char {
     PersonalType = 3,
     BoardType = 4,
     PresenceType = 5,
-    ProfileType = 6
+    ProfileType = 6,
+    LiveStrokeType = 7
 };
 constexpr qsizetype uuidSize = 16;
 
@@ -40,6 +44,12 @@ std::optional<QJsonObject> jsonBody(const QByteArray &bytes) {
     if (error.error != QJsonParseError::NoError || !document.isObject())
         return std::nullopt;
     return document.object();
+}
+
+// Live strokes are little-endian with 32-bit floats.
+void prepare(QDataStream &stream) {
+    stream.setByteOrder(QDataStream::LittleEndian);
+    stream.setFloatingPointPrecision(QDataStream::SinglePrecision);
 }
 
 struct Encoder {
@@ -71,7 +81,20 @@ struct Encoder {
                                                  : presence.board.toString(QUuid::WithoutBraces)},
                                    {"x", presence.cursor.x()},
                                    {"y", presence.cursor.y()},
-                                   {"cursor", presence.cursorVisible}});
+                                   {"cursor", presence.cursorVisible},
+                                   {"seq", static_cast<qint64>(presence.sequence)}});
+    }
+    QByteArray operator()(const LiveStroke &stroke) const {
+        QByteArray bytes(1, LiveStrokeType);
+        bytes += stroke.board.toRfc4122();
+        QDataStream out(&bytes, QIODevice::WriteOnly | QIODevice::Append);
+        prepare(out);
+        out << stroke.stroke << stroke.firstPoint << static_cast<quint8>(stroke.state)
+            << static_cast<quint8>(stroke.kind) << stroke.argb << stroke.width
+            << static_cast<quint16>(stroke.points.size());
+        for (const StrokePoint &point : stroke.points)
+            out << point.x << point.y << point.pressure;
+        return bytes;
     }
 };
 
@@ -105,7 +128,44 @@ std::optional<Message> decodePresence(const QJsonObject &object) {
     const QUuid id = board.isEmpty() ? QUuid() : QUuid::fromString(board);
     if (!board.isEmpty() && id.isNull())
         return std::nullopt;
-    return Presence{id, {x, y}, object[QStringLiteral("cursor")].toBool()};
+    const qint64 sequence = object[QStringLiteral("seq")].toInteger();
+    if (sequence < 0 || sequence > std::numeric_limits<quint32>::max())
+        return std::nullopt;
+    return Presence{
+        id, {x, y}, object[QStringLiteral("cursor")].toBool(), static_cast<quint32>(sequence)};
+}
+
+bool validPoint(const StrokePoint &point) {
+    return std::isfinite(point.x) && std::isfinite(point.y) && point.pressure >= 0.0F &&
+           point.pressure <= 1.0F;
+}
+
+std::optional<Message> decodeLiveStroke(const QByteArray &bytes) {
+    if (bytes.size() <= 1 + uuidSize)
+        return std::nullopt;
+    LiveStroke stroke;
+    stroke.board = QUuid::fromRfc4122(bytes.mid(1, uuidSize));
+    QDataStream in(bytes.mid(1 + uuidSize));
+    prepare(in);
+    quint8 state = 0;
+    quint8 kind = 0;
+    quint16 count = 0;
+    in >> stroke.stroke >> stroke.firstPoint >> state >> kind >> stroke.argb >> stroke.width >>
+        count;
+    if (in.status() != QDataStream::Ok || stroke.board.isNull() || state > 2 || kind > 1 ||
+        count > maxLiveStrokePoints || !std::isfinite(stroke.width) || stroke.width <= 0.0F)
+        return std::nullopt;
+    stroke.state = static_cast<DraftState>(state);
+    stroke.kind = static_cast<StrokeKind>(kind);
+    stroke.points.resize(count);
+    for (StrokePoint &point : stroke.points) {
+        in >> point.x >> point.y >> point.pressure;
+        if (in.status() != QDataStream::Ok || !validPoint(point))
+            return std::nullopt;
+    }
+    if (!in.atEnd() || stroke.firstPoint > std::numeric_limits<quint32>::max() - count)
+        return std::nullopt;
+    return stroke;
 }
 
 } // namespace
@@ -124,6 +184,8 @@ std::optional<Message> decode(const QByteArray &bytes) {
             return std::nullopt;
         return BoardUpdate{board, bytes.mid(1 + uuidSize)};
     }
+    if (type == LiveStrokeType)
+        return decodeLiveStroke(bytes);
     const std::optional<QJsonObject> object = jsonBody(bytes);
     if (!object)
         return std::nullopt;

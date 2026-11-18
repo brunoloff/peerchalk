@@ -21,6 +21,10 @@ BoardDocument &Library::document(const QUuid &boardId) {
             throw std::runtime_error("The saved board is damaged");
     }
     savedRevisions_[boardId] = document->revision(); // loading is not an edit
+    document->setDraftListener([this, boardId](const Stroke &stroke, DraftState state) {
+        if (draftListener_)
+            draftListener_(boardId, stroke, state);
+    });
     connect(document, &BoardDocument::changed, this, [this, boardId] {
         if (documents_.at(boardId)->revision() != savedRevisions_[boardId])
             saveTimer_->start();

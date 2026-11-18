@@ -17,6 +17,9 @@ struct StrokePoint {
 // The tool that drew a stroke; it decides how the stroke is rendered.
 enum class StrokeKind : std::uint8_t { Pen = 0, Highlighter = 1 };
 
+// How a stroke being drawn stands: still growing, completed, or abandoned.
+enum class DraftState : std::uint8_t { Drawing = 0, Finished = 1, Cancelled = 2 };
+
 // A freehand stroke: a polyline with per-point pressure, one colour and a base width.
 class Stroke {
   public:

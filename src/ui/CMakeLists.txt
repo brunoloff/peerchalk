@@ -13,6 +13,7 @@ qt_add_qml_module(peerchalk_ui URI PeerChalk VERSION 1.0
         ../sync/messages.cpp ../sync/messages.hpp ../sync/network.cpp ../sync/network.hpp
         ../sync/network_config.cpp ../sync/network_config.hpp ../sync/network_peers.cpp
         ../sync/network_settings.cpp ../sync/network_settings.hpp ../sync/network_settings_page.cpp
+        ../sync/network_live.cpp ../sync/live_strokes.cpp ../sync/live_strokes.hpp
         ../sync/network_sync.cpp
         row_model.cpp row_model.hpp
         app_style.cpp app_style.hpp

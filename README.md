@@ -64,7 +64,9 @@ Your devices then share your projects, boards and contacts automatically.
 PeerChalk finds peers through p2p-discovery-connect: every project, every board shared
 on its own, and your own set of devices has a discovery secret, and devices holding it
 find each other on the OpenDHT network and connect directly over WebRTC. Boards sync as
-Yrs updates, live, with the other people's cursors shown on the board. By default it
+Yrs updates, live, with the other people's cursors and the strokes they are still drawing
+shown on the board; those two go out as datagrams, which may be lost but never wait
+behind board updates. By default it
 uses the public OpenDHT network through Jami's bootstrap node and Cloudflare's and
 Google's public STUN servers, which get through most home routers. There is no TURN
 server by default, so people behind strict NATs (common on mobile and corporate
