@@ -31,7 +31,11 @@ TEST_F(NetworkSettingsTest, DefaultsToThePublicNetwork) {
     EXPECT_EQ(config.bootstrap.front().host, "bootstrap.jami.net");
     EXPECT_EQ(config.bootstrap.front().port, 4222);
     EXPECT_EQ(config.networkId, 0U);
-    EXPECT_TRUE(config.ice.servers.empty());
+    ASSERT_EQ(config.ice.servers.size(), 2U); // the public STUN servers
+    const auto *stun = std::get_if<p2pdc::StunServer>(&config.ice.servers.front());
+    ASSERT_NE(stun, nullptr);
+    EXPECT_EQ(stun->host, "stun.cloudflare.com");
+    EXPECT_EQ(stun->port, 3478);
 }
 
 TEST_F(NetworkSettingsTest, SavedSettingsAreLoadedAgain) {

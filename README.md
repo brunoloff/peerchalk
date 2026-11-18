@@ -65,9 +65,10 @@ PeerChalk finds peers through p2p-discovery-connect: every project, every board 
 on its own, and your own set of devices has a discovery secret, and devices holding it
 find each other on the OpenDHT network and connect directly over WebRTC. Boards sync as
 Yrs updates, live, with the other people's cursors shown on the board. By default it
-uses the public OpenDHT network through Jami's bootstrap node and no STUN/TURN servers,
-which works on one machine and on local networks; reaching people behind other NATs
-may need STUN/TURN. Settings → Network changes this (from the next start), and
+uses the public OpenDHT network through Jami's bootstrap node and Cloudflare's and
+Google's public STUN servers, which get through most home routers. There is no TURN
+server by default, so people behind strict NATs (common on mobile and corporate
+networks) may not reach each other until you add one. Settings → Network changes this (from the next start), and
 these environment variables take precedence over it:
 
 | Variable | Meaning |
@@ -75,7 +76,7 @@ these environment variables take precedence over it:
 | `PEERCHALK_NETWORK=off` | Stay offline |
 | `PEERCHALK_BOOTSTRAP=host:port,…` | OpenDHT bootstrap nodes |
 | `PEERCHALK_DHT_NETWORK=<number>` | OpenDHT network id |
-| `PEERCHALK_STUN=host:port` | A STUN server |
+| `PEERCHALK_STUN=host:port,…` | STUN servers |
 | `PEERCHALK_TURN=user:password@host:port` | A TURN server (UDP) |
 
 To try it on one computer, run two installations with separate data folders:

@@ -87,8 +87,8 @@ Item {
                     id: stunField
 
                     label: qsTr("STUN server")
-                    hint: qsTr("Helps reach people behind other routers, as host:port.")
-                    placeholder: "stun.example.org:3478"
+                    hint: qsTr("Helps reach people behind other routers, as host:port separated by commas. Empty uses Cloudflare's and Google's public servers.")
+                    placeholder: "stun.cloudflare.com:3478, stun.l.google.com:19302"
                 }
 
                 SettingField {

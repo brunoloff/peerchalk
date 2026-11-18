@@ -19,7 +19,8 @@ struct NetworkConfig {
     p2pdc::IceConfig ice;
 
     // The configuration the settings describe, defaulting to the public OpenDHT network
-    // through Jami's bootstrap node and no STUN or TURN servers. Throws
+    // through Jami's bootstrap node, Cloudflare's and Google's public STUN servers and no
+    // TURN server. Throws
     // std::invalid_argument naming the setting when a value is malformed.
     [[nodiscard]] static NetworkConfig from(const NetworkSettings &settings);
 };

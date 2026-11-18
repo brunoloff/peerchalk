@@ -5,12 +5,13 @@
 namespace peerchalk::sync {
 
 // The network choices made on the settings page, kept in network.json in the data
-// folder. Empty text fields mean "none"; an empty bootstrap means Jami's public node.
+// folder. An empty bootstrap or STUN field means the public defaults; an empty DHT
+// network means the public network and an empty TURN field means none.
 struct NetworkSettings {
     bool enabled{true};
     QString bootstrap;  // host:port, comma separated
     QString dhtNetwork; // OpenDHT network id; empty for the public network
-    QString stun;       // host:port
+    QString stun;       // host:port, comma separated
     QString turn;       // user:password@host:port
 
     // The saved settings, or the defaults when none were saved. Throws

@@ -9,6 +9,8 @@ namespace peerchalk::sync {
 namespace {
 
 const QString defaultBootstrap = QStringLiteral("bootstrap.jami.net:4222");
+// Free public STUN servers from Cloudflare, with Google's as a fallback.
+const QString defaultStun = QStringLiteral("stun.cloudflare.com:3478, stun.l.google.com:19302");
 
 struct HostPort {
     std::string host;
@@ -50,9 +52,10 @@ NetworkConfig NetworkConfig::from(const NetworkSettings &settings) {
         if (!ok)
             throw std::invalid_argument("DHT network must be a number");
     }
-    if (!settings.stun.trimmed().isEmpty()) {
-        const HostPort stun = hostPort(settings.stun.trimmed(), "STUN server");
-        config.ice.servers.emplace_back(p2pdc::StunServer{stun.host, stun.port});
+    const QString stun = settings.stun.trimmed().isEmpty() ? defaultStun : settings.stun;
+    for (const QString &entry : stun.split(QLatin1Char(','), Qt::SkipEmptyParts)) {
+        const HostPort server = hostPort(entry.trimmed(), "STUN server");
+        config.ice.servers.emplace_back(p2pdc::StunServer{server.host, server.port});
     }
     if (!settings.turn.trimmed().isEmpty())
         config.ice.servers.emplace_back(turnServer(settings.turn.trimmed()));
