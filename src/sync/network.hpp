@@ -15,6 +15,7 @@
 #include <QDeadlineTimer>
 #include <QObject>
 #include <QPointF>
+#include <QRectF>
 #include <QTimer>
 #include <QUuid>
 #include <QVariantList>
@@ -111,7 +112,9 @@ class Network : public QObject {
     // Tells peers which board this device shows and where the pointer is (world
     // coordinates); an empty boardId means no board.
     Q_INVOKABLE void setPresence(const QString &boardId, QPointF cursor, bool cursorVisible);
-    // Other devices showing a board: {device, name, colorIndex, x, y, cursor}.
+    // Tells peers which part of the open board is on this screen (world coordinates).
+    Q_INVOKABLE void setPresenceView(const QString &boardId, const QRectF &view);
+    // Other devices showing a board: {device, name, colorIndex, x, y, cursor, view}.
     Q_INVOKABLE QVariantList boardPresence(const QString &boardId) const;
 
   signals:
@@ -287,6 +290,7 @@ class Network : public QObject {
     QTimer presenceTimer_;
     QUuid presenceBoard_;
     QPointF cursor_;
+    QRectF presenceView_;
     bool cursorVisible_{false};
     quint32 presenceSequence_{0};
     bool presenceMustArrive_{false};

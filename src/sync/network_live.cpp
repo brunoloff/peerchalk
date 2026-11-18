@@ -47,9 +47,21 @@ void Network::setPresence(const QString &boardId, QPointF cursor, bool cursorVis
     const QUuid board = QUuid::fromString(boardId);
     presenceMustArrive_ =
         presenceMustArrive_ || board != presenceBoard_ || cursorVisible != cursorVisible_;
+    if (board != presenceBoard_)
+        presenceView_ = QRectF();
     presenceBoard_ = board;
     cursor_ = cursor;
     cursorVisible_ = cursorVisible;
+    ++presenceSequence_;
+    presenceSettleTimer_.start();
+    if (!presenceTimer_.isActive())
+        presenceTimer_.start();
+}
+
+void Network::setPresenceView(const QString &boardId, const QRectF &view) {
+    if (QUuid::fromString(boardId) != presenceBoard_ || view == presenceView_)
+        return;
+    presenceView_ = view;
     ++presenceSequence_;
     presenceSettleTimer_.start();
     if (!presenceTimer_.isActive())
@@ -86,7 +98,7 @@ void Network::flushPresence(const PeerId &id, Peer &peer) {
 Presence Network::presenceFor(const Peer &peer) const {
     if (presenceBoard_.isNull() || !sharesLiveActivity(peer, presenceBoard_))
         return {QUuid(), QPointF(), false, presenceSequence_};
-    return {presenceBoard_, cursor_, cursorVisible_, presenceSequence_};
+    return {presenceBoard_, cursor_, cursorVisible_, presenceSequence_, presenceView_};
 }
 
 void Network::applyPresence(Peer &peer, const Presence &presence) {

@@ -1,0 +1,35 @@
+# Turns LaTeX into triangles through RaTeX. Built as a static library for the C++ app;
+# see build.sh. Versions are pinned because they decide how shared equations look.
+[package]
+name = "peerchalk-math"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+publish = false
+
+[lib]
+name = "peerchalk_math"
+crate-type = ["staticlib", "rlib"]
+
+# The browser build: a separate WebAssembly module run in a Web Worker (see build.sh).
+[[bin]]
+name = "peerchalk_math_worker"
+path = "src/bin/worker.rs"
+
+[dependencies]
+ratex-font = "=0.1.16"
+ratex-katex-fonts = "=0.1.16"
+ratex-layout = { version = "=0.1.16", default-features = false }
+ratex-parser = { version = "=0.1.16", default-features = false }
+ratex-types = "=0.1.16"
+lyon_tessellation = "=1.0.15"
+ttf-parser = "=0.25.1"
+
+# Panics must unwind: a formula from another person may not take the app down.
+[profile.release]
+panic = "unwind"
+opt-level = 3
+lto = true
+codegen-units = 1
+
+[workspace]

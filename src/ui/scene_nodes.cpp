@@ -86,6 +86,14 @@ QSGGeometryNode *createOutlineNode(const Bounds &rect, float thickness, const QC
     return createNode(geometry, color);
 }
 
+QSGGeometryNode *createRectsNode(const std::vector<Bounds> &rects, const QColor &color) {
+    QSGGeometry *geometry = createTriangles(rects.size() * 6);
+    QSGGeometry::Point2D *vertex = geometry->vertexDataAsPoint2D();
+    for (const Bounds &rect : rects)
+        appendQuad(vertex, rect);
+    return createNode(geometry, color);
+}
+
 void deleteChildren(QSGNode *parent) {
     while (QSGNode *child = parent->firstChild()) {
         parent->removeChildNode(child);
@@ -100,6 +108,14 @@ void setStrokeNodes(QSGNode *parent, const std::vector<Stroke> &strokes,
         if (selects(selection, stroke) && !stroke.points().empty())
             parent->appendChildNode(createStrokeNode(stroke, strokeColor(stroke, selection)));
     }
+}
+
+void appendTextBoxNodes(QSGNode *parent, const Board &board) {
+    std::vector<Bounds> rects;
+    for (const TextBox &box : board.textBoxes())
+        rects.push_back(board.textBoxBounds(box));
+    if (!rects.empty())
+        parent->appendChildNode(createRectsNode(rects, QColor(120, 116, 108, 90)));
 }
 
 QMatrix4x4 viewMatrix(const Viewport &viewport) {

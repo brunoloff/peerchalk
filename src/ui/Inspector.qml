@@ -14,6 +14,7 @@ Rectangle {
     required property bool autoHide
     property bool floating: false
     readonly property bool drawing: canvas.tool === BoardCanvas.Pen || canvas.tool === BoardCanvas.Highlighter
+        || canvas.tool === BoardCanvas.Text
 
     signal autoHideToggled(bool enabled)
     signal closeRequested()
@@ -45,6 +46,7 @@ Rectangle {
                     case BoardCanvas.Pen: return qsTr("Pen");
                     case BoardCanvas.Highlighter: return qsTr("Highlighter");
                     case BoardCanvas.Eraser: return qsTr("Eraser");
+                    case BoardCanvas.Text: return qsTr("Text");
                     default: return qsTr("Pan");
                     }
                 }

@@ -16,9 +16,30 @@ Item {
     property string access: "waiting"
     // Other devices showing this board, from Network.boardPresence.
     property var people: []
+    // Their devices. Changes only when someone comes or goes, so that the avatars stay put
+    // and can be clicked while the people behind them move around.
+    property var peopleDevices: []
 
     function refreshPeople() {
         people = Network.boardPresence(boardId);
+        const devices = people.map(person => person.device);
+        if (devices.join() !== peopleDevices.join())
+            peopleDevices = devices;
+    }
+
+    function personOn(device: string): var {
+        return people.find(person => person.device === device) ?? null;
+    }
+
+    // Moves this view to what someone else is looking at.
+    function goToViewOf(device: string) {
+        const person = personOn(device);
+        if (person !== null)
+            canvas.showArea(person.view);
+    }
+
+    function publishView() {
+        Network.setPresenceView(boardId, canvas.visibleArea);
     }
 
     signal back()
@@ -42,6 +63,7 @@ Item {
         Network.setPresence(page.boardId, Qt.point(0, 0), false);
         page.refreshPeople();
         page.access = Network.boardAccess(page.boardId);
+        page.publishView();
     }
     // Not on destruction: while the app closes, the views these calls update are going away
     // too, and the library saves unsaved boards itself.
@@ -86,6 +108,14 @@ Item {
             document: Library.openBoard(page.boardId)
             readOnly: page.access !== "edit"
             onCursorMoved: (point, inside) => Network.setPresence(page.boardId, point, inside)
+            onViewChanged: page.publishView()
+            onWidthChanged: page.publishView()
+            onHeightChanged: page.publishView()
+        }
+
+        TextBoxLayer {
+            anchors.fill: parent
+            canvas: canvas
         }
 
         Panel {
@@ -168,24 +198,38 @@ Item {
             anchors.top: parent.top
             anchors.margins: Theme.gap
             spacing: -8
-            visible: page.people.length > 0
+            visible: page.peopleDevices.length > 0
 
             Repeater {
-                model: page.people
+                model: page.peopleDevices
 
-                delegate: Avatar {
-                    required property var modelData
+                delegate: AbstractButton {
+                    id: personButton
 
-                    name: modelData.name
-                    size: 34
-                    color: Theme.personColors[modelData.colorIndex % Theme.personColors.length]
-                    border.color: Theme.surface
-                    border.width: 2
-                    ToolTip.visible: hover.hovered
-                    ToolTip.text: modelData.name
+                    required property string modelData
+                    readonly property var person: page.personOn(modelData)
+                    readonly property string personName: person?.name ?? ""
+
+                    implicitWidth: 34
+                    implicitHeight: 34
+                    hoverEnabled: true
+                    Accessible.name: qsTr("Go to %1's view").arg(personName)
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Go to %1's view").arg(personName)
+                    ToolTip.delay: 300
+                    onClicked: page.goToViewOf(modelData)
+
+                    contentItem: Avatar {
+                        name: personButton.personName
+                        size: 34
+                        color: Theme.personColors[(personButton.person?.colorIndex ?? 0)
+                                                  % Theme.personColors.length]
+                        border.color: personButton.hovered ? Theme.accent : Theme.surface
+                        border.width: 2
+                    }
 
                     HoverHandler {
-                        id: hover
+                        cursorShape: Qt.PointingHandCursor
                     }
                 }
             }
@@ -299,48 +343,7 @@ Item {
         onTriggered: page.inspectorRevealed = false
     }
 
-    Shortcut {
-        sequences: [StandardKey.Undo]
-        onActivated: canvas.undo()
-    }
-
-    Shortcut {
-        sequence: "P"
-        onActivated: canvas.tool = BoardCanvas.Pen
-    }
-
-    Shortcut {
-        sequence: "M"
-        onActivated: canvas.tool = BoardCanvas.Highlighter
-    }
-
-    Shortcut {
-        sequence: "E"
-        onActivated: canvas.tool = BoardCanvas.Eraser
-    }
-
-    Shortcut {
-        sequence: "H"
-        onActivated: canvas.tool = BoardCanvas.Pan
-    }
-
-    Shortcut {
-        sequences: [StandardKey.ZoomIn, "Ctrl+="]
-        onActivated: canvas.zoomBy(1.25)
-    }
-
-    Shortcut {
-        sequences: [StandardKey.ZoomOut]
-        onActivated: canvas.zoomBy(1 / 1.25)
-    }
-
-    Shortcut {
-        sequence: "Ctrl+0"
-        onActivated: canvas.resetView()
-    }
-
-    Shortcut {
-        sequence: "Shift+1"
-        onActivated: canvas.fitContent()
+    BoardShortcuts {
+        canvas: canvas
     }
 }

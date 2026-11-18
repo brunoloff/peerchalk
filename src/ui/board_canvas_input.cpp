@@ -36,8 +36,15 @@ void BoardCanvas::pointerPressed(QPointF position, std::optional<float> pressure
     if (gesture_ != Gesture::None)
         return;
     const Tool tool = forcePan ? Tool::Pan : tool_;
+    const bool wasEditing = !editingTextBox_.isEmpty();
+    finishTextEditing();
     if (readOnly_ && tool != Tool::Pan)
         return;
+    if (tool == Tool::Text) {
+        if (!wasEditing) // a click beside the box being edited only ends the editing
+            textToolPressed(position);
+        return;
+    }
     lastPosition_ = position;
     if (tool == Tool::Pan) {
         gesture_ = Gesture::Panning;

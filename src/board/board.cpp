@@ -1,8 +1,4 @@
-#include "board/board.hpp"
-
-extern "C" {
-#include <libyrs.h>
-}
+#include "board/board_native.hpp"
 
 #include <algorithm>
 #include <climits>
@@ -16,9 +12,16 @@ namespace {
 
 constexpr char strokesName[] = "strokes";
 constexpr char observerKey[] = "peerchalk-board";
-constexpr char localOrigin[] = "peerchalk-local";
+constexpr char textBoxesName[] = "textBoxes";
 
-using Transaction = std::unique_ptr<YTransaction, decltype(&ytransaction_commit)>;
+using Transaction = BoardTransaction;
+
+// Text positions count UTF-16 units, as Qt's text documents do.
+YDoc *newDocument() {
+    YOptions options = yoptions();
+    options.flags |= Y_OFFSET_UTF16;
+    return ydoc_new_with_options(options);
+}
 
 std::uint32_t checkedLength(ByteView bytes) {
     if (bytes.size() > std::numeric_limits<std::uint32_t>::max())
@@ -58,24 +61,6 @@ Stroke decodeEntry(const YOutput &value) {
 
 } // namespace
 
-struct Board::Native {
-    std::unique_ptr<YDoc, decltype(&ydoc_destroy)> doc{ydoc_new(), ydoc_destroy};
-    Branch *strokes{nullptr};
-    std::unique_ptr<YUndoManager, decltype(&yundo_manager_destroy)> undo{nullptr,
-                                                                         yundo_manager_destroy};
-
-    // Local changes carry an origin so that the undo manager tracks only them.
-    [[nodiscard]] Transaction write(bool local) const {
-        Transaction txn(
-            local ? ydoc_write_transaction(doc.get(), sizeof(localOrigin) - 1, localOrigin)
-                  : ydoc_write_transaction(doc.get(), 0, nullptr),
-            ytransaction_commit);
-        if (!txn)
-            throw std::runtime_error("Yrs board transaction could not start");
-        return txn;
-    }
-};
-
 bool strokeNear(const Stroke &stroke, Point point, float radius) {
     const std::optional<Bounds> bounds = stroke.bounds();
     if (!bounds || !bounds->contains(point, radius))
@@ -92,14 +77,17 @@ bool strokeNear(const Stroke &stroke, Point point, float radius) {
 }
 
 Board::Board() : native_(std::make_unique<Native>()) {
-    if (!native_->doc || !(native_->strokes = yarray(native_->doc.get(), strokesName)))
+    native_->doc.reset(newDocument());
+    if (!native_->doc || !(native_->strokes = yarray(native_->doc.get(), strokesName)) ||
+        !(native_->textBoxes = ymap(native_->doc.get(), textBoxesName)))
         throw std::runtime_error("Yrs board document could not be created");
     const YUndoManagerOptions options{INT_MAX}; // steps end only at yundo_manager_stop
     native_->undo.reset(yundo_manager(&options));
     if (!native_->undo)
         throw std::runtime_error("Yrs undo manager could not be created");
     yundo_manager_add_scope(native_->undo.get(), native_->doc.get(), native_->strokes);
-    yundo_manager_add_origin(native_->undo.get(), sizeof(localOrigin) - 1, localOrigin);
+    yundo_manager_add_scope(native_->undo.get(), native_->doc.get(), native_->textBoxes);
+    yundo_manager_add_origin(native_->undo.get(), sizeof(boardLocalOrigin) - 1, boardLocalOrigin);
     yarray_observe(native_->strokes, sizeof(observerKey) - 1, observerKey, this,
                    [](void *state, const YArrayEvent *event) {
                        // Exceptions must not unwind through the Rust library.
@@ -109,10 +97,19 @@ Board::Board() : native_(std::make_unique<Native>()) {
                            std::terminate();
                        }
                    });
+    yobserve_deep(native_->textBoxes, sizeof(observerKey) - 1, observerKey, this,
+                  [](void *state, std::uint32_t, const YEvent *) {
+                      try {
+                          static_cast<Board *>(state)->textChanged();
+                      } catch (...) {
+                          std::terminate();
+                      }
+                  });
 }
 
 Board::~Board() {
     yunobserve(native_->strokes, sizeof(observerKey) - 1, observerKey);
+    yunobserve_deep(native_->textBoxes, sizeof(observerKey) - 1, observerKey);
     native_->undo.reset();
 }
 
@@ -144,6 +141,10 @@ std::optional<Bounds> Board::contentBounds() const {
         if (const std::optional<Bounds> bounds = stroke.bounds())
             result = result ? unite(*result, *bounds) : *bounds;
     }
+    for (const TextBox &box : textBoxes()) {
+        const Bounds bounds = textBoxBounds(box);
+        result = result ? unite(*result, bounds) : bounds;
+    }
     return result;
 }
 
@@ -169,12 +170,12 @@ std::size_t Board::eraseNear(Point point, float radius) {
         if (strokeNear(strokes_[i], point, radius))
             hits.push_back(static_cast<std::uint32_t>(i));
     }
-    if (hits.empty())
-        return 0;
-    Transaction txn = native_->write(true);
-    for (const std::uint32_t index : hits) // descending, so earlier indices stay valid
-        yarray_remove_range(native_->strokes, txn.get(), index, 1);
-    return hits.size();
+    if (!hits.empty()) {
+        Transaction txn = native_->write(true);
+        for (const std::uint32_t index : hits) // descending, so earlier indices stay valid
+            yarray_remove_range(native_->strokes, txn.get(), index, 1);
+    }
+    return hits.size() + eraseTextBoxesNear(point, radius);
 }
 
 void Board::endGesture() { yundo_manager_stop(native_->undo.get()); }

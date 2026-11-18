@@ -1,6 +1,5 @@
 #include "ui/board_preview.hpp"
 
-#include "board/board.hpp"
 #include "ui/scene_nodes.hpp"
 
 #include <QSGTransformNode>
@@ -22,12 +21,11 @@ void BoardPreview::setBoardState(const QByteArray &state) {
     if (state == state_)
         return;
     state_ = state;
-    strokes_.clear();
+    board_ = std::make_unique<Board>();
     if (!state.isEmpty()) {
-        Board board;
         const auto *data = reinterpret_cast<const std::byte *>(state.constData());
-        if (board.apply(ByteView(data, static_cast<std::size_t>(state.size()))))
-            strokes_ = board.strokes();
+        if (!board_->apply(ByteView(data, static_cast<std::size_t>(state.size()))))
+            board_ = std::make_unique<Board>();
     }
     strokesDirty_ = true;
     emit boardStateChanged();
@@ -45,11 +43,8 @@ QSGNode *BoardPreview::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *) 
         transform = new QSGTransformNode;
         strokesDirty_ = true;
     }
-    std::optional<Bounds> content;
-    for (const Stroke &stroke : strokes_) {
-        if (const std::optional<Bounds> bounds = stroke.bounds())
-            content = content ? unite(*content, *bounds) : *bounds;
-    }
+    const std::optional<Bounds> content =
+        board_ ? board_->contentBounds() : std::optional<Bounds>();
     if (!content || width() <= 2.0 * marginPx || height() <= 2.0 * marginPx) {
         deleteChildren(transform);
         strokesDirty_ = true;
@@ -59,7 +54,8 @@ QSGNode *BoardPreview::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *) 
     fitted.fit(*content, static_cast<float>(width()), static_cast<float>(height()), marginPx, 1.0F);
     transform->setMatrix(viewMatrix(fitted));
     if (strokesDirty_) {
-        setStrokeNodes(transform, strokes_, StrokeSelection::All);
+        setStrokeNodes(transform, board_->strokes(), StrokeSelection::All);
+        appendTextBoxNodes(transform, *board_);
         strokesDirty_ = false;
     }
     return transform;

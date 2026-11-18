@@ -4,6 +4,7 @@
 #include "ui/scene_nodes.hpp"
 #include "ui/stroke_layer.hpp"
 
+#include <QCursor>
 #include <QSGTransformNode>
 #include <QtLogging>
 
@@ -41,12 +42,15 @@ void BoardCanvas::setDocument(BoardDocument *document) {
         return;
     pointerCancelled();
     if (document_)
+        finishTextEditing();
+    if (document_)
         disconnect(document_, nullptr, this, nullptr);
     document_ = next;
     // Remote changes (and saved state loading) arrive through the document.
     connect(document_, &BoardDocument::changed, this, &BoardCanvas::strokesUpdated);
     connect(document_, &BoardDocument::remoteDraftsChanged, this, &BoardCanvas::updateDrafts);
-    connect(document_, &QObject::destroyed, this, [this] { setDocument(nullptr); });
+    if (document_ != &ownDocument_) // that one goes away together with the canvas
+        connect(document_, &QObject::destroyed, this, [this] { setDocument(nullptr); });
     strokesUpdated();
     emit documentChanged();
 }
@@ -59,7 +63,12 @@ void BoardCanvas::setTool(Tool tool) {
     if (tool == tool_)
         return;
     pointerCancelled();
+    finishTextEditing();
     tool_ = tool;
+    if (tool_ == Tool::Text)
+        setCursor(Qt::IBeamCursor);
+    else
+        unsetCursor();
     emit toolChanged();
 }
 
@@ -118,6 +127,8 @@ QRectF BoardCanvas::visibleArea() const {
 void BoardCanvas::setReadOnly(bool readOnly) {
     if (readOnly == readOnly_)
         return;
+    if (readOnly)
+        finishTextEditing();
     readOnly_ = readOnly;
     emit readOnlyChanged();
 }
@@ -152,6 +163,17 @@ void BoardCanvas::fitContent() {
         return;
     viewport_.fit(*content, static_cast<float>(width()), static_cast<float>(height()), fitMarginPx,
                   1.0F);
+    viewUpdated();
+}
+
+void BoardCanvas::showArea(QRectF worldArea) {
+    if (!worldArea.isValid() || worldArea.isEmpty() || width() <= 0.0 || height() <= 0.0)
+        return;
+    pointerCancelled();
+    viewport_.fit({static_cast<float>(worldArea.left()), static_cast<float>(worldArea.top()),
+                   static_cast<float>(worldArea.right()), static_cast<float>(worldArea.bottom())},
+                  static_cast<float>(width()), static_cast<float>(height()), 0.0F,
+                  Viewport::maxScale);
     viewUpdated();
 }
 
@@ -194,6 +216,7 @@ void BoardCanvas::viewUpdated() {
 
 void BoardCanvas::strokesUpdated() {
     emit strokesChanged();
+    textBoxesUpdated();
     redrawStrokes();
 }
 

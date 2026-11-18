@@ -103,13 +103,17 @@ struct Encoder {
         return json(ProfileType, {{"name", profile.displayName}, {"color", profile.colorIndex}});
     }
     QByteArray operator()(const Presence &presence) const {
-        return json(PresenceType, {{"board", presence.board.isNull()
-                                                 ? QString()
-                                                 : presence.board.toString(QUuid::WithoutBraces)},
-                                   {"x", presence.cursor.x()},
-                                   {"y", presence.cursor.y()},
-                                   {"cursor", presence.cursorVisible},
-                                   {"seq", static_cast<qint64>(presence.sequence)}});
+        QJsonObject object{{"board", presence.board.isNull()
+                                         ? QString()
+                                         : presence.board.toString(QUuid::WithoutBraces)},
+                           {"x", presence.cursor.x()},
+                           {"y", presence.cursor.y()},
+                           {"cursor", presence.cursorVisible},
+                           {"seq", static_cast<qint64>(presence.sequence)}};
+        if (presence.view.isValid())
+            object["view"] = QJsonArray{presence.view.x(), presence.view.y(), presence.view.width(),
+                                        presence.view.height()};
+        return json(PresenceType, object);
     }
     QByteArray operator()(const LiveStroke &stroke) const {
         QByteArray bytes(1, LiveStrokeType);
@@ -183,6 +187,22 @@ std::optional<Message> decodeAccess(const QJsonObject &object) {
     return message;
 }
 
+// The view is optional: nullopt only for one that is present but malformed.
+std::optional<QRectF> viewFromJson(const QJsonValue &value) {
+    if (value.isUndefined())
+        return QRectF();
+    const QJsonArray numbers = value.toArray();
+    if (numbers.size() != 4)
+        return std::nullopt;
+    const QRectF view(numbers[0].toDouble(qQNaN()), numbers[1].toDouble(qQNaN()),
+                      numbers[2].toDouble(qQNaN()), numbers[3].toDouble(qQNaN()));
+    const bool finite = std::isfinite(view.x()) && std::isfinite(view.y()) &&
+                        std::isfinite(view.width()) && std::isfinite(view.height());
+    if (!finite || view.width() <= 0.0 || view.height() <= 0.0)
+        return std::nullopt;
+    return view;
+}
+
 std::optional<Message> decodePresence(const QJsonObject &object) {
     const QString board = object[QStringLiteral("board")].toString();
     const double x = object[QStringLiteral("x")].toDouble();
@@ -195,8 +215,14 @@ std::optional<Message> decodePresence(const QJsonObject &object) {
     const qint64 sequence = object[QStringLiteral("seq")].toInteger();
     if (sequence < 0 || sequence > std::numeric_limits<quint32>::max())
         return std::nullopt;
-    return Presence{
-        id, {x, y}, object[QStringLiteral("cursor")].toBool(), static_cast<quint32>(sequence)};
+    const std::optional<QRectF> view = viewFromJson(object[QStringLiteral("view")]);
+    if (!view)
+        return std::nullopt;
+    return Presence{id,
+                    {x, y},
+                    object[QStringLiteral("cursor")].toBool(),
+                    static_cast<quint32>(sequence),
+                    *view};
 }
 
 bool validPoint(const StrokePoint &point) {

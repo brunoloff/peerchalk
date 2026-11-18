@@ -281,6 +281,22 @@ TEST_F(NetworkTest, NameAndColourChangesReachConnectedPeers) {
         timeoutMs));
 }
 
+TEST_F(NetworkTest, PeopleOnABoardShareWhatTheyAreLookingAt) {
+    TwoMembers shared(dht_);
+    const QRectF view(-50.0, 25.0, 640.0, 480.0);
+    ASSERT_TRUE(QTest::qWaitFor(
+        [&] { return shared.bob.library.workspace().hasBoard(QUuid::fromString(shared.board)); },
+        timeoutMs));
+    shared.bob.network->setPresence(shared.board, QPointF(1, 2), true);
+    shared.bob.network->setPresenceView(shared.board, view);
+    EXPECT_TRUE(QTest::qWaitFor(
+        [&] {
+            const QVariantList people = shared.alice.network->boardPresence(shared.board);
+            return !people.isEmpty() && people.front().toMap()["view"].toRectF() == view;
+        },
+        timeoutMs));
+}
+
 // Waits until `approver` sees someone asking to join the item and returns that request.
 QVariantMap awaitRequest(Device &approver, const QString &item) {
     if (!QTest::qWaitFor([&] { return !approver.network->joinRequests(item).isEmpty(); },

@@ -1,16 +1,16 @@
 #pragma once
 
-#include "board/stroke.hpp"
+#include "board/board.hpp"
 
 #include <QByteArray>
 #include <QQuickItem>
 #include <QtQml/qqmlregistration.h>
 
-#include <vector>
+#include <memory>
 
 namespace peerchalk {
 
-// A static thumbnail of a saved board: every stroke, scaled to fit the item.
+// A static thumbnail of a saved board: every stroke and text box position, scaled to fit the item.
 class BoardPreview : public QQuickItem {
     Q_OBJECT
     QML_ELEMENT
@@ -32,7 +32,7 @@ class BoardPreview : public QQuickItem {
 
   private:
     QByteArray state_;
-    std::vector<Stroke> strokes_;
+    std::unique_ptr<Board> board_;
     bool strokesDirty_{true};
 };
 

@@ -7,6 +7,7 @@
 #include <QByteArray>
 #include <QJsonObject>
 #include <QPointF>
+#include <QRectF>
 #include <QString>
 #include <QUuid>
 
@@ -95,6 +96,7 @@ struct Presence {
     bool cursorVisible{false};
     // Grows with every change, so a late datagram cannot undo a newer position.
     quint32 sequence{0};
+    QRectF view{}; // the part of the board on the sender's screen; empty if unknown
 };
 
 // The newest part of a stroke someone is drawing, sent as a datagram. The finished

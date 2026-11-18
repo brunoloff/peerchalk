@@ -276,7 +276,8 @@ QVariantList Network::boardPresence(const QString &boardId) const {
                                   {"colorIndex", peer->user->colorIndex},
                                   {"x", peer->presence->cursor.x()},
                                   {"y", peer->presence->cursor.y()},
-                                  {"cursor", peer->presence->cursorVisible}});
+                                  {"cursor", peer->presence->cursorVisible},
+                                  {"view", peer->presence->view}});
     }
     return result;
 }

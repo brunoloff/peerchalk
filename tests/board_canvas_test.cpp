@@ -77,6 +77,16 @@ TEST_F(BoardCanvasTest, ReadOnlyBoardsCannotBeChangedButCanBeMoved) {
     EXPECT_EQ(canvas_.strokeCount(), 0);
 }
 
+TEST_F(BoardCanvasTest, ShowsAnotherViewsArea) {
+    canvas_.showArea(QRectF(100.0, 200.0, 400.0, 100.0));
+    EXPECT_DOUBLE_EQ(canvas_.zoom(), 0.5); // the wider side decides what fits
+    EXPECT_NEAR(canvas_.viewCenter().x(), 300.0, 0.01);
+    EXPECT_NEAR(canvas_.viewCenter().y(), 250.0, 0.01);
+    const qreal zoom = canvas_.zoom();
+    canvas_.showArea(QRectF());
+    EXPECT_DOUBLE_EQ(canvas_.zoom(), zoom);
+}
+
 TEST_F(BoardCanvasTest, HighlighterIsWideWithConstantWidth) {
     canvas_.setTool(BoardCanvas::Tool::Highlighter);
     canvas_.setPenColor(Qt::yellow);

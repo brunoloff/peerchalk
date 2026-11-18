@@ -4,8 +4,10 @@
 #include "board/stroke_builder.hpp"
 #include "board/viewport.hpp"
 #include "ui/board_document.hpp"
+#include "ui/text_box_model.hpp"
 
 #include <QColor>
+#include <QMatrix4x4>
 #include <QPointF>
 #include <QPointer>
 #include <QQuickItem>
@@ -23,7 +25,8 @@ class StrokeLayer;
 // an offscreen layer shown at highlighterOpacity beneath the pen ink, so overlapping
 // highlighter strokes never darken and ink stays crisp. Turns mouse, touch and pen input
 // (with pressure when the device reports it) into drawing, erasing and panning.
-// Middle- and right-button drags always pan.
+// Middle- and right-button drags always pan. Text boxes are shown by QML (TextBoxLayer)
+// from the textBoxes model; the Text tool creates them and picks one to edit.
 // Positions exposed to QML (viewCenter, visibleArea, contentBounds) are world coordinates.
 class BoardCanvas : public QQuickItem {
     Q_OBJECT
@@ -43,9 +46,12 @@ class BoardCanvas : public QQuickItem {
     Q_PROPERTY(qreal zoom READ zoom NOTIFY viewChanged)
     Q_PROPERTY(QPointF viewCenter READ viewCenter NOTIFY viewChanged)
     Q_PROPERTY(QRectF visibleArea READ visibleArea NOTIFY viewChanged)
+    Q_PROPERTY(QMatrix4x4 viewMatrix READ viewMatrix NOTIFY viewChanged)
+    Q_PROPERTY(QAbstractItemModel *textBoxes READ textBoxes CONSTANT)
+    Q_PROPERTY(QString editingTextBox READ editingTextBox NOTIFY editingTextBoxChanged)
 
   public:
-    enum class Tool { Pen, Highlighter, Eraser, Pan };
+    enum class Tool { Pen, Highlighter, Eraser, Pan, Text };
     Q_ENUM(Tool)
 
     explicit BoardCanvas(QQuickItem *parent = nullptr);
@@ -66,6 +72,9 @@ class BoardCanvas : public QQuickItem {
     [[nodiscard]] qreal zoom() const { return viewport_.scale(); }
     [[nodiscard]] QPointF viewCenter() const;
     [[nodiscard]] QRectF visibleArea() const;
+    [[nodiscard]] QMatrix4x4 viewMatrix() const;
+    [[nodiscard]] QAbstractItemModel *textBoxes() { return &textBoxModel_; }
+    [[nodiscard]] QString editingTextBox() const { return editingTextBox_; }
     [[nodiscard]] BoardDocument *document() const { return document_; }
     void setDocument(BoardDocument *document);
     [[nodiscard]] const Board &board() const { return document_->board(); }
@@ -81,8 +90,24 @@ class BoardCanvas : public QQuickItem {
     // Shows every stroke, zooming in no further than 100%; does nothing on an empty board.
     Q_INVOKABLE void fitContent();
     Q_INVOKABLE void centerOn(QPointF worldPoint);
+    // Shows all of a world area, as large as this view allows; ignores empty areas.
+    Q_INVOKABLE void showArea(QRectF worldArea);
     // The item position where a world point is shown.
     Q_INVOKABLE QPointF toScreen(QPointF worldPoint) const;
+
+    // Text boxes, by id; ids of boxes that are gone are ignored. Nothing changes while
+    // readOnly. finishTextEditing removes the box if it is still empty.
+    Q_INVOKABLE void editTextBox(const QString &id);
+    Q_INVOKABLE void finishTextEditing();
+    Q_INVOKABLE void moveTextBox(const QString &id, QPointF position);
+    Q_INVOKABLE void setTextBoxWidth(const QString &id, qreal width);
+    Q_INVOKABLE void setTextBoxFontSize(const QString &id, qreal size);
+    Q_INVOKABLE void setTextBoxColor(const QString &id, const QColor &color);
+    Q_INVOKABLE void removeTextBox(const QString &id);
+    // Ends the undo step of a change made in several parts, such as a drag.
+    Q_INVOKABLE void endTextBoxChange();
+    void setTextBoxBody(const QString &id, const RichText &body);
+    void setTextBoxHeight(const QString &id, qreal height);
 
   signals:
     void documentChanged();
@@ -93,6 +118,8 @@ class BoardCanvas : public QQuickItem {
     void gridColorChanged();
     void strokesChanged();
     void viewChanged();
+    void textBoxesChanged();
+    void editingTextBoxChanged();
     // The pointer moved over the board (world coordinates), or left it.
     void cursorMoved(QPointF worldPoint, bool inside);
 
@@ -125,6 +152,10 @@ class BoardCanvas : public QQuickItem {
     void redrawStrokes();
     void activeStrokeUpdated();
     void updateDrafts();
+    void textBoxesUpdated();
+    void setEditingTextBox(const QString &id);
+    void textToolPressed(QPointF position);
+    [[nodiscard]] const TextBox *textBoxAt(Point world) const;
     [[nodiscard]] Board &editableBoard() { return document_->board(); }
 
     Tool tool_{Tool::Pen};
@@ -138,6 +169,8 @@ class BoardCanvas : public QQuickItem {
     Gesture gesture_{Gesture::None};
     QPointF lastPosition_;
     std::optional<StrokeBuilder> activeStroke_;
+    TextBoxModel textBoxModel_;
+    QString editingTextBox_;
     StrokeLayer *highlighterLayer_;
     StrokeLayer *penLayer_;
 };

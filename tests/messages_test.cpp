@@ -99,6 +99,16 @@ TEST(Messages, RejectsMalformedLiveStrokes) {
     EXPECT_FALSE(decode(bytes + 'x').has_value());
 }
 
+TEST(Messages, PresenceCarriesTheVisibleArea) {
+    const QRectF view(-10.5, 20.0, 800.0, 600.0);
+    const Presence presence =
+        roundTrip<Presence>(Presence{QUuid::createUuid(), {1.0, 2.0}, true, 3, view});
+    EXPECT_EQ(presence.view, view);
+    EXPECT_FALSE(roundTrip<Presence>(Presence{}).view.isValid());
+    EXPECT_FALSE(decode(QByteArray("\x05{\"view\":[1,2,0,4]}")).has_value()); // empty
+    EXPECT_FALSE(decode(QByteArray("\x05{\"view\":[1,2,3]}")).has_value());
+}
+
 TEST(Messages, TypesFromNewerVersionsAreRecognisedAsUnknown) {
     const auto decoded = decode(QByteArray("\x7f"
                                            "anything",

@@ -26,6 +26,7 @@ export EMSDK_QUIET=1
 source "$deps/emsdk-qt/emsdk_env.sh"
 export EM_CACHE=$deps/emscripten-qt-cache EMCC_CORES=1
 
+"$root/src/math/engine/build.sh" web
 sh "$qt/wasm_singlethread/bin/qt-cmake" -S "$root" -B "$root/build-web" -G Ninja \
     -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF \
     -DQT_HOST_PATH="$qt/gcc_64" \

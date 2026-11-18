@@ -5,14 +5,16 @@ qt_add_library(peerchalk_ui STATIC)
 # Browsers save and choose files through web_files.cpp instead of system dialogs.
 set(peerchalk_native_qml)
 set(peerchalk_instance_link ../sync/instance_link_web.cpp)
+set(peerchalk_math_engine_source ../math/math_engine_web.cpp)
 if(NOT EMSCRIPTEN)
     set(peerchalk_native_qml NativeBackupFiles.qml)
     set(peerchalk_instance_link ../sync/instance_link_native.cpp)
+    set(peerchalk_math_engine_source ../math/math_engine_native.cpp)
 endif()
 qt_add_qml_module(peerchalk_ui URI PeerChalk VERSION 1.0
     OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/qml/PeerChalk"
     SOURCES
-        board_canvas.cpp board_canvas.hpp board_canvas_input.cpp
+        board_canvas.cpp board_canvas.hpp board_canvas_input.cpp board_canvas_text.cpp
         board_minimap.cpp board_minimap.hpp
         conversions.hpp scene_nodes.cpp scene_nodes.hpp stroke_layer.cpp stroke_layer.hpp
         board_preview.cpp board_preview.hpp library.cpp library.hpp library_people.cpp
@@ -25,6 +27,11 @@ qt_add_qml_module(peerchalk_ui URI PeerChalk VERSION 1.0
         ../sync/message_parts.cpp ../sync/message_parts.hpp
         ../sync/network_instances.cpp ../sync/instance_link.hpp ${peerchalk_instance_link}
         ../sync/space_schedule.cpp ../sync/space_schedule.hpp
+        ../math/math_engine.hpp ../math/math_result.cpp ../math/math_smoothing.cpp
+        ../math/math_smoothing.hpp ${peerchalk_math_engine_source}
+        math_item.cpp math_item.hpp text_box_model.cpp text_box_model.hpp
+        rich_text_document.cpp rich_text_document.hpp rich_text_binding.cpp rich_text_binding.hpp
+        rich_text_binding_equations.cpp equation_syntax.cpp equation_syntax.hpp
         row_model.cpp row_model.hpp
         app_style.cpp app_style.hpp
         account_manager.cpp account_manager.hpp web_files.cpp web_files.hpp
@@ -38,12 +45,16 @@ qt_add_qml_module(peerchalk_ui URI PeerChalk VERSION 1.0
         NetworkStatus.qml PersonRoleRow.qml RequestsDialog.qml SettingsPage.qml
         NetworkPane.qml SettingField.qml PaperTab.qml ColorPalette.qml
         AccountsWindow.qml AccountRow.qml AccountPane.qml BackupFlow.qml PassphraseDialog.qml
-        BoardLinkSection.qml SiteLinks.qml
+        BoardLinkSection.qml SiteLinks.qml EquationPanel.qml BoardShortcuts.qml
+        TextBoxLayer.qml TextBoxView.qml TextBoxChrome.qml
         CreateAccountDialog.qml RemoveAccountDialog.qml ${peerchalk_native_qml})
 target_include_directories(peerchalk_ui PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/..")
 # The generated QML type registrations include headers by file name.
 target_include_directories(peerchalk_ui PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../sync")
 target_link_libraries(peerchalk_ui PUBLIC peerchalk_board peerchalk_library p2pdc::p2pdc Qt6::Core Qt6::Gui Qt6::Network Qt6::Qml Qt6::Quick
     Qt6::QuickControls2)
+if(NOT EMSCRIPTEN)
+    target_link_libraries(peerchalk_ui PRIVATE peerchalk_math_engine)
+endif()
 target_compile_options(peerchalk_ui PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:${peerchalk_warning_flags}>)

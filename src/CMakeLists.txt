@@ -1,6 +1,6 @@
 # Board model: plain C++ with no Qt dependency, so it can be shared with sync code.
 add_library(peerchalk_board STATIC board/stroke.cpp board/stroke_mesh.cpp board/viewport.cpp
-    board/board.cpp board/stroke_codec.cpp board/stroke_builder.cpp)
+    board/board.cpp board/board_text.cpp board/rich_text.cpp board/stroke_codec.cpp board/stroke_builder.cpp)
 target_include_directories(peerchalk_board PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(peerchalk_board PRIVATE peerchalk_yrs)
 target_compile_options(peerchalk_board PRIVATE
@@ -30,8 +30,9 @@ target_compile_options(peerchalk PRIVATE
 if(EMSCRIPTEN)
     set(peerchalk_web_storage "${CMAKE_CURRENT_SOURCE_DIR}/app/web_storage.js")
     set(peerchalk_web_files "${CMAKE_CURRENT_SOURCE_DIR}/app/web_files.js")
+    set(peerchalk_web_math "${CMAKE_CURRENT_SOURCE_DIR}/app/web_math.js")
     target_link_options(peerchalk PRIVATE -lidbfs.js "SHELL:--pre-js \"${peerchalk_web_storage}\""
-        "SHELL:--pre-js \"${peerchalk_web_files}\"")
+        "SHELL:--pre-js \"${peerchalk_web_files}\"" "SHELL:--pre-js \"${peerchalk_web_math}\"")
     set_property(TARGET peerchalk APPEND PROPERTY LINK_DEPENDS "${peerchalk_web_storage}"
-        "${peerchalk_web_files}")
+        "${peerchalk_web_files}" "${peerchalk_web_math}")
 endif()

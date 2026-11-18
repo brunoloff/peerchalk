@@ -24,6 +24,11 @@ build uses the Yrs header and library from p2p-discovery-connect's Yrs reference
 and `PEERCHALK_YRS_LIBRARY` to use another build. Browser and Android builds need a
 Yrs library built for that target.
 
+Equations are laid out by [RaTeX](https://github.com/erweixin/RaTeX) through the small Rust
+library in `src/math/engine`. Build it once with `src/math/engine/build.sh` before configuring,
+or set `PEERCHALK_MATH_LIBRARY`. The browser build runs it in a Web Worker and builds that
+module itself.
+
 Native Linux build and tests, one job at a time:
 
 ```sh

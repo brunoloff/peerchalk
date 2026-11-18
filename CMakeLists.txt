@@ -45,6 +45,21 @@ set_target_properties(peerchalk_yrs PROPERTIES
     IMPORTED_LOCATION "${PEERCHALK_YRS_LIBRARY}"
     INTERFACE_INCLUDE_DIRECTORIES "${PEERCHALK_YRS_INCLUDE_DIR}")
 
+# LaTeX layout through RaTeX. Browsers run it in a Web Worker instead (src/math/engine/web).
+if(NOT EMSCRIPTEN)
+    find_library(PEERCHALK_MATH_LIBRARY NAMES peerchalk_math
+        HINTS "${PEERCHALK_P2PDC_SOURCE_DIR}/.deps/peerchalk-math-target/release")
+    if(NOT PEERCHALK_MATH_LIBRARY)
+        message(FATAL_ERROR "The math engine was not found. Build it with "
+            "src/math/engine/build.sh, or set PEERCHALK_MATH_LIBRARY.")
+    endif()
+    add_library(peerchalk_math_engine UNKNOWN IMPORTED)
+    set_target_properties(peerchalk_math_engine PROPERTIES
+        IMPORTED_LOCATION "${PEERCHALK_MATH_LIBRARY}"
+        INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/src/math/engine/include"
+        INTERFACE_LINK_LIBRARIES "${CMAKE_DL_LIBS}")
+endif()
+
 find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Network Qml Quick QuickControls2)
 qt_standard_project_setup(REQUIRES 6.5)
 

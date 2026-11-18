@@ -1,5 +1,6 @@
 #pragma once
 
+#include "board/board.hpp"
 #include "board/stroke.hpp"
 #include "board/viewport.hpp"
 
@@ -36,10 +37,16 @@ enum class StrokeSelection {
 [[nodiscard]] QSGGeometryNode *createOutlineNode(const Bounds &rect, float thickness,
                                                  const QColor &color);
 
+// Filled rectangles in one colour.
+[[nodiscard]] QSGGeometryNode *createRectsNode(const std::vector<Bounds> &rects,
+                                               const QColor &color);
+
 // Removes and deletes every child of parent.
 void deleteChildren(QSGNode *parent);
 // Replaces parent's children with one node per selected stroke that has points.
 void setStrokeNodes(QSGNode *parent, const std::vector<Stroke> &strokes, StrokeSelection selection);
+// Adds a block standing for each text box, for overviews of the board.
+void appendTextBoxNodes(QSGNode *parent, const Board &board);
 [[nodiscard]] QMatrix4x4 viewMatrix(const Viewport &viewport);
 
 } // namespace peerchalk

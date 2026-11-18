@@ -24,6 +24,7 @@ Panel {
             model: [
                 { tool: BoardCanvas.Pen, text: qsTr("Pen (P)"), icon: Icons.pen },
                 { tool: BoardCanvas.Highlighter, text: qsTr("Highlighter (M)"), icon: Icons.highlighter },
+                { tool: BoardCanvas.Text, text: qsTr("Text (T)"), icon: Icons.text },
                 { tool: BoardCanvas.Eraser, text: qsTr("Eraser (E)"), icon: Icons.eraser },
                 { tool: BoardCanvas.Pan, text: qsTr("Pan (H)"), icon: Icons.pan }
             ]
