@@ -1,5 +1,6 @@
 // Network: node lifecycle, executor and discovery spaces.
 #include "sync/network.hpp"
+#include "sync/instance_link.hpp"
 
 #include "ui/library.hpp"
 
@@ -22,8 +23,9 @@ constexpr auto incompatibleRetry = std::chrono::minutes(5);
 
 } // namespace
 
-Network::Network(Library &library, NetworkConfig config, QObject *parent)
-    : QObject(parent), library_(library), config_(std::move(config)) {
+Network::Network(Library &library, NetworkConfig config, QObject *parent,
+                 InstanceLink *instanceLink)
+    : QObject(parent), library_(library), config_(std::move(config)), instanceLink_(instanceLink) {
     retryTimer_.setInterval(retryInterval);
     connect(&retryTimer_, &QTimer::timeout, this, [this] {
         reconcileSpaces();
@@ -36,6 +38,7 @@ Network::Network(Library &library, NetworkConfig config, QObject *parent)
     rotationTimer_.setInterval(config_.spaceRotation);
     connect(&rotationTimer_, &QTimer::timeout, this, &Network::rotateSpaces);
     setUpLiveUpdates();
+    setUpInstanceLink();
     connect(&library_, &Library::workspaceChanged, this, &Network::workspaceChanged);
     connect(&library_, &Library::boardChanged, this, &Network::boardChanged);
     connect(&library_, &Library::profileChanged, this, &Network::profileChanged);
@@ -61,7 +64,8 @@ Network *Network::create(QQmlEngine *engine, QJSEngine *) {
         qWarning("PeerChalk networking is off: %s", error.what());
         config.enabled = false;
     }
-    auto *network = new Network(*library, std::move(config));
+    auto *link = engine->property("instanceLink").value<InstanceLink *>();
+    auto *network = new Network(*library, std::move(config), nullptr, link);
     network->start();
     return network;
 }

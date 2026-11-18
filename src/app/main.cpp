@@ -7,6 +7,7 @@
 #include <QtQml/qqmlextensionplugin.h>
 
 #include <exception>
+#include <memory>
 
 Q_IMPORT_QML_PLUGIN(PeerChalkPlugin)
 
@@ -23,8 +24,14 @@ int main(int argc, char **argv) {
     QGuiApplication app(argc, argv);
     QGuiApplication::setApplicationName(QStringLiteral("PeerChalk"));
     peerchalk::useAppControlsStyle();
+    std::unique_ptr<peerchalk::InstanceSlot> slot;
+    try {
+        slot = peerchalk::InstanceSlot::claim(peerchalk::Library::defaultDataDirectory());
+    } catch (const std::exception &error) {
+        qFatal("PeerChalk cannot use its data folder: %s", error.what());
+    }
     // After the application, so that its windows are gone before the application is.
-    peerchalk::AppController controller(peerchalk::Library::defaultDataDirectory());
+    peerchalk::AppController controller(*slot);
     try {
         controller.start(argc > 1 ? QString::fromLocal8Bit(argv[1]) : QString());
     } catch (const std::exception &error) {

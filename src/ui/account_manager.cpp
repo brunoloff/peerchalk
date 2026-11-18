@@ -140,6 +140,10 @@ void AccountManager::openAccount(const QString &id) {
 void AccountManager::signOut() { emit signOutRequested(); }
 
 void AccountManager::removeAccount(const QString &id) {
+    if (otherInstancesRunning_ && otherInstancesRunning_()) {
+        emit errorOccurred(tr("Close PeerChalk's other windows and tabs first."));
+        return;
+    }
     if (attempt([&] { store_.remove(id); }))
         emit accountsChanged();
 }

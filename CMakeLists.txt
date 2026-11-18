@@ -45,7 +45,7 @@ set_target_properties(peerchalk_yrs PROPERTIES
     IMPORTED_LOCATION "${PEERCHALK_YRS_LIBRARY}"
     INTERFACE_INCLUDE_DIRECTORIES "${PEERCHALK_YRS_INCLUDE_DIR}")
 
-find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2)
+find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Network Qml Quick QuickControls2)
 qt_standard_project_setup(REQUIRES 6.5)
 
 add_subdirectory(src)

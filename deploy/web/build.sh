@@ -37,4 +37,5 @@ sh "$qt/wasm_singlethread/bin/qt-cmake" -S "$root" -B "$root/build-web" -G Ninja
     -DSODIUM_INCLUDE_DIR="$sodium/include" \
     -DSODIUM_LIBRARY="$sodium/lib/libsodium.a"
 nice -n 15 ionice -c 3 cmake --build "$root/build-web" --parallel 1 --target peerchalk
+rm -rf "$root/build-web/site"
 "$root/deploy/web/prepare-site.sh" / "$root/build-web/site"

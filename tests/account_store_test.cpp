@@ -147,5 +147,38 @@ TEST_F(AccountStoreTest, PeopleBackupsCannotBecomeAccounts) {
                  std::invalid_argument);
 }
 
+TEST_F(AccountStoreTest, TakesInAccountsFromAnotherInstanceWithoutItsDeviceKeys) {
+    QTemporaryDir otherRoot;
+    AccountStore other(otherRoot.path());
+    const QString id = other.create(QStringLiteral("Ana"));
+    other.setCurrent(id);
+    QUuid project;
+    QByteArray otherDevice;
+    {
+        IdentityStore identity(other.directory(id), QStringLiteral("x"));
+        otherDevice = identity.identity().deviceKey();
+        Workspace workspace(other.directory(id), identity.signingKey(),
+                            identity.identity().signer());
+        project = workspace.createProject(QStringLiteral("P"), QStringLiteral("Ana"));
+    }
+    store_.mergeFrom(otherRoot.path(), true);
+    ASSERT_EQ(store_.accounts().size(), 1U);
+    EXPECT_FALSE(store_.current().isEmpty()); // joins the running instance's account
+    const QString mine = store_.directory(store_.current());
+    IdentityStore identity(mine, QStringLiteral("x"));
+    EXPECT_NE(identity.identity().deviceKey(), otherDevice);
+    Workspace workspace(mine, identity.signingKey(), identity.identity().signer());
+    EXPECT_TRUE(workspace.hasProject(project));
+    {
+        IdentityStore theirs(other.directory(id), QStringLiteral("x"));
+        Workspace their(other.directory(id), theirs.signingKey(), theirs.identity().signer());
+        const QUuid newer = their.createProject(QStringLiteral("Newer"), QStringLiteral("Ana"));
+        store_.mergeFrom(otherRoot.path(), false);
+        Workspace merged(mine, identity.signingKey(), identity.identity().signer());
+        EXPECT_TRUE(merged.hasProject(newer));
+    }
+    EXPECT_EQ(store_.accounts().size(), 1U);
+}
+
 } // namespace
 } // namespace peerchalk

@@ -48,6 +48,10 @@ class AccountStore {
     // A new account from a backup, or a merge into the same account if it is here.
     [[nodiscard]] ImportedAccount import(const BackupContents &backup);
     void remove(const QString &id);
+    // Takes in what another app instance's data holds. Accounts new here are copied with
+    // no device keys, so this instance makes its own; others are merged. While that
+    // instance runs, this one also signs in to the same account.
+    void mergeFrom(const QString &otherRoot, bool otherIsRunning);
 
     void markOpened(const QString &id);
     void markBackedUp(const QString &id);
@@ -61,6 +65,8 @@ class AccountStore {
     [[nodiscard]] std::optional<QString> findByKey(const QByteArray &userKey) const;
     [[nodiscard]] QString install(const QString &staging, const QByteArray &userKey);
     void updateMetadata(const QString &id, const char *field);
+    void adoptLastBackup(const QString &id, const QDateTime &when);
+    [[nodiscard]] QByteArray keyOf(const QString &id) const;
 
     QString root_;
 };

@@ -24,3 +24,19 @@ function peerchalkPickFile() {
   };
   input.click();
 }
+
+// The direct link between this browser's PeerChalk tabs (see instance_link_web.cpp).
+let peerchalkLinkChannel = null;
+
+function peerchalkLinkOpen() {
+  peerchalkLinkChannel = new BroadcastChannel("peerchalk-instances");
+  peerchalkLinkChannel.onmessage = (event) => {
+    const bytes = new Uint8Array(event.data);
+    HEAPU8.set(bytes, _peerchalk_link_buffer(bytes.length));
+    _peerchalk_link_ready();
+  };
+}
+
+function peerchalkLinkPost(data, size) {
+  peerchalkLinkChannel.postMessage(HEAPU8.slice(data, data + size).buffer);
+}

@@ -38,6 +38,8 @@ class Library;
 
 namespace peerchalk::sync {
 
+class InstanceLink;
+
 // Connects this device with others over p2pdc and keeps shared data in step.
 //
 // Each project, each board with its own invite, and the user's own devices form a
@@ -69,7 +71,9 @@ class Network : public QObject {
     Q_PROPERTY(bool updateNeeded READ updateNeeded NOTIFY updateNeededChanged)
 
   public:
-    Network(Library &library, NetworkConfig config, QObject *parent = nullptr);
+    // instanceLink, if any, keeps this device's other app instances in step.
+    Network(Library &library, NetworkConfig config, QObject *parent = nullptr,
+            InstanceLink *instanceLink = nullptr);
     ~Network() override;
     // Starts networking for the Library singleton, configured from the environment.
     static Network *create(QQmlEngine *engine, QJSEngine *scriptEngine);
@@ -212,6 +216,15 @@ class Network : public QObject {
     void flush(const PeerId &id);
     bool sendOne(const PeerId &id, Peer &peer, const QByteArray &bytes);
 
+    // network_instances.cpp: the other app instances on this device
+    void setUpInstanceLink();
+    void sendToInstances(const Message &message);
+    void instanceJoined();
+    void flushToInstances();
+    void receiveFromInstance(const QByteArray &bytes);
+    void applyInstanceBoard(const BoardUpdate &update);
+    void applyInstancePersonal(const Personal &personal);
+
     // network_live.cpp: what may be lost, sent as datagrams
     void setUpLiveUpdates();
     void sendPresence(bool mustArrive = false);
@@ -266,6 +279,11 @@ class Network : public QObject {
     QDeadlineTimer spaceOpenDelay_; // expired: spaces may be opened
     std::map<p2pdc::SigningPublicKey, QDeadlineTimer> incompatible_;
     bool updateNeeded_{false};
+    InstanceLink *instanceLink_{nullptr};
+    QTimer instanceFlushTimer_;
+    std::set<QUuid> instanceDirtyBoards_;
+    std::map<QUuid, Bytes> instanceSentState_;
+    bool instancePersonalDirty_{false};
     QTimer presenceTimer_;
     QUuid presenceBoard_;
     QPointF cursor_;

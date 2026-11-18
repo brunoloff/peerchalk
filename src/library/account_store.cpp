@@ -178,6 +178,21 @@ void AccountStore::updateMetadata(const QString &id, const char *field) {
     writeJsonObject(path, *metadata, formatVersion, true);
 }
 
+void AccountStore::adoptLastBackup(const QString &id, const QDateTime &when) {
+    const std::optional<AccountInfo> info = read(id);
+    if (!info || (info->lastBackup.isValid() && info->lastBackup >= when))
+        return;
+    const QString path = metadataPath(directory(id));
+    std::optional<QJsonObject> metadata = readJsonObject(path, formatVersion);
+    metadata->insert(QStringLiteral("lastBackup"), when.toString(Qt::ISODateWithMs));
+    writeJsonObject(path, *metadata, formatVersion, true);
+}
+
+QByteArray AccountStore::keyOf(const QString &id) const {
+    const std::optional<AccountInfo> info = read(id);
+    return info ? info->userKey : QByteArray();
+}
+
 void AccountStore::markOpened(const QString &id) { updateMetadata(id, "lastOpened"); }
 
 void AccountStore::markBackedUp(const QString &id) { updateMetadata(id, "lastBackup"); }

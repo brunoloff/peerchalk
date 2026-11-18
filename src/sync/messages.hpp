@@ -76,6 +76,9 @@ struct BoardLinkJoin {
     QByteArray token;
 };
 
+// Sent by an app instance that has just started, to the others on this device.
+struct InstanceHello {};
+
 // A message of a type this version does not know: from a newer one, and ignored.
 struct UnknownMessage {};
 
@@ -108,8 +111,9 @@ struct LiveStroke {
     std::vector<StrokePoint> points; // at most maxLiveStrokePoints
 };
 
-using Message = std::variant<Hello, AccessChanges, Personal, BoardUpdate, Presence, Profile,
-                             LiveStroke, BoardState, MessagePart, BoardLinkJoin, UnknownMessage>;
+using Message =
+    std::variant<Hello, AccessChanges, Personal, BoardUpdate, Presence, Profile, LiveStroke,
+                 BoardState, MessagePart, BoardLinkJoin, InstanceHello, UnknownMessage>;
 
 [[nodiscard]] QByteArray encode(const Message &message);
 [[nodiscard]] std::optional<Message> decode(const QByteArray &bytes);

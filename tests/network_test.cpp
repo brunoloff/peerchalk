@@ -5,6 +5,7 @@
 
 #include <opendht.h>
 
+#include <QFile>
 #include <QTemporaryDir>
 #include <QTest>
 
@@ -326,6 +327,35 @@ TEST_F(NetworkTest, AnOwnerApprovesWhileTheAdminIsOffline) {
     ASSERT_TRUE(QTest::qWaitFor([&] { return dave.strokesOn(board) == 1; }, timeoutMs))
         << "Dave never received the board from Bob";
     EXPECT_EQ(dave.library.projectRole(project), QStringLiteral("member"));
+}
+
+// Run by hand against a browser (--gtest_also_run_disabled_tests): an owner on the public
+// network writes a board link to the file named by PEERCHALK_INTEROP_LINK, waits for the
+// visitor's stroke and answers with one of its own.
+TEST(BrowserInterop, DISABLED_OwnerServesALink) {
+    QTemporaryDir dir;
+    Library library(dir.path());
+    sync::Network network(library, sync::NetworkConfig::from({}));
+    network.start();
+    library.createProject(QStringLiteral("Interop"));
+    const QString id = library.createBoard(QStringLiteral("Desktop board"));
+    auto &board = library.document(QUuid::fromString(id)).board();
+    const auto draw = [&](float y) {
+        Stroke stroke(0xFF000000U, 3.0F);
+        stroke.addPoint({120.0F, y, 1.0F});
+        stroke.addPoint({420.0F, y, 1.0F});
+        board.addStroke(stroke);
+    };
+    draw(200.0F);
+    QFile file(qEnvironmentVariable("PEERCHALK_INTEROP_LINK"));
+    ASSERT_TRUE(file.open(QIODevice::WriteOnly));
+    file.write(library.createBoardLink(id, qEnvironmentVariable("PEERCHALK_SITE_URL")).toUtf8());
+    file.close();
+    ASSERT_TRUE(QTest::qWaitFor([&] { return board.strokes().size() >= 2; }, 300000))
+        << "no stroke arrived from the browser";
+    draw(320.0F);
+    QTest::qWait(45000); // time for the browser to receive it
+    network.shutdown(3s);
 }
 
 TEST_F(NetworkTest, ABoardLinkAdmitsItsHolderWhileAnOwnerIsOnline) {

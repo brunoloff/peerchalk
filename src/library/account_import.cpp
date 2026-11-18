@@ -1,10 +1,12 @@
 // AccountStore: bringing a backup onto this device.
 #include "board/board.hpp"
 #include "library/account_store.hpp"
+#include "library/files.hpp"
 #include "library/identity_store.hpp"
 #include "library/workspace.hpp"
 
 #include <QDir>
+#include <QDirIterator>
 #include <QUuid>
 
 #include <stdexcept>
@@ -51,7 +53,43 @@ void mergeAccount(const QString &sourceDirectory, const QString &targetDirectory
     }
 }
 
+void copyAccountFiles(const QString &source, const QString &target) {
+    QDirIterator files(source, QDir::Files | QDir::Hidden, QDirIterator::Subdirectories);
+    while (files.hasNext()) {
+        const QString file = files.next();
+        const QString relative = QDir(source).relativeFilePath(file);
+        if (relative == QStringLiteral("device.json"))
+            continue; // every instance has its own device keys
+        const std::optional<QByteArray> contents = readFile(file);
+        if (contents)
+            writeFile(QDir(target).filePath(relative), *contents, true);
+    }
+}
+
 } // namespace
+
+void AccountStore::mergeFrom(const QString &otherRoot, bool otherIsRunning) {
+    const AccountStore other(otherRoot);
+    for (const AccountInfo &account : other.accounts()) {
+        const QString source = other.directory(account.id);
+        if (const std::optional<QString> mine = findByKey(account.userKey)) {
+            mergeAccount(source, directory(*mine));
+            if (account.lastBackup.isValid())
+                adoptLastBackup(*mine, account.lastBackup);
+        } else {
+            const QString staging = stagingDirectory();
+            copyAccountFiles(source, staging);
+            if (!QDir().rename(staging, QDir(accountsDirectory()).filePath(account.id)))
+                throw std::runtime_error("Could not copy an account from another instance");
+        }
+    }
+    const QString theirs = other.current();
+    if (theirs.isEmpty() || (!otherIsRunning && !current().isEmpty()))
+        return;
+    const QByteArray key = other.keyOf(theirs);
+    if (const std::optional<QString> mine = findByKey(key))
+        setCurrent(*mine);
+}
 
 ImportedAccount AccountStore::import(const BackupContents &backup) {
     if (backup.kind == BackupKind::People)

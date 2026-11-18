@@ -24,7 +24,8 @@ enum Type : char {
     LiveStrokeType = 7,
     PartType = 8,
     BoardStateType = 9,
-    BoardLinkJoinType = 10
+    BoardLinkJoinType = 10,
+    InstanceHelloType = 11
 };
 constexpr qsizetype uuidSize = 16;
 constexpr qsizetype partHeaderSize = 1 + 4 + 4;
@@ -87,6 +88,7 @@ struct Encoder {
     QByteArray operator()(const BoardLinkJoin &join) const {
         return QByteArray(1, BoardLinkJoinType) + join.board.toRfc4122() + join.token;
     }
+    QByteArray operator()(const InstanceHello &) const { return QByteArray(1, InstanceHelloType); }
     QByteArray operator()(const MessagePart &part) const {
         QByteArray bytes(partHeaderSize, '\0');
         bytes[0] = PartType;
@@ -258,6 +260,8 @@ std::optional<Message> decode(const QByteArray &bytes) {
         return decodeBoardState(bytes);
     if (type == BoardLinkJoinType)
         return decodeBoardLinkJoin(bytes);
+    if (type == InstanceHelloType)
+        return InstanceHello{};
     if (!isJsonType(type))
         return UnknownMessage{};
     const std::optional<QJsonObject> object = jsonBody(bytes);

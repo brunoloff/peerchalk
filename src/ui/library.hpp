@@ -178,11 +178,16 @@ class Library : public QObject {
     // Refreshes the lists after the workspace or contacts changed elsewhere (sync).
     void workspaceUpdated();
     void contactsUpdated();
+    // Boards currently held in memory.
+    [[nodiscard]] std::vector<QUuid> loadedBoards() const;
+    // A name or colour change made in another app instance on this device.
+    void applyInstanceProfile(const QString &name, int colorIndex);
 
   signals:
     void currentProjectChanged();
     void boardFilterChanged();
     void profileChanged();
+    void contactsChanged();
     void workspaceChanged();
     // A board's contents changed, here or from a peer (C++ only, for sync).
     void boardChanged(const QUuid &boardId);

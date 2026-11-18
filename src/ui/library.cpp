@@ -147,6 +147,7 @@ void Library::refreshContacts() {
                      {"verification",
                       verificationNames.at(static_cast<std::size_t>(contact.verification))}});
     contacts_->setRows(std::move(rows));
+    emit contactsChanged();
 }
 
 void Library::workspaceUpdated() {
@@ -160,6 +161,16 @@ void Library::workspaceUpdated() {
 }
 
 void Library::contactsUpdated() { refreshContacts(); }
+
+void Library::applyInstanceProfile(const QString &name, int colorIndex) {
+    if (name == identity_.displayName() && colorIndex == identity_.colorIndex())
+        return;
+    if (attempt([&] {
+            identity_.setDisplayName(name);
+            identity_.setColorIndex(colorIndex);
+        }))
+        emit profileChanged();
+}
 
 int Library::sharedBoardCount() const { return static_cast<int>(workspace_.sharedBoards().size()); }
 

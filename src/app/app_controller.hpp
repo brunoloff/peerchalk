@@ -1,5 +1,7 @@
 #pragma once
 
+#include "library/instance_slot.hpp"
+#include "sync/instance_link.hpp"
 #include "ui/account_manager.hpp"
 
 #include <QObject>
@@ -16,19 +18,22 @@ class AppController : public QObject {
     Q_OBJECT
 
   public:
-    explicit AppController(const QString &dataRoot, QObject *parent = nullptr);
+    explicit AppController(InstanceSlot &slot, QObject *parent = nullptr);
     // boardLink: a board link the app was started with, if any.
     void start(const QString &boardLink = {});
     // Saves boards and closes connections before the application exits.
     void prepareToQuit();
 
   private:
+    void mergeOtherInstances();
     void showAccountScreen();
     void showAccount(const QString &id);
     void signOut();
     void load(const char *type, const QString &accountDirectory);
 
+    InstanceSlot &slot_;
     AccountManager accounts_;
+    std::unique_ptr<sync::InstanceLink> instanceLink_;
     std::unique_ptr<QQmlApplicationEngine> engine_;
     bool inAccount_{false};
     bool signingOut_{false};

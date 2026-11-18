@@ -45,8 +45,8 @@ bin/peerchalk-web
 
 Browsers find peers through an OpenDHT proxy, by default `https://dhtproxy.jami.net`
 (Settings → Network). Your identity and boards stay in that site's browser storage, and
-each `--port` is a separate user. Use one tab per site: two tabs would overwrite each
-other's data.
+each `--port` is a separate user. Any number of tabs and desktop windows can be open at
+once, even on the same board: each is its own instance and they update each other directly.
 
 ## Sharing and access
 

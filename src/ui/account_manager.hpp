@@ -54,6 +54,10 @@ class AccountManager : public QObject {
     void setPendingBoardLink(const QString &url);
     // In browsers: picks up a link from the page's address.
     void readLinkFromPage();
+    // Tells whether other app instances are running; accounts stay while they are.
+    void setOtherInstancesCheck(std::function<bool()> check) {
+        otherInstancesRunning_ = std::move(check);
+    }
     // Hands over the link and removes its secret from the address bar.
     Q_INVOKABLE QString takePendingBoardLink();
 
@@ -99,6 +103,7 @@ class AccountManager : public QObject {
     bool exportCountsAsBackup_{false};
     QByteArray importData_;
     QString pendingBoardLink_;
+    std::function<bool()> otherInstancesRunning_;
 };
 
 } // namespace peerchalk

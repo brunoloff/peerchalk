@@ -11,7 +11,7 @@ gtest_discover_tests(peerchalk_board_tests)
 
 add_executable(peerchalk_library_tests codes_test.cpp workspace_test.cpp
     identity_store_test.cpp signatures_test.cpp access_log_test.cpp files_test.cpp
-    account_store_test.cpp backup_test.cpp)
+    account_store_test.cpp backup_test.cpp instance_slot_test.cpp)
 target_link_libraries(peerchalk_library_tests PRIVATE peerchalk_library GTest::gtest_main)
 target_compile_options(peerchalk_library_tests PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:${peerchalk_warning_flags}>)
@@ -31,7 +31,7 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(PEERCHALK_TEST_OPENDHT REQUIRED IMPORTED_TARGET opendht)
 add_executable(peerchalk_network_tests qt_test_main.cpp network_test.cpp messages_test.cpp
     network_settings_test.cpp live_strokes_test.cpp message_parts_test.cpp
-    space_schedule_test.cpp)
+    space_schedule_test.cpp instance_link_test.cpp)
 target_link_libraries(peerchalk_network_tests PRIVATE peerchalk_ui Qt6::Test GTest::gtest
     PkgConfig::PEERCHALK_TEST_OPENDHT)
 target_compile_options(peerchalk_network_tests PRIVATE

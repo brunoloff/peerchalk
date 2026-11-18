@@ -43,6 +43,10 @@ How it works:
 - `deploy/web/prepare-site.sh /peerchalk/ <folder>` makes the static site, with a `404.html`
   that starts the app on `/board/...` addresses. Publishing it is still to do.
 
+The site uses its own start page and loader instead of Qt's, and includes licenses and a
+privacy note. Any number of tabs and windows can run at once, each with its own storage
+slot and device keys, keeping each other up to date directly.
+
 Still open: GitHub Pages cannot set security headers, so a content security policy must
 come from a `<meta>` tag. Changing a board's discovery secret when a link is replaced is
 also still to do.

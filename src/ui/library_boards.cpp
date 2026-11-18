@@ -44,6 +44,13 @@ BoardDocument *Library::openBoard(const QString &boardId) {
     return result;
 }
 
+std::vector<QUuid> Library::loadedBoards() const {
+    std::vector<QUuid> boards;
+    for (const auto &[id, document] : documents_)
+        boards.push_back(id);
+    return boards;
+}
+
 void Library::saveBoards() {
     saveTimer_->stop();
     for (const auto &[id, document] : documents_) {

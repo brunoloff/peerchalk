@@ -85,6 +85,10 @@ ApplicationWindow {
                 text: qsTr("Import a backup")
                 onClicked: backups.importAccount()
             }
+
+            SiteLinks {
+                Layout.alignment: Qt.AlignHCenter
+            }
         }
     }
 

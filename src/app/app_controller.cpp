@@ -7,6 +7,7 @@
 #include <QQuickWindow>
 
 #include <chrono>
+#include <exception>
 
 namespace peerchalk {
 namespace {
@@ -21,8 +22,9 @@ QQuickWindow *rootWindow(QQmlApplicationEngine *engine) {
 
 } // namespace
 
-AppController::AppController(const QString &dataRoot, QObject *parent)
-    : QObject(parent), accounts_(dataRoot) {
+AppController::AppController(InstanceSlot &slot, QObject *parent)
+    : QObject(parent), slot_(slot), accounts_(slot.root()) {
+    accounts_.setOtherInstancesCheck([this] { return slot_.othersRunning(); });
     // Queued: these requests come from QML that the swap is about to destroy.
     connect(&accounts_, &AccountManager::openRequested, this, &AppController::showAccount,
             Qt::QueuedConnection);
@@ -32,6 +34,8 @@ AppController::AppController(const QString &dataRoot, QObject *parent)
 
 void AppController::start(const QString &boardLink) {
     accounts_.store().migrateLegacyData();
+    mergeOtherInstances();
+    instanceLink_ = sync::InstanceLink::create(slot_);
     accounts_.setPendingBoardLink(boardLink);
     accounts_.readLinkFromPage();
     const QString current = accounts_.store().current();
@@ -39,6 +43,20 @@ void AppController::start(const QString &boardLink) {
         showAccountScreen();
     else
         showAccount(current);
+}
+
+// A slot that could not be read is left in place, to be tried again next time.
+void AppController::mergeOtherInstances() {
+    std::vector<OtherInstance> merged;
+    for (const OtherInstance &other : slot_.others()) {
+        try {
+            accounts_.store().mergeFrom(other.root, other.running);
+            merged.push_back(other);
+        } catch (const std::exception &error) {
+            qWarning("PeerChalk could not read another instance's data: %s", error.what());
+        }
+    }
+    slot_.finishMerge(merged);
 }
 
 void AppController::showAccountScreen() {
@@ -57,6 +75,7 @@ void AppController::load(const char *type, const QString &accountDirectory) {
     auto engine = std::make_unique<QQmlApplicationEngine>();
     engine->setProperty("accountManager", QVariant::fromValue(&accounts_));
     engine->setProperty("accountDirectory", accountDirectory);
+    engine->setProperty("instanceLink", QVariant::fromValue(instanceLink_.get()));
     connect(
         engine.get(), &QQmlApplicationEngine::objectCreationFailed, this,
         [] { QCoreApplication::exit(1); }, Qt::QueuedConnection);

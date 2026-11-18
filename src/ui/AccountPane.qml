@@ -76,6 +76,15 @@ Item {
 
                 SectionLabel {
                     Layout.topMargin: 12
+                    text: qsTr("About")
+                }
+
+                SiteLinks {
+                    Layout.fillWidth: true
+                }
+
+                SectionLabel {
+                    Layout.topMargin: 12
                     text: qsTr("This device")
                 }
 
