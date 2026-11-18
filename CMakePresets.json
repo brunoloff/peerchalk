@@ -1,0 +1,106 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": { "major": 3, "minor": 25, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${fileDir}/build/${presetName}",
+      "environment": { "QT_QPA_PLATFORM": "offscreen" }
+    },
+    {
+      "name": "deps",
+      "displayName": "Dependencies for Linux",
+      "inherits": "base",
+      "cacheVariables": {
+        "PEERCHALK_BUILD_DEPENDENCIES": "ON",
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_INSTALL_PREFIX": "${fileDir}/build/prefix-linux"
+      }
+    },
+    {
+      "name": "linux",
+      "displayName": "Linux app and tests",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_PREFIX_PATH": "${fileDir}/build/prefix-linux;$env{HOME}/Qt/6.11.2/gcc_64"
+      }
+    },
+    {
+      "name": "deps-web",
+      "displayName": "Dependencies for browsers",
+      "inherits": "base",
+      "toolchainFile": "$env{EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake",
+      "cacheVariables": {
+        "PEERCHALK_BUILD_DEPENDENCIES": "ON",
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_INSTALL_PREFIX": "${fileDir}/build/prefix-web"
+      }
+    },
+    {
+      "name": "web",
+      "displayName": "Browser app",
+      "inherits": "base",
+      "toolchainFile": "$env{HOME}/Qt/6.11.2/wasm_singlethread/lib/cmake/Qt6/qt.toolchain.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BUILD_TESTING": "OFF",
+        "QT_HOST_PATH": "$env{HOME}/Qt/6.11.2/gcc_64",
+        "P2PDC_ENABLE_NATIVE_TRANSPORT": "OFF",
+        "P2PDC_ENABLE_OPENDHT": "OFF",
+        "P2PDC_ENABLE_SODIUM": "ON",
+        "P2PDC_BUILD_SHARED_TEXT": "OFF",
+        "SODIUM_INCLUDE_DIR": "${fileDir}/build/prefix-web/include",
+        "SODIUM_LIBRARY": "${fileDir}/build/prefix-web/lib/libsodium.a",
+        "PEERCHALK_YRS_INCLUDE_DIR": "${fileDir}/build/prefix-web/include",
+        "PEERCHALK_YRS_LIBRARY": "${fileDir}/build/prefix-web/lib/libyrs.a"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "deps", "configurePreset": "deps" },
+    { "name": "linux", "configurePreset": "linux" },
+    { "name": "deps-web", "configurePreset": "deps-web" },
+    { "name": "web", "configurePreset": "web", "targets": ["peerchalk"] }
+  ],
+  "testPresets": [
+    {
+      "name": "linux",
+      "configurePreset": "linux",
+      "output": { "outputOnFailure": true }
+    }
+  ],
+  "workflowPresets": [
+    {
+      "name": "deps",
+      "steps": [
+        { "type": "configure", "name": "deps" },
+        { "type": "build", "name": "deps" }
+      ]
+    },
+    {
+      "name": "linux",
+      "steps": [
+        { "type": "configure", "name": "linux" },
+        { "type": "build", "name": "linux" },
+        { "type": "test", "name": "linux" }
+      ]
+    },
+    {
+      "name": "deps-web",
+      "steps": [
+        { "type": "configure", "name": "deps-web" },
+        { "type": "build", "name": "deps-web" }
+      ]
+    },
+    {
+      "name": "web",
+      "steps": [
+        { "type": "configure", "name": "web" },
+        { "type": "build", "name": "web" }
+      ]
+    }
+  ]
+}

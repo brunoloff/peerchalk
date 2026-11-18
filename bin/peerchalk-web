@@ -32,7 +32,7 @@ def main() -> int:
     parser.add_argument("--port", type=int, default=8931)
     parser.add_argument("--no-open", action="store_true", help="do not open a browser")
     options = parser.parse_args()
-    site = Path(__file__).resolve().parent.parent / "build-web/site"
+    site = Path(__file__).resolve().parent.parent / "build/web/site"
     if not (site / "index.html").is_file():
         print("PeerChalk for browsers is not built. Run deploy/web/build.sh.", file=sys.stderr)
         return 1

@@ -11,10 +11,9 @@ set -euo pipefail
 root=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
 base=${1:?usage: prepare-site.sh BASE_PATH OUTPUT_FOLDER}
 out=${2:?usage: prepare-site.sh BASE_PATH OUTPUT_FOLDER}
-build=$root/build-web/src
+build=$root/build/web/src
 pages=$root/deploy/web/site
-p2pdc=${PEERCHALK_P2PDC_SOURCE_DIR:-$root/../p2p-discovery-connect}
-math=$p2pdc/.deps/peerchalk-math-target/wasm32-unknown-emscripten/release
+math=$root/build/prefix-web/math-worker
 
 case $base in
     /*/ | /) ;;

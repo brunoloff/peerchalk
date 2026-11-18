@@ -1,7 +1,7 @@
 # PeerChalk
 
 A peer-to-peer collaborative whiteboard, built on
-[p2p-discovery-connect](../p2p-discovery-connect) for peer discovery and
+[p2p-discovery-connect](https://github.com/brunoloff/p2pdc) for peer discovery and
 authenticated WebRTC data channels.
 
 Status: early development.
@@ -11,39 +11,20 @@ Third-party dependencies retain their respective licenses.
 
 ## Build
 
-PeerChalk uses C++20, CMake, Qt 6.5 or newer (Qt Quick and Quick Controls 2)
-and GoogleTest. It builds
-[p2p-discovery-connect](../p2p-discovery-connect) from source, expected next to
-this repository (override with `-DPEERCHALK_P2PDC_SOURCE_DIR=...`), so that
-library's dependencies must be prepared first; see its README.
-
-The board is a [Yrs](https://github.com/y-crdt/y-crdt) document (the Rust port of
-Yjs, used through its C interface), so peers can merge their edits. By default the
-build uses the Yrs header and library from p2p-discovery-connect's Yrs reference build
-(`.deps/y-crdt`, see its `integrations/yrs/README.md`); set `PEERCHALK_YRS_INCLUDE_DIR`
-and `PEERCHALK_YRS_LIBRARY` to use another build. Browser and Android builds need a
-Yrs library built for that target.
-
-Equations are laid out by [RaTeX](https://github.com/erweixin/RaTeX) through the small Rust
-library in `src/math/engine`. Build it once with `src/math/engine/build.sh` before configuring,
-or set `PEERCHALK_MATH_LIBRARY`. The browser build runs it in a Web Worker and builds that
-module itself.
-
-Native Linux build and tests, one job at a time:
+[Building PeerChalk](docs/BUILDING.md) covers a clean checkout, for Linux and for browsers.
+In short, for Linux:
 
 ```sh
-cmake -S . -B build-native -G Ninja -DCMAKE_BUILD_TYPE=Debug \
-  -DLibDataChannel_DIR="$PWD/../p2p-discovery-connect/.deps/install/lib/cmake/LibDataChannel"
-nice -n 15 ionice -c 3 cmake --build build-native --parallel 1
-ctest --test-dir build-native -j 1
+tools/setup.sh desktop
+cmake --workflow --preset deps
+cmake --workflow --preset linux
+bin/peerchalk
 ```
 
-Run the app with `bin/peerchalk`.
-
-Browser build, using the Qt WebAssembly kit and the dependencies prepared in
-p2p-discovery-connect's `.deps` (see its `examples/shared-text/README.md`):
+For browsers:
 
 ```sh
+tools/setup.sh web
 deploy/web/build.sh
 bin/peerchalk-web
 ```
