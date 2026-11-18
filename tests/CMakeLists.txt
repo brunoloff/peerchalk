@@ -29,11 +29,12 @@ gtest_discover_tests(peerchalk_ui_tests
 # End-to-end sync over p2pdc on a private OpenDHT network on the loopback interface.
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(PEERCHALK_TEST_OPENDHT REQUIRED IMPORTED_TARGET opendht)
+find_package(msgpack-cxx CONFIG REQUIRED)
 add_executable(peerchalk_network_tests qt_test_main.cpp network_test.cpp messages_test.cpp
     network_settings_test.cpp live_strokes_test.cpp message_parts_test.cpp
     space_schedule_test.cpp instance_link_test.cpp)
 target_link_libraries(peerchalk_network_tests PRIVATE peerchalk_ui Qt6::Test GTest::gtest
-    PkgConfig::PEERCHALK_TEST_OPENDHT)
+    PkgConfig::PEERCHALK_TEST_OPENDHT msgpack-cxx)
 target_compile_options(peerchalk_network_tests PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:${peerchalk_warning_flags}>)
 gtest_discover_tests(peerchalk_network_tests
