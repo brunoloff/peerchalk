@@ -125,6 +125,6 @@ modules:
     sources:
       - type: git
         url: https://github.com/brunoloff/peerchalk.git
-        branch: packaging # a release pins a tag and commit instead
+        tag: v0.1 # Flathub also wants the commit the tag names
       - *p2pdc
       - math-cargo-sources.json

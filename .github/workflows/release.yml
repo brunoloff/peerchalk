@@ -1,7 +1,8 @@
 name: Release builds
 
-# Builds the installable packages and checks that each one starts. Runs for version tags, and by
-# hand for chosen platforms, so each can be rebuilt on its own:
+# Builds the installable packages and checks that each one starts. For a version tag such as v0.1
+# it then publishes them as a GitHub release. By hand it builds chosen platforms, so each can be
+# rebuilt on its own:
 #   gh workflow run release.yml --ref packaging -f only=windows
 on:
   push:
@@ -228,7 +229,9 @@ jobs:
           flatpak-builder --user --install-deps-from=flathub --disable-rofiles-fuse --force-clean \
             --state-dir="$RUNNER_TEMP/state" --repo="$RUNNER_TEMP/repo" "$RUNNER_TEMP/build" ci.yml
           mkdir -p ../../dist
-          flatpak build-bundle "$RUNNER_TEMP/repo" ../../dist/peerchalk-linux-$(uname -m).flatpak io.github.brunoloff.PeerChalk
+          version=$(sed -n 's/^project(PeerChalk VERSION \([0-9.]*\).*/\1/p' ../../CMakeLists.txt)
+          flatpak build-bundle "$RUNNER_TEMP/repo" "../../dist/peerchalk-$version-linux-$(uname -m).flatpak" \
+            io.github.brunoloff.PeerChalk
       - name: Start the app
         run: |
           flatpak install --user -y --noninteractive dist/*.flatpak
@@ -312,3 +315,29 @@ jobs:
             /tmp/aur/*/*.pkg.tar.zst
             /tmp/aur/*.png
 
+  # A tag publishes everything above as a GitHub release, once every package has started.
+  publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [linux, macos, windows, flatpak, linux-distributions, aur]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          path: artifacts
+      - name: Collect the packages
+        run: |
+          mkdir release
+          find artifacts -type f \( -name '*.AppImage' -o -name '*-linux-*.tar.gz' -o -name '*.flatpak' \
+            -o -name '*.dmg' -o -name '*.zip' -o -name '*-setup.exe' \) -exec cp {} release/ \;
+          (cd release && sha256sum * > SHA256SUMS && cat SHA256SUMS)
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=${GITHUB_REF_NAME#v}
+          sed "s/@VERSION@/$version/g" deploy/release-notes.md > notes.md
+          gh release create "$GITHUB_REF_NAME" release/* --verify-tag --title "PeerChalk $version" \
+            --notes-file notes.md
