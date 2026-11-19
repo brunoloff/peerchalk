@@ -31,7 +31,7 @@
   const stallHints = {
     check: ["Reload the page.", "Make sure your browser is up to date."],
     script: [adBlocker, "Check your internet connection, then reload."],
-    download: ["Check your internet connection: the app is about 10 MB.", adBlocker],
+    download: ["Check your internet connection: the app is about 30 MB.", adBlocker],
     compile: ["Close other tabs or apps to free memory, then reload.",
               "Make sure your browser is up to date."],
     storage: ["Close other PeerChalk tabs, then reload.",
