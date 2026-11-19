@@ -63,11 +63,10 @@ if(NOT EMSCRIPTEN)
             DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
         install(FILES "${peerchalk_linux}/io.github.brunoloff.PeerChalk.metainfo.xml"
             DESTINATION ${CMAKE_INSTALL_DATADIR}/metainfo)
-        install(FILES "${peerchalk_icons}/peerchalk.svg"
-            DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps
-            RENAME io.github.brunoloff.PeerChalk.svg)
-        install(FILES "${peerchalk_icons}/peerchalk-256.png"
-            DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/256x256/apps
-            RENAME io.github.brunoloff.PeerChalk.png)
+        foreach(size 256 512)
+            install(FILES "${peerchalk_icons}/peerchalk-${size}.png"
+                DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/${size}x${size}/apps
+                RENAME io.github.brunoloff.PeerChalk.png)
+        endforeach()
     endif()
 endif()
