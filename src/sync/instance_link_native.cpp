@@ -6,21 +6,12 @@
 #include <QtEndian>
 #include <QtLogging>
 
-#include <algorithm>
 #include <map>
 
 namespace peerchalk::sync {
 namespace {
 
 constexpr quint32 maxFrameBytes = 256U * 1024U * 1024U;
-// macOS refuses large writes to a local socket (ENOBUFS) instead of taking part of them, so
-// messages go out in pieces, each once the one before has been written.
-constexpr qsizetype writeChunkBytes = 64 * 1024;
-
-struct Connection {
-    QByteArray incoming;
-    QByteArray outgoing;
-};
 
 QString serverName(const QString &location, int index) {
     const QByteArray hash =
@@ -49,9 +40,9 @@ class SocketLink final : public InstanceLink {
     void send(const QByteArray &message) override {
         QByteArray header(4, '\0');
         qToLittleEndian(static_cast<quint32>(message.size()), header.data());
-        for (auto &[socket, connection] : sockets_) {
-            connection.outgoing += header + message;
-            write(socket);
+        for (const auto &[socket, buffer] : sockets_) {
+            socket->write(header);
+            socket->write(message);
         }
     }
 
@@ -73,7 +64,6 @@ class SocketLink final : public InstanceLink {
         socket->setParent(this);
         sockets_[socket] = {};
         connect(socket, &QLocalSocket::readyRead, this, [this, socket] { read(socket); });
-        connect(socket, &QLocalSocket::bytesWritten, this, [this, socket] { write(socket); });
         connect(socket, &QLocalSocket::errorOccurred, this, [socket] {
             if (socket->error() != QLocalSocket::PeerClosedError)
                 qWarning("PeerChalk instance link: %s", qPrintable(socket->errorString()));
@@ -85,22 +75,8 @@ class SocketLink final : public InstanceLink {
         read(socket);
     }
 
-    // Hands the socket the next piece once it has written the last.
-    void write(QLocalSocket *socket) {
-        const auto found = sockets_.find(socket);
-        if (found == sockets_.end() || socket->bytesToWrite() > 0)
-            return;
-        QByteArray &outgoing = found->second.outgoing;
-        const qsizetype size = std::min(outgoing.size(), writeChunkBytes);
-        if (size == 0)
-            return;
-        const qint64 written = socket->write(outgoing.constData(), size);
-        if (written > 0)
-            outgoing.remove(0, static_cast<qsizetype>(written));
-    }
-
     void read(QLocalSocket *socket) {
-        QByteArray &buffer = sockets_.at(socket).incoming;
+        QByteArray &buffer = sockets_.at(socket);
         buffer += socket->readAll();
         while (buffer.size() >= 4) {
             const auto size = qFromLittleEndian<quint32>(buffer.constData());
@@ -119,7 +95,7 @@ class SocketLink final : public InstanceLink {
     }
 
     QLocalServer server_;
-    std::map<QLocalSocket *, Connection> sockets_;
+    std::map<QLocalSocket *, QByteArray> sockets_;
 };
 
 } // namespace

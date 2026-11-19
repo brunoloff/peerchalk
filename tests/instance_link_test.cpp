@@ -55,11 +55,12 @@ TEST(InstanceLink, DeliversWholeMessagesInBothDirections) {
     const QByteArray large(3 * 1024 * 1024, 'x');
     first->send(large);
     second->send("reply");
-    ASSERT_TRUE(QTest::qWaitFor([&] { return atSecond.size() == 1; }, waitMs))
-        << "messages at the second instance: " << atSecond.size()
-        << ", at the first: " << atFirst.size() << ", joins: " << joined.size();
-    ASSERT_TRUE(QTest::qWaitFor([&] { return atFirst.size() == 1; }, waitMs))
-        << "messages at the first instance: " << atFirst.size();
+    // QSignalSpy::wait runs the event loop without the pauses of qWaitFor, which would make
+    // 3 MB through macOS's 8 KB local-socket buffers take longer than the limit.
+    ASSERT_TRUE(!atSecond.isEmpty() || atSecond.wait(waitMs));
+    ASSERT_TRUE(!atFirst.isEmpty() || atFirst.wait(waitMs));
+    EXPECT_EQ(atSecond.size(), 1);
+    EXPECT_EQ(atFirst.size(), 1);
     EXPECT_EQ(atSecond.front().front().toByteArray(), large);
     EXPECT_EQ(atFirst.front().front().toByteArray(), QByteArray("reply"));
 }
