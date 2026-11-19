@@ -111,7 +111,7 @@ jobs:
       - name: Check that the app starts from its disk image
         run: |
           hdiutil attach -nobrowse -mountpoint "$RUNNER_TEMP/dmg" dist/*.dmg
-          QT_QPA_PLATFORM=offscreen PEERCHALK_NETWORK=off PEERCHALK_DATA_DIR="$RUNNER_TEMP/data"             PEERCHALK_SMOKE_TEST="$PWD/dist/screenshot-macos-$(uname -m).png"             "$RUNNER_TEMP/dmg/PeerChalk.app/Contents/MacOS/PeerChalk"
+          PEERCHALK_NETWORK=off PEERCHALK_DATA_DIR="$RUNNER_TEMP/data"             PEERCHALK_SMOKE_TEST="$PWD/dist/screenshot-macos-$(uname -m).png"             "$RUNNER_TEMP/dmg/PeerChalk.app/Contents/MacOS/PeerChalk"
           hdiutil detach "$RUNNER_TEMP/dmg"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
