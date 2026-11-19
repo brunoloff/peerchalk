@@ -72,8 +72,10 @@
       "inherits": "base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_PREFIX_PATH": "${fileDir}/build/prefix-windows"
-      }
+        "CMAKE_PREFIX_PATH": "${fileDir}/build/prefix-windows",
+        "PEERCHALK_WERROR": "OFF"
+      },
+      "description": "MSYS2 ships the newest GCC, whose new warnings are often false alarms in Qt's headers; Linux CI keeps warnings as errors."
     },
     {
       "name": "deps-web",
