@@ -40,6 +40,15 @@ if(EMSCRIPTEN)
             <BINARY_DIR>/wasm32-unknown-emscripten/release/peerchalk_math_worker.js
             <BINARY_DIR>/wasm32-unknown-emscripten/release/peerchalk_math_worker.wasm
             ${prefix}/math-worker)
+elseif(WIN32)
+    # Windows keeps the library next to the program and links through an import library.
+    set(yrs_target)
+    set(yrs_library <BINARY_DIR>/release/libyrs.dll.a)
+    set(yrs_patch)
+    set(engine_mode)
+    set(engine_install
+        ${CMAKE_COMMAND} -E make_directory ${prefix}/lib
+        COMMAND ${CMAKE_COMMAND} -E copy <BINARY_DIR>/release/libpeerchalk_math.a ${prefix}/lib)
 else()
     set(yrs_target)
     set(yrs_library <BINARY_DIR>/release/${CMAKE_SHARED_LIBRARY_PREFIX}yrs${CMAKE_SHARED_LIBRARY_SUFFIX})
@@ -50,10 +59,14 @@ else()
         COMMAND ${CMAKE_COMMAND} -E copy <BINARY_DIR>/release/libpeerchalk_math.a ${prefix}/lib)
 endif()
 
-# Apps find a macOS library by the name recorded inside it, so it names its final place.
-set(yrs_fix_name)
+# After installing: macOS finds a library by the name recorded inside it, so it names its
+# final place; Windows keeps the library itself next to the program.
+set(yrs_finish)
 if(APPLE)
-    set(yrs_fix_name COMMAND install_name_tool -id ${prefix}/lib/libyrs.dylib ${prefix}/lib/libyrs.dylib)
+    set(yrs_finish COMMAND install_name_tool -id ${prefix}/lib/libyrs.dylib ${prefix}/lib/libyrs.dylib)
+elseif(WIN32)
+    set(yrs_finish COMMAND ${CMAKE_COMMAND} -E make_directory ${prefix}/bin
+        COMMAND ${CMAKE_COMMAND} -E copy <BINARY_DIR>/release/yrs.dll ${prefix}/bin)
 endif()
 
 ExternalProject_Add(yrs
@@ -68,7 +81,7 @@ ExternalProject_Add(yrs
     INSTALL_COMMAND ${CMAKE_COMMAND} -E make_directory ${prefix}/include ${prefix}/lib
         COMMAND ${CMAKE_COMMAND} -E copy <SOURCE_DIR>/tests-ffi/include/libyrs.h ${prefix}/include
         COMMAND ${CMAKE_COMMAND} -E copy ${yrs_library} ${prefix}/lib
-        ${yrs_fix_name})
+        ${yrs_finish})
 
 ExternalProject_Add(math_engine
     SOURCE_DIR "${engine}"

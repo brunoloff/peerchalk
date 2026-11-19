@@ -108,6 +108,68 @@ jobs:
       - name: Test
         run: ctest --preset macos
 
+  windows:
+    runs-on: windows-2025
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: msys2/setup-msys2@ec48f7c5447b3140e2b088413ae3a55687bccb6e # v2.33.0
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            git make autoconf automake libtool
+            mingw-w64-ucrt-x86_64-toolchain mingw-w64-ucrt-x86_64-cmake mingw-w64-ucrt-x86_64-ninja
+            mingw-w64-ucrt-x86_64-meson mingw-w64-ucrt-x86_64-pkgconf mingw-w64-ucrt-x86_64-python
+            mingw-w64-ucrt-x86_64-rust mingw-w64-ucrt-x86_64-glib2 mingw-w64-ucrt-x86_64-openssl
+            mingw-w64-ucrt-x86_64-gnutls mingw-w64-ucrt-x86_64-nettle mingw-w64-ucrt-x86_64-argon2
+            mingw-w64-ucrt-x86_64-fmt mingw-w64-ucrt-x86_64-gtest mingw-w64-ucrt-x86_64-qt6-base
+            mingw-w64-ucrt-x86_64-qt6-declarative mingw-w64-ucrt-x86_64-qt6-shadertools
+            mingw-w64-ucrt-x86_64-qt6-svg mingw-w64-ucrt-x86_64-qt6-tools
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup -y --no-progress
+      - name: Restore dependencies
+        id: deps
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: build/prefix-windows
+          key: deps-windows-${{ hashFiles('deps/**', 'cmake/P2pdcSource.cmake', 'src/math/engine/**') }}
+      - name: Build dependencies
+        if: steps.deps.outputs.cache-hit != 'true'
+        run: cmake --workflow --preset deps-windows
+      - name: Build
+        run: |
+          export PATH="$PWD/build/prefix-windows/bin:$PATH"
+          cmake --preset windows
+          cmake --build --preset windows
+      - name: Package
+        run: deploy/windows/package.sh
+      - name: Check that the zip and the installed app start
+        shell: pwsh
+        run: |
+          $env:QT_QPA_PLATFORM = 'offscreen'; $env:PEERCHALK_NETWORK = 'off'
+          function Start-Check($exe, $name) {
+            $env:PEERCHALK_DATA_DIR = "$env:RUNNER_TEMP\data-$name"
+            $env:PEERCHALK_SMOKE_TEST = "$PWD\dist\screenshot-windows-$name.png"
+            $process = Start-Process -FilePath $exe -Wait -PassThru
+            if ($process.ExitCode -ne 0 -or -not (Test-Path $env:PEERCHALK_SMOKE_TEST)) { throw "$name did not start ($($process.ExitCode))" }
+          }
+          Expand-Archive (Get-Item dist\*.zip) -DestinationPath "$env:RUNNER_TEMP\zip"
+          Start-Check (Get-Item "$env:RUNNER_TEMP\zip\*\peerchalk.exe").FullName zip
+          Start-Process -FilePath (Get-Item dist\*-setup.exe).FullName -ArgumentList '/VERYSILENT', '/CURRENTUSER' -Wait
+          Start-Check "$env:LOCALAPPDATA\Programs\PeerChalk\peerchalk.exe" installed
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows
+          path: dist/
+      - name: Test
+        run: |
+          export PATH="$PWD/build/prefix-windows/bin:$PATH"
+          ctest --preset windows
+
   # The AppImage on other distributions, as people would get them, with no build tools.
   linux-distributions:
     needs: linux

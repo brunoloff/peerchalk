@@ -51,6 +51,25 @@
       }
     },
     {
+      "name": "deps-windows",
+      "displayName": "Dependencies for Windows (in an MSYS2 UCRT64 shell)",
+      "inherits": "base",
+      "cacheVariables": {
+        "PEERCHALK_BUILD_DEPENDENCIES": "ON",
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_INSTALL_PREFIX": "${fileDir}/build/prefix-windows"
+      }
+    },
+    {
+      "name": "windows",
+      "displayName": "Windows app and tests (in an MSYS2 UCRT64 shell)",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_PREFIX_PATH": "${fileDir}/build/prefix-windows"
+      }
+    },
+    {
       "name": "deps-web",
       "displayName": "Dependencies for browsers",
       "inherits": "base",
@@ -86,10 +105,17 @@
     { "name": "linux", "configurePreset": "linux" },
     { "name": "deps-macos", "configurePreset": "deps-macos" },
     { "name": "macos", "configurePreset": "macos" },
+    { "name": "deps-windows", "configurePreset": "deps-windows" },
+    { "name": "windows", "configurePreset": "windows" },
     { "name": "deps-web", "configurePreset": "deps-web" },
     { "name": "web", "configurePreset": "web", "targets": ["peerchalk"] }
   ],
   "testPresets": [
+    {
+      "name": "windows",
+      "configurePreset": "windows",
+      "output": { "outputOnFailure": true }
+    },
     {
       "name": "macos",
       "configurePreset": "macos",
@@ -152,6 +178,13 @@
         { "type": "configure", "name": "macos" },
         { "type": "build", "name": "macos" },
         { "type": "test", "name": "macos" }
+      ]
+    },
+    {
+      "name": "deps-windows",
+      "steps": [
+        { "type": "configure", "name": "deps-windows" },
+        { "type": "build", "name": "deps-windows" }
       ]
     },
     {
