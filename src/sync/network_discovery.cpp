@@ -54,7 +54,7 @@ DiscoveryHandlers Network::discoveryHandlers(const QString &key) {
             // Reopened by the next reconcile.
             QTimer::singleShot(0, this, [this, key] { closeSpace(key); });
         }};
-    callbacks.on_status = [this, key](DiscoveryStatus status) {
+    callbacks.on_status = [key](DiscoveryStatus status) {
         logInfo(discoveryArea,
                 QStringLiteral("%1: discovery %2").arg(spaceLabel(key), describe(status)));
     };
@@ -118,7 +118,7 @@ bool Network::listen(const QString &key) {
     callbacks.on_request_identified = [this, key](IncomingRequestId id, Advertisement peer) {
         request(key, id, std::move(peer));
     };
-    callbacks.on_overflow = [this, key] {
+    callbacks.on_overflow = [key] {
         logWarning(QStringLiteral("incoming"),
                    QStringLiteral("%1: too many calls at once; some were dropped").arg(spaceLabel(key)));
     };
