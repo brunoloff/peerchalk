@@ -166,6 +166,7 @@ jobs:
         run: |
           # The package ships only Qt's Windows display, as users get; the runner has a desktop.
           $env:PEERCHALK_NETWORK = 'off'; $env:QT_FORCE_STDERR_LOGGING = '1' # a GUI program's log is otherwise invisible
+          $env:QT_DEBUG_PLUGINS = '1' # says why a plugin does not load
           function Start-Check($exe, $name) {
             $env:PEERCHALK_DATA_DIR = "$env:RUNNER_TEMP\data-$name"
             $env:PEERCHALK_SMOKE_TEST = "$PWD\dist\screenshot-windows-$name.png"
