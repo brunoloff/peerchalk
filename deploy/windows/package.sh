@@ -53,6 +53,8 @@ main() {
     # qt_standard_project_setup puts Windows programs at the top of the build folder.
     cp "$root/build/windows/peerchalk.exe" "$stage/"
     deploy_qt "$stage"
+    # MSYS2's Qt looks for QML modules in share/qt6/qml; windeployqt puts them in qml.
+    printf '[Paths]\nPrefix = .\nPlugins = .\nQmlImports = qml\n' > "$stage/qt.conf"
     copy_libraries "$stage"
     check_libraries "$stage"
     (cd "$root/build/windows-app" && rm -f "$dist/$name.zip" && "/c/Program Files/7-Zip/7z.exe" a -tzip -bd "$dist/$name.zip" "$name" >/dev/null)
