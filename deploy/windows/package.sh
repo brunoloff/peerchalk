@@ -31,15 +31,18 @@ copy_libraries() {
     done
 }
 
-# Fails when the program needs a DLL that is neither in its folder nor part of Windows, which
-# Windows reports in a dialog rather than an error code.
+# Fails when a program or DLL in the package needs a DLL that is neither in the package nor part
+# of Windows, which Windows reports in a dialog rather than an error code. Windows' own DLLs are
+# not followed: some of what they name exists only on some editions.
 check_libraries() {
     local ntldd missing
     ntldd=$(command -v ntldd)
-    missing=$(cd "$1" && PATH="$(cygpath -u "$SYSTEMROOT")/System32" "$ntldd" -R peerchalk.exe |
-        grep -i 'not found' | grep -viE '(api|ext)-ms-' || true) # API sets are not files
+    missing=$(cd "$1" && find . -name '*.exe' -o -name '*.dll' | while read -r file; do
+        PATH="$PWD:$(cygpath -u "$SYSTEMROOT")/System32" "$ntldd" "$file" | grep -i 'not found' |
+            grep -viE '(api|ext)-ms-' | sed "s|^|$file: |" || true # API sets are not files
+    done)
     if [ -n "$missing" ]; then
-        printf 'package.sh: peerchalk.exe needs DLLs that are not in the package:\n%s\n' "$missing" >&2
+        printf 'package.sh: the package needs DLLs that are not in it:\n%s\n' "$missing" >&2
         exit 1
     fi
 }
