@@ -164,7 +164,8 @@ jobs:
         shell: pwsh
         timeout-minutes: 10
         run: |
-          $env:QT_QPA_PLATFORM = 'offscreen'; $env:PEERCHALK_NETWORK = 'off'
+          # The package ships only Qt's Windows display, as users get; the runner has a desktop.
+          $env:PEERCHALK_NETWORK = 'off'
           function Start-Check($exe, $name) {
             $env:PEERCHALK_DATA_DIR = "$env:RUNNER_TEMP\data-$name"
             $env:PEERCHALK_SMOKE_TEST = "$PWD\dist\screenshot-windows-$name.png"
