@@ -45,10 +45,14 @@ install_emscripten() {
 }
 
 # Qt for this computer: Linux on x86_64 or ARM, or macOS (one kit for Intel and Apple Silicon).
+# On Linux only the parts PeerChalk uses: the full ARM kit includes a damaged archive.
 install_desktop_qt() {
+    local linux_archives=(qtbase qtsvg qtdeclarative qtwayland qttranslations icu)
     case "$(uname -s)-$(uname -m)" in
-        Linux-x86_64) install_qt gcc_64 linux desktop "$qt_version" linux_gcc_64 ;;
-        Linux-aarch64) install_qt gcc_arm64 linux_arm64 desktop "$qt_version" linux_gcc_arm64 ;;
+        Linux-x86_64) install_qt gcc_64 linux desktop "$qt_version" linux_gcc_64 \
+            --archives "${linux_archives[@]}" ;;
+        Linux-aarch64) install_qt gcc_arm64 linux_arm64 desktop "$qt_version" linux_gcc_arm64 \
+            --archives "${linux_archives[@]}" ;;
         Darwin-*) install_qt macos mac desktop "$qt_version" clang_64 ;;
         *) printf 'tools/setup.sh: no Qt kit for %s\n' "$(uname -sm)" >&2; exit 1 ;;
     esac

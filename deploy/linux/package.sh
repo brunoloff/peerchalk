@@ -32,7 +32,8 @@ main() {
     rm -rf "$appdir" "$dist/$name" && mkdir -p "$dist"
     DESTDIR=$appdir cmake --install "$root/build/linux" --prefix /usr
     export PATH=$tools:$PATH APPIMAGE_EXTRACT_AND_RUN=1 QMAKE="$(qt_kit)/bin/qmake"
-    export QML_SOURCES_PATHS=$root/src/ui EXTRA_PLATFORM_PLUGINS=libqwayland.so
+    # Offscreen lets automated checks start the app without a display.
+    export QML_SOURCES_PATHS=$root/src/ui EXTRA_PLATFORM_PLUGINS="libqwayland.so;libqoffscreen.so"
     export EXTRA_QT_MODULES=waylandcompositor LD_LIBRARY_PATH=$root/build/prefix-linux/lib:$(qt_kit)/lib
     export OUTPUT="$dist/$name.AppImage"
     (cd "$dist" && "linuxdeploy-$arch.AppImage" --appdir "$appdir" --plugin qt --output appimage \
