@@ -1,0 +1,33 @@
+# Maintainer: Bruno Loff <brunoloff at users dot noreply dot github dot com>
+# Builds PeerChalk from source against Arch's Qt. Its networking libraries need patches, so they
+# are built from pinned sources and installed privately in /usr/lib/peerchalk.
+pkgname=peerchalk
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Shared whiteboard: draw and write together, directly between devices'
+arch=('x86_64' 'aarch64')
+url='https://github.com/brunoloff/peerchalk'
+license=('MIT')
+depends=('qt6-base' 'qt6-declarative' 'glib2' 'openssl' 'gnutls' 'nettle' 'argon2' 'fmt'
+         'gcc-libs' 'glibc' 'hicolor-icon-theme')
+makedepends=('cmake' 'ninja' 'meson' 'pkgconf' 'git' 'rust' 'python' 'gtest')
+conflicts=('peerchalk-bin')
+# The build downloads p2p-discovery-connect, its patched dependencies, Yrs and Rust crates at
+# pinned versions and checksums.
+options=('!lto')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+    cd "$pkgname-$pkgver"
+    cmake --workflow --preset deps
+    cmake --preset linux -DBUILD_TESTING=OFF -DCMAKE_INSTALL_PREFIX=/usr \
+        -DPEERCHALK_INSTALL_PRIVATE_LIBRARIES=ON
+    cmake --build build/linux
+}
+
+package() {
+    cd "$pkgname-$pkgver"
+    DESTDIR="$pkgdir" cmake --install build/linux
+    install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

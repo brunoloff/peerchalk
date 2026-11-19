@@ -63,6 +63,20 @@ if(NOT EMSCRIPTEN)
             DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
         install(FILES "${peerchalk_linux}/io.github.brunoloff.PeerChalk.metainfo.xml"
             DESTINATION ${CMAKE_INSTALL_DATADIR}/metainfo)
+        install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/../LICENSE"
+            DESTINATION ${CMAKE_INSTALL_DATADIR}/doc/peerchalk)
+        # For distribution packages that use the system's Qt: the patched networking libraries
+        # from the dependency prefix go in a folder of their own, found through the run path.
+        option(PEERCHALK_INSTALL_PRIVATE_LIBRARIES
+            "Install the dependency prefix's libraries in lib/peerchalk" OFF)
+        if(PEERCHALK_INSTALL_PRIVATE_LIBRARIES)
+            get_filename_component(peerchalk_prefix_libraries "${PEERCHALK_YRS_LIBRARY}" DIRECTORY)
+            install(DIRECTORY "${peerchalk_prefix_libraries}/"
+                DESTINATION ${CMAKE_INSTALL_LIBDIR}/peerchalk
+                FILES_MATCHING PATTERN "*.so*" PATTERN "pkgconfig" EXCLUDE PATTERN "cmake" EXCLUDE)
+            set_target_properties(peerchalk PROPERTIES
+                INSTALL_RPATH "\$ORIGIN/../${CMAKE_INSTALL_LIBDIR}/peerchalk")
+        endif()
         foreach(size 256 512)
             install(FILES "${peerchalk_icons}/peerchalk-${size}.png"
                 DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/${size}x${size}/apps

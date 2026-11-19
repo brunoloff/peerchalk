@@ -1,0 +1,37 @@
+# Maintainer: Bruno Loff <brunoloff at users dot noreply dot github dot com>
+# Repackages the release tarball, which carries its own Qt, into /opt/peerchalk.
+pkgname=peerchalk-bin
+_name=peerchalk
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Shared whiteboard: draw and write together, directly between devices (prebuilt)'
+arch=('x86_64' 'aarch64')
+url='https://github.com/brunoloff/peerchalk'
+license=('MIT')
+depends=('glibc' 'gcc-libs' 'fontconfig' 'freetype2' 'libglvnd' 'libxkbcommon' 'dbus'
+         'hicolor-icon-theme')
+provides=("$_name")
+conflicts=("$_name")
+options=('!strip' '!debug')
+_release="$url/releases/download/v$pkgver"
+source_x86_64=("$_release/$_name-$pkgver-linux-x86_64.tar.gz")
+source_aarch64=("$_release/$_name-$pkgver-linux-aarch64.tar.gz")
+sha256sums_x86_64=('SKIP')
+sha256sums_aarch64=('SKIP')
+
+package() {
+    local folder="$_name-$pkgver-linux-$CARCH" share
+    install -d "$pkgdir/opt/$_name" "$pkgdir/usr/bin"
+    cp -a "$folder/." "$pkgdir/opt/$_name/"
+    ln -s "/opt/$_name/AppRun" "$pkgdir/usr/bin/$_name"
+    share="$pkgdir/opt/$_name/usr/share"
+    install -Dm644 "$share/applications/io.github.brunoloff.PeerChalk.desktop" \
+        "$pkgdir/usr/share/applications/io.github.brunoloff.PeerChalk.desktop"
+    install -Dm644 "$share/metainfo/io.github.brunoloff.PeerChalk.metainfo.xml" \
+        "$pkgdir/usr/share/metainfo/io.github.brunoloff.PeerChalk.metainfo.xml"
+    for size in 256 512; do
+        install -Dm644 "$share/icons/hicolor/${size}x$size/apps/io.github.brunoloff.PeerChalk.png" \
+            "$pkgdir/usr/share/icons/hicolor/${size}x$size/apps/io.github.brunoloff.PeerChalk.png"
+    done
+    install -Dm644 "$share/doc/peerchalk/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}
