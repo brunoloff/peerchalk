@@ -33,8 +33,10 @@ elseif(APPLE)
 endif()
 qt_add_executable(peerchalk WIN32 MACOSX_BUNDLE app/main.cpp app/app_controller.cpp
     app/app_controller.hpp app/smoke_test.cpp app/smoke_test.hpp ${peerchalk_platform_sources})
+if(APPLE) # a plain name: Qt's Windows helpers cannot read generator expressions here
+    set_target_properties(peerchalk PROPERTIES OUTPUT_NAME PeerChalk)
+endif()
 set_target_properties(peerchalk PROPERTIES
-    OUTPUT_NAME $<IF:$<BOOL:${APPLE}>,PeerChalk,peerchalk>
     MACOSX_BUNDLE_GUI_IDENTIFIER io.github.brunoloff.PeerChalk
     MACOSX_BUNDLE_BUNDLE_NAME PeerChalk
     MACOSX_BUNDLE_ICON_FILE peerchalk.icns
