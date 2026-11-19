@@ -13,10 +13,12 @@
 
 #include <QDateTime>
 #include <QDeadlineTimer>
+#include <QElapsedTimer>
 #include <QObject>
 #include <QPointF>
 #include <QRectF>
 #include <QTimer>
+#include <QUrl>
 #include <QUuid>
 #include <QVariantList>
 #include <QVariantMap>
@@ -70,6 +72,8 @@ class Network : public QObject {
     Q_PROPERTY(bool restartNeeded READ restartNeeded NOTIFY settingsChanged)
     // Someone here runs a version this one is too old to talk to.
     Q_PROPERTY(bool updateNeeded READ updateNeeded NOTIFY updateNeededChanged)
+    // Changes when the connection log gets new entries (checked once a second).
+    Q_PROPERTY(quint64 logRevision MEMBER logRevision_ NOTIFY logChanged)
 
   public:
     // instanceLink, if any, keeps this device's other app instances in step.
@@ -117,7 +121,18 @@ class Network : public QObject {
     // Other devices showing a board: {device, name, colorIndex, x, y, cursor, view}.
     Q_INVOKABLE QVariantList boardPresence(const QString &boardId) const;
 
+    // The troubleshooting log: a summary of the current state, then the log itself. lastLines
+    // limits the log to its most recent lines; 0 means all of it.
+    Q_INVOKABLE QString logText(int lastLines = 0) const;
+    Q_INVOKABLE void clearLog();
+    Q_INVOKABLE void copyLog() const;
+    // These return an error message, or an empty string when the log was saved.
+    Q_INVOKABLE QString saveLog(const QUrl &file) const; // desktop and mobile
+    Q_INVOKABLE QString downloadLog() const;             // browsers
+    Q_INVOKABLE static QString logFileName();
+
   signals:
+    void logChanged();
     void statusChanged();
     void peersChanged();
     void presenceChanged();
@@ -154,6 +169,8 @@ class Network : public QObject {
         int colorIndex{0};
     };
     struct Peer {
+        QElapsedTimer started;
+        QString route; // as last reported, for the troubleshooting summary
         QString space;
         p2pdc::SigningPublicKey device{};
         std::uint64_t generation{0};
@@ -208,7 +225,21 @@ class Network : public QObject {
     // An owner of the board, here or connected and sharing it.
     [[nodiscard]] bool boardLive(const QUuid &board) const;
 
+    // network_discovery.cpp: watching, announcing and calls in
+    void peerAdvertised(const QString &key, p2pdc::Advertisement value, p2pdc::PeerEvent event);
+    [[nodiscard]] p2pdc::DiscoveryHandlers discoveryHandlers(const QString &key);
+    [[nodiscard]] QString refusal(const Space &space, const PeerId &id,
+                                  const p2pdc::Advertisement &advertisement);
+
+    // network_log.cpp: the connection log
+    void logConfiguration() const;
+    [[nodiscard]] static QString spaceLabel(const QString &key);
+    [[nodiscard]] QString summary() const;
+
     // network_peers.cpp: connections and sending
+    void addPeer(const PeerId &id, std::uint64_t generation,
+                 std::unique_ptr<p2pdc::Connection> connection);
+    [[nodiscard]] QString peerLabel(const PeerId &id) const;
     [[nodiscard]] static p2pdc::ConnectOptions connectOptions();
     void connectPeer(const QString &space, const p2pdc::Advertisement &advertisement);
     [[nodiscard]] p2pdc::ConnectionHandlers handlers(PeerId id, std::uint64_t generation);
@@ -303,6 +334,8 @@ class Network : public QObject {
     quint32 nextLiveStroke_{0};
     bool drafting_{false};
     bool restartNeeded_{false};
+    QTimer logTimer_;
+    quint64 logRevision_{0};
 };
 
 } // namespace peerchalk::sync

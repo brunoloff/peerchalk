@@ -1,6 +1,8 @@
 // Network: node lifecycle, executor and discovery spaces.
 #include "sync/network.hpp"
+#include "sync/connection_log.hpp"
 #include "sync/instance_link.hpp"
+#include "sync/p2pdc_names.hpp"
 
 #include "ui/library.hpp"
 
@@ -37,6 +39,14 @@ Network::Network(Library &library, NetworkConfig config, QObject *parent,
     connect(&presenceTimer_, &QTimer::timeout, this, [this] { sendPresence(); });
     rotationTimer_.setInterval(config_.spaceRotation);
     connect(&rotationTimer_, &QTimer::timeout, this, &Network::rotateSpaces);
+    logTimer_.setInterval(std::chrono::seconds(1));
+    connect(&logTimer_, &QTimer::timeout, this, [this] {
+        if (const quint64 revision = ConnectionLog::instance().revision(); revision != logRevision_) {
+            logRevision_ = revision;
+            emit logChanged();
+        }
+    });
+    logTimer_.start();
     setUpLiveUpdates();
     setUpInstanceLink();
     connect(&library_, &Library::workspaceChanged, this, &Network::workspaceChanged);
@@ -114,6 +124,7 @@ Scheduler Network::scheduler() const {
 void Network::setStatus(const QString &status) {
     if (status == status_)
         return;
+    logInfo(QStringLiteral("network"), QStringLiteral("Status: %1").arg(status));
     status_ = status;
     emit statusChanged();
 }
@@ -134,18 +145,28 @@ void Network::start() {
         [&](std::span<const std::byte> seed, std::span<const std::byte> secret) {
             created = Node::create_with_identity(discovery, executor(), seed, secret);
         });
+    logConfiguration();
     auto *node = std::get_if<std::unique_ptr<Node>>(&created);
     if (node == nullptr) {
+        logError(QStringLiteral("network"), std::holds_alternative<CryptoError>(created)
+                                                ? QStringLiteral("Could not create the node: crypto error")
+                                                : QStringLiteral("Could not create the node: no identity support"));
         setStatus(tr("Offline: networking is unavailable in this build"));
         return;
     }
     node_ = std::move(*node);
     setStatus(tr("Connecting…"));
-    if (!node_->start([this](NodeStartResult result) { nodeStarted(result); }))
+    if (!node_->start([this](NodeStartResult result) { nodeStarted(result); })) {
+        logError(QStringLiteral("network"), QStringLiteral("The node refused to start"));
         setStatus(tr("Offline: the network could not start"));
+    }
 }
 
 void Network::nodeStarted(NodeStartResult result) {
+    const QString detail = describe(result.error);
+    (result.status == NodeStartStatus::Started ? logInfo : logError)(
+        QStringLiteral("network"), QStringLiteral("Node start: %1%2").arg(
+            describe(result.status), detail.isEmpty() ? QString() : QStringLiteral(" (%1)").arg(detail)));
     if (result.status != NodeStartStatus::Started) {
         setStatus(tr("Offline: the network could not start"));
         return;
@@ -161,6 +182,7 @@ bool Network::beginShutdown(std::function<void()> stopped) {
     if (!node_ || stopping_)
         return false;
     stopping_ = true;
+    logInfo(QStringLiteral("network"), QStringLiteral("Shutting down"));
     retryTimer_.stop();
     rotationTimer_.stop();
     peers_.clear();
@@ -217,6 +239,11 @@ bool Network::isIncompatible(const SigningPublicKey &device) {
 
 void Network::markIncompatible(const SigningPublicKey &device, bool theyAreNewer) {
     incompatible_[device] = QDeadlineTimer(incompatibleRetry);
+    logWarning(QStringLiteral("connection"),
+               QStringLiteral("Device %1 runs an incompatible PeerChalk version (%2); retrying in "
+                              "5 minutes")
+                   .arg(shortDevice(device),
+                        theyAreNewer ? QStringLiteral("newer") : QStringLiteral("older")));
     if (theyAreNewer && !updateNeeded_) {
         updateNeeded_ = true;
         emit updateNeededChanged();
@@ -225,136 +252,6 @@ void Network::markIncompatible(const SigningPublicKey &device, bool theyAreNewer
 
 bool Network::isOwnDevice(const SigningPublicKey &key) const {
     return node_ && node_->identity() && node_->identity()->signing_key == key;
-}
-
-bool Network::watch(const QString &key) {
-    Space &space = *spaces_.at(key);
-    auto result =
-        node_->watch(space.capability, scheduler(), {},
-                     {[this, key](Advertisement value, PeerEvent event) {
-                          const auto it = spaces_.find(key);
-                          if (it == spaces_.end() || isOwnDevice(value.signing_public_key))
-                              return;
-                          auto &known = it->second->advertisements;
-                          if (event == PeerEvent::Expired) {
-                              const auto found = known.find(value.signing_public_key);
-                              if (found != known.end() &&
-                                  found->second.fields.instance_id == value.fields.instance_id)
-                                  known.erase(found);
-                              return;
-                          }
-                          known.insert_or_assign(value.signing_public_key, std::move(value));
-                          tryConnect(key);
-                      },
-                      [this, key](bool ok) {
-                          if (const auto it = spaces_.find(key); it != spaces_.end() && ok) {
-                              it->second->caught = true;
-                              tryConnect(key);
-                          }
-                      },
-                      [this, key](WatchError) {
-                          // Reopened by the next reconcile.
-                          QTimer::singleShot(0, this, [this, key] { closeSpace(key); });
-                      }});
-    auto *subscription = std::get_if<std::unique_ptr<Subscription>>(&result);
-    if (subscription == nullptr)
-        return false;
-    space.watch = std::move(*subscription);
-    return true;
-}
-
-bool Network::announce(const QString &key) {
-    Space &space = *spaces_.at(key);
-    auto result =
-        node_->announce(space.capability, scheduler(), {},
-                        {[this, key] {
-                             if (const auto it = spaces_.find(key); it != spaces_.end()) {
-                                 it->second->published = true;
-                                 tryConnect(key);
-                             }
-                         },
-                         [this, key](AnnouncementError error) {
-                             if (error != AnnouncementError::Retrying)
-                                 QTimer::singleShot(0, this, [this, key] { closeSpace(key); });
-                         }});
-    auto *lease = std::get_if<std::unique_ptr<Lease>>(&result);
-    if (lease == nullptr)
-        return false;
-    space.lease = std::move(*lease);
-    return true;
-}
-
-bool Network::listen(const QString &key) {
-    Space &space = *spaces_.at(key);
-    IncomingOptions options;
-    options.persistent = true;
-    IncomingHandlers callbacks;
-    callbacks.on_error = [this, key](IncomingError) {
-        QTimer::singleShot(0, this, [this, key] {
-            if (const auto it = spaces_.find(key); it != spaces_.end())
-                it->second->listener.reset(); // recreated by the next tryConnect
-        });
-    };
-    callbacks.on_request_identified = [this, key](IncomingRequestId id, Advertisement peer) {
-        request(key, id, std::move(peer));
-    };
-    callbacks.on_overflow = [] {};
-    auto result =
-        node_->listen(*space.lease, *space.watch, scheduler(), options, std::move(callbacks));
-    auto *listener = std::get_if<std::unique_ptr<IncomingListener>>(&result);
-    if (listener == nullptr)
-        return false;
-    space.listener = std::move(*listener);
-    return true;
-}
-
-// The device with the lower key dials; the other accepts.
-void Network::tryConnect(const QString &key) {
-    const auto it = spaces_.find(key);
-    if (it == spaces_.end() || stopping_ || !node_ || !node_->identity())
-        return;
-    Space &space = *it->second;
-    if (!space.published || !space.caught || !space.watch || !space.lease)
-        return;
-    if (!space.listener && !listen(key))
-        return;
-    const SigningPublicKey own = node_->identity()->signing_key;
-    for (const auto &[device, advertisement] : space.advertisements) {
-        const auto peer = peers_.find({key, device});
-        const bool connected = peer != peers_.end() && peer->second->connection;
-        if (own < device && !connected && !isIncompatible(device) &&
-            space.watch->is_current(advertisement))
-            connectPeer(key, advertisement);
-    }
-}
-
-void Network::request(const QString &key, IncomingRequestId id, Advertisement advertisement) {
-    const auto it = spaces_.find(key);
-    if (it == spaces_.end())
-        return;
-    Space &space = *it->second;
-    const SigningPublicKey device = advertisement.signing_public_key;
-    const auto existing = peers_.find({key, device});
-    const bool busy = existing != peers_.end() && existing->second->connection;
-    if (!node_->identity() || !space.watch->is_current(advertisement) ||
-        device >= node_->identity()->signing_key || busy || isIncompatible(device)) {
-        static_cast<void>(space.listener->reject(id));
-        return;
-    }
-    const auto generation = ++nextGeneration_;
-    auto result = node_->accept(*space.listener, id, config_.ice, scheduler(), connectOptions(),
-                                handlers({key, device}, generation));
-    auto *connection = std::get_if<std::unique_ptr<Connection>>(&result);
-    if (connection == nullptr) {
-        static_cast<void>(space.listener->reject(id));
-        return;
-    }
-    auto peer = std::make_unique<Peer>();
-    peer->space = key;
-    peer->device = device;
-    peer->generation = generation;
-    peer->connection = std::move(*connection);
-    peers_[{key, device}] = std::move(peer);
 }
 
 } // namespace peerchalk::sync

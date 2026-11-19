@@ -1,4 +1,5 @@
 // Network: which discovery spaces are open.
+#include "sync/connection_log.hpp"
 #include "sync/network.hpp"
 #include "sync/space_schedule.hpp"
 
@@ -127,13 +128,18 @@ bool Network::openSpace(const QString &key, SpaceKind kind, const QUuid &id,
     space->id = id;
     space->capability = toCapability(capability);
     spaces_[key] = std::move(space);
-    if (watch(key) && announce(key))
+    if (watch(key) && announce(key)) {
+        logInfo(QStringLiteral("discovery"), QStringLiteral("%1: opened").arg(spaceLabel(key)));
         return true;
+    }
     spaces_.erase(key); // retried by a later reconcile
+    logWarning(QStringLiteral("discovery"),
+               QStringLiteral("%1: could not open; retrying later").arg(spaceLabel(key)));
     return false;
 }
 
 void Network::closeSpace(const QString &key) {
+    logInfo(QStringLiteral("discovery"), QStringLiteral("%1: closed").arg(spaceLabel(key)));
     std::erase_if(peers_, [&key](const auto &entry) { return entry.first.first == key; });
     spaces_.erase(key);
     emit peersChanged();

@@ -1,4 +1,5 @@
 #include "app/app_controller.hpp"
+#include "sync/connection_log.hpp"
 #include "ui/app_style.hpp"
 #include "ui/library.hpp"
 
@@ -12,6 +13,8 @@
 Q_IMPORT_QML_PLUGIN(PeerChalkPlugin)
 
 int main(int argc, char **argv) {
+    // Warnings from anywhere also go to Settings → Troubleshooting.
+    peerchalk::sync::ConnectionLog::captureQtMessages();
 #ifdef __EMSCRIPTEN__
     // web_storage.js keeps this folder in the browser's IndexedDB.
     qputenv("PEERCHALK_DATA_DIR", "/peerchalk");

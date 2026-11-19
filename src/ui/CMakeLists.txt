@@ -27,6 +27,8 @@ qt_add_qml_module(peerchalk_ui URI PeerChalk VERSION 1.0
         ../sync/message_parts.cpp ../sync/message_parts.hpp
         ../sync/network_instances.cpp ../sync/instance_link.hpp ${peerchalk_instance_link}
         ../sync/space_schedule.cpp ../sync/space_schedule.hpp
+        ../sync/connection_log.cpp ../sync/connection_log.hpp ../sync/p2pdc_names.cpp
+        ../sync/p2pdc_names.hpp ../sync/network_discovery.cpp ../sync/network_log.cpp
         ../math/math_engine.hpp ../math/math_result.cpp ../math/math_smoothing.cpp
         ../math/math_smoothing.hpp ${peerchalk_math_engine_source}
         math_item.cpp math_item.hpp text_box_model.cpp text_box_model.hpp
@@ -46,7 +48,7 @@ qt_add_qml_module(peerchalk_ui URI PeerChalk VERSION 1.0
         NetworkStatus.qml PersonRoleRow.qml RequestsDialog.qml SettingsPage.qml
         NetworkPane.qml SettingField.qml PaperTab.qml ColorPalette.qml
         AccountsWindow.qml AccountRow.qml AccountPane.qml BackupFlow.qml PassphraseDialog.qml
-        BoardLinkSection.qml SiteLinks.qml EquationPanel.qml BoardShortcuts.qml
+        BoardLinkSection.qml SiteLinks.qml EquationPanel.qml BoardShortcuts.qml TroubleshootingPane.qml
         TextBoxLayer.qml TextBoxView.qml TextBoxChrome.qml PdfExportButton.qml
         CreateAccountDialog.qml RemoveAccountDialog.qml ${peerchalk_native_qml})
 target_include_directories(peerchalk_ui PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/..")
@@ -57,5 +59,6 @@ target_link_libraries(peerchalk_ui PUBLIC peerchalk_board peerchalk_library p2pd
 if(NOT EMSCRIPTEN)
     target_link_libraries(peerchalk_ui PRIVATE peerchalk_math_engine)
 endif()
+target_compile_definitions(peerchalk_ui PRIVATE PEERCHALK_VERSION="${PROJECT_VERSION}")
 target_compile_options(peerchalk_ui PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:${peerchalk_warning_flags}>)

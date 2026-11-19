@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-// Settings: your identity and known people, the network, and your account.
+// Settings: your identity and known people, the network, your account and troubleshooting.
 Item {
     id: page
 
@@ -58,6 +58,10 @@ Item {
             PaperTab {
                 text: qsTr("Account")
             }
+
+            PaperTab {
+                text: qsTr("Troubleshooting")
+            }
         }
 
         StackLayout {
@@ -72,6 +76,8 @@ Item {
             }
 
             AccountPane {}
+
+            TroubleshootingPane {}
         }
     }
 }

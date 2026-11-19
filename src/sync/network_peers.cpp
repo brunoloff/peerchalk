@@ -1,5 +1,7 @@
 // Network: connections, the outbox and sending board changes.
+#include "sync/connection_log.hpp"
 #include "sync/network.hpp"
+#include "sync/p2pdc_names.hpp"
 
 #include "ui/library.hpp"
 
@@ -8,6 +10,12 @@
 namespace peerchalk::sync {
 
 using namespace p2pdc;
+
+namespace {
+
+const QString connectionArea = QStringLiteral("connection");
+
+} // namespace
 
 // Larger messages travel in parts (see message_parts.hpp). p2pdc caps pending bytes at
 // 4 MiB, which must hold at least one message.
@@ -25,20 +33,42 @@ void Network::connectPeer(const QString &space, const Advertisement &advertiseme
     auto result = node_->connect(*found.lease, *found.watch, advertisement, config_.ice,
                                  scheduler(), connectOptions(), handlers(id, generation));
     auto *connection = std::get_if<std::unique_ptr<Connection>>(&result);
-    if (connection == nullptr)
+    const QString who =
+        QStringLiteral("%1: device %2").arg(spaceLabel(space), shortDevice(id.second));
+    if (connection == nullptr) {
+        logWarning(connectionArea, QStringLiteral("%1: could not dial: %2")
+                                       .arg(who, describe(std::get<ConnectError>(result))));
         return; // retried by the retry timer
+    }
+    logInfo(connectionArea, QStringLiteral("%1: dialing").arg(who));
+    addPeer(id, generation, std::move(*connection));
+}
+
+void Network::addPeer(const PeerId &id, std::uint64_t generation,
+                      std::unique_ptr<Connection> connection) {
     auto peer = std::make_unique<Peer>();
-    peer->space = space;
-    peer->device = advertisement.signing_public_key;
+    peer->space = id.first;
+    peer->device = id.second;
     peer->generation = generation;
-    peer->connection = std::move(*connection);
+    peer->connection = std::move(connection);
+    peer->started.start();
     peers_[id] = std::move(peer);
+}
+
+QString Network::peerLabel(const PeerId &id) const {
+    return QStringLiteral("%1: device %2").arg(spaceLabel(id.first), shortDevice(id.second));
 }
 
 ConnectionHandlers Network::handlers(PeerId id, std::uint64_t generation) {
     return {
         [this, id, generation](ConnectionState state) { connectionState(id, generation, state); },
-        [](RouteInfo) {},
+        [this, id, generation](RouteInfo route) {
+            if (Peer *peer = livePeer(id, generation)) {
+                peer->route = describe(route);
+                logInfo(connectionArea,
+                        QStringLiteral("%1: route %2").arg(peerLabel(id), peer->route));
+            }
+        },
         [this, id, generation](Bytes message) {
             receive(id, generation,
                     QByteArray(reinterpret_cast<const char *>(message.data()),
@@ -48,8 +78,17 @@ ConnectionHandlers Network::handlers(PeerId id, std::uint64_t generation) {
             if (livePeer(id, generation) != nullptr)
                 flush(id);
         },
-        [this, id, generation](ConnectError) { disconnectPeer(id, generation); },
-        [](ConnectionStatus) {},
+        [this, id, generation](ConnectError error) {
+            if (livePeer(id, generation) != nullptr)
+                logWarning(connectionArea,
+                           QStringLiteral("%1: %2").arg(peerLabel(id), describe(error)));
+            disconnectPeer(id, generation);
+        },
+        [this, id](ConnectionStatus) {
+            logWarning(connectionArea,
+                       QStringLiteral("%1: signaling server unreachable; waiting for it to return")
+                           .arg(peerLabel(id)));
+        },
         [this, id, generation](Bytes message) {
             receiveDatagram(id, generation,
                             QByteArray(reinterpret_cast<const char *>(message.data()),
@@ -68,6 +107,9 @@ void Network::connectionState(const PeerId &id, std::uint64_t generation, Connec
     Peer *peer = livePeer(id, generation);
     if (peer == nullptr)
         return;
+    logInfo(connectionArea, QStringLiteral("%1: %2 after %3 ms")
+                                .arg(peerLabel(id), describe(state))
+                                .arg(peer->started.elapsed()));
     if (state == ConnectionState::Ready) {
         peer->ready = true;
         const DeviceCertificate certificate =
@@ -87,6 +129,9 @@ void Network::disconnectPeer(const PeerId &id, std::uint64_t generation) {
     Peer *peer = livePeer(id, generation);
     if (peer == nullptr)
         return;
+    logInfo(connectionArea, QStringLiteral("%1: disconnected after %2 s")
+                                .arg(peerLabel(id))
+                                .arg(peer->started.elapsed() / 1000));
     peer->ready = false;
     QTimer::singleShot(0, this, [this, id, generation] {
         if (livePeer(id, generation) != nullptr)

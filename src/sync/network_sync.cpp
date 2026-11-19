@@ -3,6 +3,8 @@
 
 #include "library/codes.hpp"
 #include "library/secrets.hpp"
+#include "sync/connection_log.hpp"
+#include "sync/p2pdc_names.hpp"
 #include "ui/library.hpp"
 
 #include <QtLogging>
@@ -43,6 +45,8 @@ void Network::receivePart(const PeerId &id, Peer &peer, const MessagePart &part)
     const auto status =
         peer.user ? peer.assembler.add(part, limit) : MessageAssembler::Status::Invalid;
     if (status == MessageAssembler::Status::Invalid) {
+        logWarning(QStringLiteral("sync"),
+                   QStringLiteral("%1: invalid or oversized message part").arg(peerLabel(id)));
         disconnectPeer(id, peer.generation);
     } else if (status == MessageAssembler::Status::Complete) {
         const std::optional<Message> message = decode(peer.assembler.take());
@@ -57,11 +61,17 @@ void Network::dispatch(const PeerId &id, Peer &peer, const std::optional<Message
     const bool hello = message && std::holds_alternative<Hello>(*message);
     // A device must say who it is first, and only once; anything malformed ends the call.
     if (!message || hello == peer.user.has_value()) {
+        logWarning(QStringLiteral("sync"),
+                   QStringLiteral("%1: %2").arg(peerLabel(id),
+                                                !message ? QStringLiteral("malformed message")
+                                                         : QStringLiteral("unexpected greeting")));
         disconnectPeer(id, peer.generation);
         return;
     }
     if (hello) {
         if (!handleHello(peer, std::get<Hello>(*message))) {
+            logWarning(QStringLiteral("sync"),
+                       QStringLiteral("%1: greeting refused").arg(peerLabel(id)));
             disconnectPeer(id, peer.generation);
             return;
         }
@@ -107,21 +117,34 @@ bool Network::peerHasAccess(const Peer &peer) const {
 bool Network::handleHello(Peer &peer, const Hello &hello) {
     const std::optional<DeviceCertificate> certificate = verifyDeviceCertificate(
         hello.certificatePayload, hello.certificateSignature, keyBytes(peer.device));
-    if (!certificate)
+    if (!certificate) {
+        logWarning(QStringLiteral("sync"), QStringLiteral("Device %1 sent an invalid certificate")
+                                               .arg(shortDevice(peer.device)));
         return false;
+    }
     if (!protocolsCompatible(hello)) {
         markIncompatible(peer.device, hello.minProtocol > protocolVersion);
         return false;
     }
     const bool sameUser = certificate->userKey == library_.workspace().user();
-    if (spaces_.at(peer.space)->kind == SpaceKind::Personal && !sameUser)
+    if (spaces_.at(peer.space)->kind == SpaceKind::Personal && !sameUser) {
+        logWarning(QStringLiteral("sync"),
+                   QStringLiteral("Device %1 is another person's, in your personal space")
+                       .arg(shortDevice(peer.device)));
         return false;
+    }
     peer.user = RemoteUser{certificate->userKey, hello.displayName.trimmed(), hello.colorIndex};
     return true;
 }
 
 void Network::peerAuthenticated(const PeerId &id, Peer &peer) {
     const Space &space = *spaces_.at(peer.space);
+    logInfo(QStringLiteral("sync"),
+            QStringLiteral("%1: signed in as %2 (user %3), %4")
+                .arg(peerLabel(id), peer.user->name,
+                     QString::fromLatin1(peer.user->userKey.left(4).toHex()),
+                     peerHasAccess(peer) ? QStringLiteral("has access")
+                                         : QStringLiteral("has no access yet")));
     const bool mayUseLink =
         space.kind == SpaceKind::Board && library_.workspace().boardHasLink(space.id);
     if (const std::optional<QString> item = requestedItemName(peer); item && !mayUseLink)
