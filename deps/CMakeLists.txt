@@ -28,6 +28,10 @@ ExternalProject_Add(p2pdc_dependencies
     CMAKE_ARGS ${p2pdc_arguments}
     INSTALL_COMMAND "")
 
+# Linux records a library by its SONAME, which Yrs leaves out; without one, programs would
+# record the library's path in this build tree instead.
+set(yrs_command build)
+set(yrs_soname)
 if(EMSCRIPTEN)
     set(yrs_target --target wasm32-unknown-emscripten)
     set(yrs_library <BINARY_DIR>/wasm32-unknown-emscripten/release/libyrs.a)
@@ -51,6 +55,10 @@ elseif(WIN32)
         COMMAND ${CMAKE_COMMAND} -E copy <BINARY_DIR>/release/libpeerchalk_math.a ${prefix}/lib)
 else()
     set(yrs_target)
+    if(NOT APPLE)
+        set(yrs_command rustc)
+        set(yrs_soname --crate-type cdylib -- -C link-arg=-Wl,-soname,libyrs.so)
+    endif()
     set(yrs_library <BINARY_DIR>/release/${CMAKE_SHARED_LIBRARY_PREFIX}yrs${CMAKE_SHARED_LIBRARY_SUFFIX})
     set(yrs_patch)
     set(engine_mode)
@@ -76,8 +84,8 @@ ExternalProject_Add(yrs
     ${yrs_patch}
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ${rust_environment} CARGO_TARGET_DIR=<BINARY_DIR>
-        cargo build --manifest-path <SOURCE_DIR>/Cargo.toml --package yffi --locked --release
-        ${yrs_target}
+        cargo ${yrs_command} --manifest-path <SOURCE_DIR>/Cargo.toml --package yffi --locked --release
+        ${yrs_target} ${yrs_soname}
     INSTALL_COMMAND ${CMAKE_COMMAND} -E make_directory ${prefix}/include ${prefix}/lib
         COMMAND ${CMAKE_COMMAND} -E copy <SOURCE_DIR>/tests-ffi/include/libyrs.h ${prefix}/include
         COMMAND ${CMAKE_COMMAND} -E copy ${yrs_library} ${prefix}/lib

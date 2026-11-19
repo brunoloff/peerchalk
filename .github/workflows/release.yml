@@ -235,11 +235,11 @@ jobs:
       - name: Install what a desktop already has
         run: |
           if command -v apt-get >/dev/null; then
-            apt-get update && apt-get install -y libgl1 libegl1 libfontconfig1 libxkbcommon0 libdbus-1-3
+            apt-get update && apt-get install -y libgl1 libopengl0 libegl1 libfontconfig1 libxkbcommon0 libdbus-1-3
           elif command -v dnf >/dev/null; then
-            dnf install -y mesa-libGL mesa-libEGL fontconfig libxkbcommon dbus-libs
+            dnf install -y mesa-libGL mesa-libEGL libglvnd-opengl fontconfig libxkbcommon dbus-libs
           else
-            pacman -Sy --noconfirm mesa fontconfig libxkbcommon dbus
+            pacman -Sy --noconfirm mesa libglvnd fontconfig libxkbcommon dbus
           fi
       - name: Start the AppImage
         run: |

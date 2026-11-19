@@ -30,7 +30,7 @@ modules:
 
   - name: msgpack-cxx
     buildsystem: cmake-ninja
-    config-opts: [-DMSGPACK_USE_BOOST=OFF, -DMSGPACK_BUILD_TESTS=OFF, -DMSGPACK_BUILD_EXAMPLES=OFF]
+    config-opts: [-DCMAKE_INSTALL_LIBDIR=lib, -DMSGPACK_USE_BOOST=OFF, -DMSGPACK_BUILD_TESTS=OFF, -DMSGPACK_BUILD_EXAMPLES=OFF]
     sources:
       - type: archive
         url: https://github.com/msgpack/msgpack-c/releases/download/cpp-8.0.0/msgpack-cxx-8.0.0.tar.gz
@@ -48,7 +48,7 @@ modules:
 
   - name: fmt
     buildsystem: cmake-ninja
-    config-opts: [-DFMT_TEST=OFF, -DFMT_DOC=OFF, -DBUILD_SHARED_LIBS=ON]
+    config-opts: [-DCMAKE_INSTALL_LIBDIR=lib, -DFMT_TEST=OFF, -DFMT_DOC=OFF, -DBUILD_SHARED_LIBS=ON]
     sources:
       - type: archive
         url: https://github.com/fmtlib/fmt/releases/download/11.2.0/fmt-11.2.0.zip
@@ -56,7 +56,7 @@ modules:
 
   - name: opendht
     buildsystem: cmake-ninja
-    config-opts: [-DBUILD_TESTING=OFF, -DOPENDHT_USE_PKGCONFIG=ON, -DOPENDHT_HTTP=OFF,
+    config-opts: [-DCMAKE_INSTALL_LIBDIR=lib, -DBUILD_TESTING=OFF, -DOPENDHT_USE_PKGCONFIG=ON, -DOPENDHT_HTTP=OFF,
                   -DOPENDHT_PEER_DISCOVERY=OFF, -DOPENDHT_PROXY_CLIENT=OFF, -DOPENDHT_PROXY_SERVER=OFF,
                   -DOPENDHT_TOOLS=OFF, -DOPENDHT_EXAMPLES=OFF, -DOPENDHT_PYTHON=OFF, -DOPENDHT_C=OFF,
                   -DOPENDHT_DOWNLOAD_DEPS=OFF]
@@ -81,7 +81,7 @@ modules:
       - &p2pdc
         type: git
         url: https://github.com/brunoloff/p2pdc.git
-        commit: bcaabbc40112e3ac75877cdd7bf088fb0d1f14ab
+        commit: 1a8d6219686e09f9966c4310fa5acc238652c25c
         dest: p2pdc
 
   - name: libdatachannel
@@ -102,7 +102,8 @@ modules:
   - name: yrs
     buildsystem: simple
     build-commands:
-      - CARGO_HOME=$PWD/cargo cargo build --offline --locked --release --package yffi
+      - CARGO_HOME=$PWD/cargo cargo rustc --offline --locked --release --package yffi
+        --crate-type cdylib -- -C link-arg=-Wl,-soname,libyrs.so
       - install -Dm644 tests-ffi/include/libyrs.h /app/include/libyrs.h
       - install -Dm755 target/release/libyrs.so /app/lib/libyrs.so
     sources:

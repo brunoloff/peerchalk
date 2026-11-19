@@ -10,7 +10,7 @@ url='https://github.com/brunoloff/peerchalk'
 license=('MIT')
 depends=('qt6-base' 'qt6-declarative' 'glib2' 'openssl' 'gnutls' 'nettle' 'argon2' 'fmt'
          'gcc-libs' 'glibc' 'hicolor-icon-theme')
-makedepends=('cmake' 'ninja' 'meson' 'pkgconf' 'git' 'rust' 'python' 'gtest')
+makedepends=('glib2-devel' 'cmake' 'ninja' 'meson' 'pkgconf' 'git' 'rust' 'python' 'gtest')
 conflicts=('peerchalk-bin')
 # The build downloads p2p-discovery-connect, its patched dependencies, Yrs and Rust crates at
 # pinned versions and checksums.
