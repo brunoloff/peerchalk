@@ -230,7 +230,9 @@ jobs:
             --state-dir="$RUNNER_TEMP/state" --repo="$RUNNER_TEMP/repo" "$RUNNER_TEMP/build" ci.yml
           mkdir -p ../../dist
           version=$(sed -n 's/^project(PeerChalk VERSION \([0-9.]*\).*/\1/p' ../../CMakeLists.txt)
-          flatpak build-bundle "$RUNNER_TEMP/repo" "../../dist/peerchalk-$version-linux-$(uname -m).flatpak" \
+          # The bundle names Flathub, so installing it also fetches the KDE runtime it needs.
+          flatpak build-bundle --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo \
+            "$RUNNER_TEMP/repo" "../../dist/peerchalk-$version-linux-$(uname -m).flatpak" \
             io.github.brunoloff.PeerChalk
       - name: Start the app
         run: |
