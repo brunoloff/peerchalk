@@ -25,7 +25,8 @@ copy_libraries() {
             cp "$dll" "$folder/"
             added=$((added + 1))
         done < <(find "$folder" -name '*.exe' -o -name '*.dll' | while read -r file; do
-            ldd "$file" | awk '{print $3}' | grep -iE '^(/ucrt64/bin|'"$prefix"'/bin)/' || true
+            PATH="$prefix/bin:$PATH" ldd "$file" | awk '{print $3}' |
+                grep -iE '^(/ucrt64/bin|'"$prefix"'/bin)/' || true
         done | sort -u)
     done
 }
@@ -36,7 +37,7 @@ check_libraries() {
     local ntldd missing
     ntldd=$(command -v ntldd)
     missing=$(cd "$1" && PATH="$(cygpath -u "$SYSTEMROOT")/System32" "$ntldd" -R peerchalk.exe |
-        grep -i 'not found' || true)
+        grep -i 'not found' | grep -viE '(api|ext)-ms-' || true) # API sets are not files
     if [ -n "$missing" ]; then
         printf 'package.sh: peerchalk.exe needs DLLs that are not in the package:\n%s\n' "$missing" >&2
         exit 1
