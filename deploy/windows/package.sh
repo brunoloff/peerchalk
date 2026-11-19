@@ -33,7 +33,8 @@ copy_libraries() {
 main() {
     local stage=$root/build/windows-app/$name dist=$root/dist
     rm -rf "$root/build/windows-app" && mkdir -p "$stage" "$dist"
-    cp "$root/build/windows/src/peerchalk.exe" "$stage/"
+    # qt_standard_project_setup puts Windows programs at the top of the build folder.
+    cp "$root/build/windows/peerchalk.exe" "$stage/"
     deploy_qt "$stage"
     copy_libraries "$stage"
     (cd "$root/build/windows-app" && rm -f "$dist/$name.zip" && "/c/Program Files/7-Zip/7z.exe" a -tzip -bd "$dist/$name.zip" "$name" >/dev/null)
