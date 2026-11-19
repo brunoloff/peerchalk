@@ -59,7 +59,7 @@ modules:
     config-opts: [-DCMAKE_INSTALL_LIBDIR=lib, -DBUILD_TESTING=OFF, -DOPENDHT_USE_PKGCONFIG=ON, -DOPENDHT_HTTP=OFF,
                   -DOPENDHT_PEER_DISCOVERY=OFF, -DOPENDHT_PROXY_CLIENT=OFF, -DOPENDHT_PROXY_SERVER=OFF,
                   -DOPENDHT_TOOLS=OFF, -DOPENDHT_EXAMPLES=OFF, -DOPENDHT_PYTHON=OFF, -DOPENDHT_C=OFF,
-                  -DOPENDHT_DOWNLOAD_DEPS=OFF]
+                  -DOPENDHT_DOWNLOAD_DEPS=OFF, -DOPENDHT_DOCUMENTATION=OFF]
     sources:
       - type: git
         url: https://github.com/savoirfairelinux/opendht.git
@@ -81,7 +81,7 @@ modules:
       - &p2pdc
         type: git
         url: https://github.com/brunoloff/p2pdc.git
-        commit: 1a8d6219686e09f9966c4310fa5acc238652c25c
+        commit: 3ee8d8d97c818d87c423d2cc3a9475d5243bd492
         dest: p2pdc
 
   - name: libdatachannel
@@ -118,7 +118,7 @@ modules:
       - CARGO_HOME=$PWD/cargo CARGO_TARGET_DIR=$PWD/math cargo build --offline --locked --release
         --lib --manifest-path src/math/engine/Cargo.toml
       - cmake -S . -B _build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/app
-        -DBUILD_TESTING=OFF -DFETCHCONTENT_SOURCE_DIR_P2PDC=$PWD/p2pdc
+        -DBUILD_TESTING=OFF -DPEERCHALK_WERROR=OFF -DFETCHCONTENT_SOURCE_DIR_P2PDC=$PWD/p2pdc
         -DFETCHCONTENT_FULLY_DISCONNECTED=ON -DPEERCHALK_MATH_LIBRARY=$PWD/math/release/libpeerchalk_math.a
       - cmake --build _build
       - cmake --install _build
