@@ -164,9 +164,11 @@ TEST(Workspace, PersistsAcrossReloads) {
     alice.reload();
     EXPECT_EQ(alice.workspace->boardsInProject(project), std::vector<QUuid>{board});
     EXPECT_EQ(alice.workspace->boardState(board), QByteArray("yrs"));
+#ifndef Q_OS_WIN // group and other permission bits exist only on Unix
     const QFile::Permissions permissions =
         QFile::permissions(QDir(alice.dir.path()).filePath(QStringLiteral("workspace.json")));
     EXPECT_FALSE(permissions & (QFile::ReadGroup | QFile::ReadOther));
+#endif
 }
 
 TEST(Workspace, MigratesTheFirstFileFormat) {

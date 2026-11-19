@@ -57,12 +57,16 @@ TEST_F(IdentityStoreTest, RejectsMalformedCustomColours) {
     EXPECT_TRUE(store.customColors().isEmpty());
 }
 
+// Group and other permission bits exist only on Unix; Windows keeps a user's data private through
+// the access rules of the user's profile folder, which Qt does not report here.
+#ifndef Q_OS_WIN
 TEST_F(IdentityStoreTest, SecretsAreReadableOnlyByTheOwner) {
     const IdentityStore store(dir_.path(), QStringLiteral("Me"));
     const QFile::Permissions permissions =
         QFile::permissions(QDir(dir_.path()).filePath(QStringLiteral("identity.json")));
     EXPECT_FALSE(permissions & (QFile::ReadGroup | QFile::ReadOther));
 }
+#endif
 
 TEST_F(IdentityStoreTest, KeepsContactsAndTheirVerification) {
     const QByteArray anaKey(32, 'a');
