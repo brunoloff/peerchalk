@@ -83,7 +83,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install build tools
         run: |
-          brew install ninja meson pkgconf autoconf automake libtool googletest
+          brew install ninja meson pkgconf autoconf automake libtool
           command -v rustup >/dev/null || { brew install rustup && rustup-init -y --no-modify-path; }
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
       - name: Restore Qt

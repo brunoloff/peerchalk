@@ -98,3 +98,14 @@ ExternalProject_Add(math_engine
     BUILD_COMMAND ${rust_environment} CARGO_TARGET_DIR=<BINARY_DIR>
         bash "${engine}/build.sh" ${engine_mode}
     INSTALL_COMMAND ${engine_install})
+
+# The macOS build ignores Homebrew, whose libraries need newer macOS, so it builds GoogleTest
+# for the tests.
+if(APPLE)
+    ExternalProject_Add(googletest
+        URL https://github.com/google/googletest/releases/download/v1.17.0/googletest-1.17.0.tar.gz
+        URL_HASH SHA256=65fab701d9829d38cb77c14acdc431d2108bfdbf8979e40eb8ae567edf10b27c
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+        CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${prefix}
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0 -DBUILD_GMOCK=OFF -DINSTALL_GTEST=ON)
+endif()
