@@ -140,7 +140,7 @@ jobs:
             mingw-w64-ucrt-x86_64-gnutls mingw-w64-ucrt-x86_64-nettle mingw-w64-ucrt-x86_64-argon2
             mingw-w64-ucrt-x86_64-fmt mingw-w64-ucrt-x86_64-gtest mingw-w64-ucrt-x86_64-qt6-base
             mingw-w64-ucrt-x86_64-qt6-declarative mingw-w64-ucrt-x86_64-qt6-shadertools
-            mingw-w64-ucrt-x86_64-qt6-svg mingw-w64-ucrt-x86_64-qt6-tools
+            mingw-w64-ucrt-x86_64-qt6-svg mingw-w64-ucrt-x86_64-qt6-tools mingw-w64-ucrt-x86_64-ntldd
       - name: Install Inno Setup
         shell: pwsh
         run: choco install innosetup -y --no-progress
@@ -162,12 +162,15 @@ jobs:
         run: deploy/windows/package.sh
       - name: Check that the zip and the installed app start
         shell: pwsh
+        timeout-minutes: 10
         run: |
           $env:QT_QPA_PLATFORM = 'offscreen'; $env:PEERCHALK_NETWORK = 'off'
           function Start-Check($exe, $name) {
             $env:PEERCHALK_DATA_DIR = "$env:RUNNER_TEMP\data-$name"
             $env:PEERCHALK_SMOKE_TEST = "$PWD\dist\screenshot-windows-$name.png"
-            $process = Start-Process -FilePath $exe -Wait -PassThru
+            # A missing DLL shows a dialog and never exits, so each start has a time limit.
+            $process = Start-Process -FilePath $exe -PassThru
+            if (-not $process.WaitForExit(120000)) { $process.Kill(); throw "$name did not finish within 2 minutes" }
             if ($process.ExitCode -ne 0 -or -not (Test-Path $env:PEERCHALK_SMOKE_TEST)) { throw "$name did not start ($($process.ExitCode))" }
           }
           Expand-Archive (Get-Item dist\*.zip) -DestinationPath "$env:RUNNER_TEMP\zip"

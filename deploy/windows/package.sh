@@ -30,6 +30,19 @@ copy_libraries() {
     done
 }
 
+# Fails when the program needs a DLL that is neither in its folder nor part of Windows, which
+# Windows reports in a dialog rather than an error code.
+check_libraries() {
+    local ntldd missing
+    ntldd=$(command -v ntldd)
+    missing=$(cd "$1" && PATH="$(cygpath -u "$SYSTEMROOT")/System32" "$ntldd" -R peerchalk.exe |
+        grep -i 'not found' || true)
+    if [ -n "$missing" ]; then
+        printf 'package.sh: peerchalk.exe needs DLLs that are not in the package:\n%s\n' "$missing" >&2
+        exit 1
+    fi
+}
+
 main() {
     local stage=$root/build/windows-app/$name dist=$root/dist
     rm -rf "$root/build/windows-app" && mkdir -p "$stage" "$dist"
@@ -37,6 +50,7 @@ main() {
     cp "$root/build/windows/peerchalk.exe" "$stage/"
     deploy_qt "$stage"
     copy_libraries "$stage"
+    check_libraries "$stage"
     (cd "$root/build/windows-app" && rm -f "$dist/$name.zip" && "/c/Program Files/7-Zip/7z.exe" a -tzip -bd "$dist/$name.zip" "$name" >/dev/null)
     # Every path is already in Windows form; MSYS2 would otherwise read /Q and /D... as paths.
     MSYS2_ARG_CONV_EXCL='*' "/c/Program Files (x86)/Inno Setup 6/ISCC.exe" /Q "/DAppVersion=$version" "/DSourceDir=$(cygpath -w "$stage")" \
