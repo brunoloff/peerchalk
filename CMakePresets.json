@@ -1,13 +1,19 @@
 {
   "version": 6,
-  "cmakeMinimumRequired": { "major": 3, "minor": 25, "patch": 0 },
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 25,
+    "patch": 0
+  },
   "configurePresets": [
     {
       "name": "base",
       "hidden": true,
       "generator": "Ninja",
       "binaryDir": "${fileDir}/build/${presetName}",
-      "environment": { "QT_QPA_PLATFORM": "offscreen" }
+      "environment": {
+        "QT_QPA_PLATFORM": "offscreen"
+      }
     },
     {
       "name": "deps",
@@ -73,12 +79,12 @@
       "name": "deps-web",
       "displayName": "Dependencies for browsers",
       "inherits": "base",
-      "toolchainFile": "$env{EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake",
       "cacheVariables": {
         "PEERCHALK_BUILD_DEPENDENCIES": "ON",
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_INSTALL_PREFIX": "${fileDir}/build/prefix-web"
-      }
+      },
+      "toolchainFile": "$env{EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
     },
     {
       "name": "web",
@@ -101,104 +107,180 @@
     }
   ],
   "buildPresets": [
-    { "name": "deps", "configurePreset": "deps" },
-    { "name": "linux", "configurePreset": "linux" },
-    { "name": "deps-macos", "configurePreset": "deps-macos" },
-    { "name": "macos", "configurePreset": "macos" },
-    { "name": "deps-windows", "configurePreset": "deps-windows" },
-    { "name": "windows", "configurePreset": "windows" },
-    { "name": "deps-web", "configurePreset": "deps-web" },
-    { "name": "web", "configurePreset": "web", "targets": ["peerchalk"] }
+    {
+      "name": "deps",
+      "configurePreset": "deps"
+    },
+    {
+      "name": "linux",
+      "configurePreset": "linux"
+    },
+    {
+      "name": "deps-macos",
+      "configurePreset": "deps-macos"
+    },
+    {
+      "name": "macos",
+      "configurePreset": "macos"
+    },
+    {
+      "name": "deps-windows",
+      "configurePreset": "deps-windows"
+    },
+    {
+      "name": "windows",
+      "configurePreset": "windows"
+    },
+    {
+      "name": "deps-web",
+      "configurePreset": "deps-web"
+    },
+    {
+      "name": "web",
+      "configurePreset": "web",
+      "targets": [
+        "peerchalk"
+      ]
+    }
   ],
   "testPresets": [
     {
-      "name": "windows",
-      "configurePreset": "windows",
-      "output": { "outputOnFailure": true }
+      "name": "linux",
+      "configurePreset": "linux",
+      "output": {
+        "outputOnFailure": true
+      }
     },
     {
       "name": "macos",
       "configurePreset": "macos",
-      "output": { "outputOnFailure": true }
+      "output": {
+        "outputOnFailure": true
+      }
     },
     {
-      "name": "linux",
-      "configurePreset": "linux",
-      "output": { "outputOnFailure": true }
+      "name": "windows",
+      "configurePreset": "windows",
+      "output": {
+        "outputOnFailure": true
+      }
     }
   ],
   "workflowPresets": [
     {
       "name": "deps",
       "steps": [
-        { "type": "configure", "name": "deps" },
-        { "type": "build", "name": "deps" }
+        {
+          "type": "configure",
+          "name": "deps"
+        },
+        {
+          "type": "build",
+          "name": "deps"
+        }
       ]
     },
     {
       "name": "linux",
       "steps": [
-        { "type": "configure", "name": "linux" },
-        { "type": "build", "name": "linux" },
-        { "type": "test", "name": "linux" }
+        {
+          "type": "configure",
+          "name": "linux"
+        },
+        {
+          "type": "build",
+          "name": "linux"
+        },
+        {
+          "type": "test",
+          "name": "linux"
+        }
       ]
     },
     {
       "name": "deps-macos",
-      "displayName": "Dependencies for macOS 13 and later",
-      "inherits": "base",
-      "cacheVariables": {
-        "PEERCHALK_BUILD_DEPENDENCIES": "ON",
-        "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_OSX_DEPLOYMENT_TARGET": "13.0",
-        "CMAKE_INSTALL_PREFIX": "${fileDir}/build/prefix-macos"
-      }
-    },
-    {
-      "name": "macos",
-      "displayName": "macOS app and tests",
-      "inherits": "base",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_OSX_DEPLOYMENT_TARGET": "13.0",
-        "CMAKE_IGNORE_PREFIX_PATH": "/opt/homebrew;/usr/local",
-        "CMAKE_PREFIX_PATH": "${fileDir}/build/prefix-macos;$env{HOME}/Qt/6.11.2/macos"
-      }
-    },
-    {
-      "name": "deps-macos",
       "steps": [
-        { "type": "configure", "name": "deps-macos" },
-        { "type": "build", "name": "deps-macos" }
+        {
+          "type": "configure",
+          "name": "deps-macos"
+        },
+        {
+          "type": "build",
+          "name": "deps-macos"
+        }
       ]
     },
     {
       "name": "macos",
       "steps": [
-        { "type": "configure", "name": "macos" },
-        { "type": "build", "name": "macos" },
-        { "type": "test", "name": "macos" }
+        {
+          "type": "configure",
+          "name": "macos"
+        },
+        {
+          "type": "build",
+          "name": "macos"
+        },
+        {
+          "type": "test",
+          "name": "macos"
+        }
       ]
     },
     {
       "name": "deps-windows",
       "steps": [
-        { "type": "configure", "name": "deps-windows" },
-        { "type": "build", "name": "deps-windows" }
+        {
+          "type": "configure",
+          "name": "deps-windows"
+        },
+        {
+          "type": "build",
+          "name": "deps-windows"
+        }
+      ]
+    },
+    {
+      "name": "windows",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "windows"
+        },
+        {
+          "type": "build",
+          "name": "windows"
+        },
+        {
+          "type": "test",
+          "name": "windows"
+        }
       ]
     },
     {
       "name": "deps-web",
       "steps": [
-        { "type": "configure", "name": "deps-web" },
-        { "type": "build", "name": "deps-web" }
+        {
+          "type": "configure",
+          "name": "deps-web"
+        },
+        {
+          "type": "build",
+          "name": "deps-web"
+        }
       ]
     },
     {
       "name": "web",
       "steps": [
-        { "type": "configure", "name": "web" },
-        { "type": "build", "name": "web" }
+        {
+          "type": "configure",
+          "name": "web"
+        },
+        {
+          "type": "build",
+          "name": "web"
+        }
       ]
     }
   ]
