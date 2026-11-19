@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.brunoloff.PeerChalk</id>
+  <metadata_license>MIT</metadata_license>
+  <project_license>MIT</project_license>
+  <name>PeerChalk</name>
+  <summary>Draw and write together, directly between devices</summary>
+  <description>
+    <p>
+      PeerChalk is a shared whiteboard. Draw with a pen or highlighter, write rich text with
+      LaTeX equations, and work on the same board as other people at the same time.
+    </p>
+    <p>
+      Devices connect to each other directly, without an account on a server. Your boards stay
+      on your devices, and you can export a board as a PDF.
+    </p>
+  </description>
+  <launchable type="desktop-id">io.github.brunoloff.PeerChalk.desktop</launchable>
+  <url type="homepage">https://brunoloff.github.io/peerchalk/</url>
+  <url type="vcs-browser">https://github.com/brunoloff/peerchalk</url>
+  <url type="bugtracker">https://github.com/brunoloff/peerchalk/issues</url>
+  <developer id="io.github.brunoloff">
+    <name>Bruno Loff</name>
+  </developer>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="0.1.0" date="2026-11-19"/>
+  </releases>
+</component>

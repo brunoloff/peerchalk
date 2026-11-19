@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=PeerChalk
+GenericName=Shared whiteboard
+Comment=Draw and write together, directly between devices
+Exec=peerchalk %u
+Icon=io.github.brunoloff.PeerChalk
+Terminal=false
+Categories=Graphics;
+Keywords=whiteboard;drawing;collaboration;notes;latex;
+StartupWMClass=PeerChalk

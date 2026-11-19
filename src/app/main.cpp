@@ -1,4 +1,5 @@
 #include "app/app_controller.hpp"
+#include "app/smoke_test.hpp"
 #include "sync/connection_log.hpp"
 #include "ui/app_style.hpp"
 #include "ui/library.hpp"
@@ -26,6 +27,8 @@ int main(int argc, char **argv) {
     QSurfaceFormat::setDefaultFormat(format);
     QGuiApplication app(argc, argv);
     QGuiApplication::setApplicationName(QStringLiteral("PeerChalk"));
+    // Matches the desktop entry, so desktops find the icon and name for the window.
+    QGuiApplication::setDesktopFileName(QStringLiteral("io.github.brunoloff.PeerChalk"));
     peerchalk::useAppControlsStyle();
     std::unique_ptr<peerchalk::InstanceSlot> slot;
     try {
@@ -43,5 +46,6 @@ int main(int argc, char **argv) {
     // Save and close connections before the engine and its singletons go away.
     QObject::connect(&app, &QCoreApplication::aboutToQuit, &controller,
                      &peerchalk::AppController::prepareToQuit);
+    peerchalk::startSmokeTestIfRequested();
     return app.exec();
 }

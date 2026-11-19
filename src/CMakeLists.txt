@@ -22,7 +22,24 @@ target_compile_options(peerchalk_library PRIVATE
 
 add_subdirectory(ui)
 
-qt_add_executable(peerchalk app/main.cpp app/app_controller.cpp app/app_controller.hpp)
+set(peerchalk_icons "${CMAKE_CURRENT_SOURCE_DIR}/../deploy/icons")
+set(peerchalk_platform_sources)
+if(WIN32)
+    set(peerchalk_platform_sources app/peerchalk.rc)
+elseif(APPLE)
+    set(peerchalk_platform_sources "${peerchalk_icons}/peerchalk.icns")
+    set_source_files_properties("${peerchalk_icons}/peerchalk.icns" PROPERTIES
+        MACOSX_PACKAGE_LOCATION Resources)
+endif()
+qt_add_executable(peerchalk WIN32 MACOSX_BUNDLE app/main.cpp app/app_controller.cpp
+    app/app_controller.hpp app/smoke_test.cpp app/smoke_test.hpp ${peerchalk_platform_sources})
+set_target_properties(peerchalk PROPERTIES
+    OUTPUT_NAME $<IF:$<BOOL:${APPLE}>,PeerChalk,peerchalk>
+    MACOSX_BUNDLE_GUI_IDENTIFIER io.github.brunoloff.PeerChalk
+    MACOSX_BUNDLE_BUNDLE_NAME PeerChalk
+    MACOSX_BUNDLE_ICON_FILE peerchalk.icns
+    MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION}
+    MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION})
 target_link_libraries(peerchalk PRIVATE peerchalk_uiplugin peerchalk_ui p2pdc::p2pdc
     Qt6::Gui Qt6::Qml Qt6::Quick Qt6::QuickControls2)
 target_compile_options(peerchalk PRIVATE
@@ -35,4 +52,22 @@ if(EMSCRIPTEN)
         "SHELL:--pre-js \"${peerchalk_web_files}\"" "SHELL:--pre-js \"${peerchalk_web_math}\"")
     set_property(TARGET peerchalk APPEND PROPERTY LINK_DEPENDS "${peerchalk_web_storage}"
         "${peerchalk_web_files}" "${peerchalk_web_math}")
+endif()
+
+if(NOT EMSCRIPTEN)
+    include(GNUInstallDirs)
+    install(TARGETS peerchalk BUNDLE DESTINATION . RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+    if(UNIX AND NOT APPLE)
+        set(peerchalk_linux "${CMAKE_CURRENT_SOURCE_DIR}/../deploy/linux")
+        install(FILES "${peerchalk_linux}/io.github.brunoloff.PeerChalk.desktop"
+            DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+        install(FILES "${peerchalk_linux}/io.github.brunoloff.PeerChalk.metainfo.xml"
+            DESTINATION ${CMAKE_INSTALL_DATADIR}/metainfo)
+        install(FILES "${peerchalk_icons}/peerchalk.svg"
+            DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps
+            RENAME io.github.brunoloff.PeerChalk.svg)
+        install(FILES "${peerchalk_icons}/peerchalk-256.png"
+            DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/256x256/apps
+            RENAME io.github.brunoloff.PeerChalk.png)
+    endif()
 endif()

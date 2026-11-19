@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Installs the toolchains PeerChalk builds with, at pinned versions:
 #
-#   tools/setup.sh desktop   Rust and Qt for Linux, in ~/Qt
+#   tools/setup.sh desktop   Rust and Qt for this computer (Linux or macOS), in ~/Qt
 #   tools/setup.sh web       the same, plus the Rust browser target, Qt for browsers and
 #                            Emscripten, in .emsdk
 #
@@ -36,6 +36,16 @@ install_emscripten() {
     "$root/.emsdk/emsdk" activate "$emscripten_version"
 }
 
+# Qt for this computer: Linux on x86_64 or ARM, or macOS (one kit for Intel and Apple Silicon).
+install_desktop_qt() {
+    case "$(uname -s)-$(uname -m)" in
+        Linux-x86_64) install_qt gcc_64 linux desktop "$qt_version" linux_gcc_64 ;;
+        Linux-aarch64) install_qt gcc_arm64 linux_arm64 desktop "$qt_version" linux_gcc_arm64 ;;
+        Darwin-*) install_qt macos mac desktop "$qt_version" clang_64 ;;
+        *) printf 'tools/setup.sh: no Qt kit for %s\n' "$(uname -sm)" >&2; exit 1 ;;
+    esac
+}
+
 main() {
     local target=${1:-}
     case $target in
@@ -44,7 +54,7 @@ main() {
     esac
     mkdir -p "$root/.tools"
     rustup toolchain install "$rust_version" --profile minimal
-    install_qt gcc_64 linux desktop "$qt_version" linux_gcc_64
+    install_desktop_qt
     if [ "$target" = web ]; then
         rustup target add --toolchain "$rust_version" wasm32-unknown-emscripten
         install_qt wasm_singlethread all_os wasm "$qt_version" wasm_singlethread
