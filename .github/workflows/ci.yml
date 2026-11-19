@@ -3,6 +3,12 @@ name: CI
 on:
   push:
   pull_request:
+  workflow_dispatch:
+    inputs:
+      web_only:
+        description: Build and publish only the browser version
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -12,6 +18,7 @@ env:
 
 jobs:
   linux:
+    if: ${{ !inputs.web_only }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -72,7 +79,11 @@ jobs:
           path: build/web/site
 
   publish:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # A web-only run skips the Linux job, which then does not hold publishing back.
+    if: >-
+      ${{ always() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' &&
+      needs.web.result == 'success' &&
+      (needs.linux.result == 'success' || needs.linux.result == 'skipped') }}
     needs: [linux, web]
     runs-on: ubuntu-24.04
     permissions:
