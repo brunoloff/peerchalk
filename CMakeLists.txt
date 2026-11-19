@@ -60,6 +60,10 @@ if(NOT EMSCRIPTEN)
         IMPORTED_LOCATION "${PEERCHALK_MATH_LIBRARY}"
         INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/src/math/engine/include"
         INTERFACE_LINK_LIBRARIES "${CMAKE_DL_LIBS}")
+    if(WIN32) # what Rust's standard library uses there, as rustc --print native-static-libs lists
+        set_property(TARGET peerchalk_math_engine APPEND PROPERTY INTERFACE_LINK_LIBRARIES
+            kernel32 advapi32 ntdll userenv ws2_32 dbghelp synchronization bcrypt)
+    endif()
 endif()
 
 find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Network Qml Quick QuickControls2)
