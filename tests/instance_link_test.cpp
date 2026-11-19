@@ -55,8 +55,11 @@ TEST(InstanceLink, DeliversWholeMessagesInBothDirections) {
     const QByteArray large(3 * 1024 * 1024, 'x');
     first->send(large);
     second->send("reply");
-    ASSERT_TRUE(QTest::qWaitFor([&] { return atSecond.size() == 1; }, waitMs));
-    ASSERT_TRUE(QTest::qWaitFor([&] { return atFirst.size() == 1; }, waitMs));
+    ASSERT_TRUE(QTest::qWaitFor([&] { return atSecond.size() == 1; }, waitMs))
+        << "messages at the second instance: " << atSecond.size()
+        << ", at the first: " << atFirst.size() << ", joins: " << joined.size();
+    ASSERT_TRUE(QTest::qWaitFor([&] { return atFirst.size() == 1; }, waitMs))
+        << "messages at the first instance: " << atFirst.size();
     EXPECT_EQ(atSecond.front().front().toByteArray(), large);
     EXPECT_EQ(atFirst.front().front().toByteArray(), QByteArray("reply"));
 }
