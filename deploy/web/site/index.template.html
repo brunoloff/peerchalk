@@ -4,46 +4,59 @@
 <meta charset="utf-8">
 <base href="@BASE@">
 <meta name="viewport" content="width=device-width, height=device-height, user-scalable=0">
+<meta name="peerchalk-build" content="@BUILD@">
 <title>PeerChalk</title>
 <style>
   html, body { margin: 0; height: 100%; overflow: hidden; background: #f7f6f2; }
   #screen { width: 100%; height: 100%; display: none; }
-  #status { position: fixed; inset: 0; display: grid; place-content: center; text-align: center;
-            color: #1c1b19; font: 16px/1.5 system-ui, sans-serif; }
-  #status strong { display: block; font-size: 26px; font-weight: 600; }
+  #loading { position: fixed; inset: 0; overflow: auto; background: #f7f6f2; color: #1c1b19;
+             font: 15px/1.5 system-ui, sans-serif; display: grid; place-items: center; }
+  #loading[hidden] { display: none; }
+  .card { width: min(560px, calc(100% - 32px)); margin: 24px 0; }
+  h1 { font-size: 28px; font-weight: 600; margin: 0 0 16px; }
+  #phases { list-style: none; padding: 0; margin: 0; }
+  #phases li { padding: 3px 0 3px 26px; position: relative; color: #8a867e; }
+  #phases li::before { content: ""; position: absolute; left: 4px; top: 10px; width: 9px; height: 9px;
+                       border-radius: 50%; border: 1.5px solid #c9c5bc; }
+  #phases li.done { color: #1c1b19; }
+  #phases li.done::before { background: #2e9467; border-color: #2e9467; }
+  #phases li.active { color: #1c1b19; font-weight: 600; }
+  #phases li.active::before { border-color: #2f5bea; border-top-color: transparent;
+                              animation: spin 0.8s linear infinite; }
+  #phases li.failed { color: #b42318; font-weight: 600; }
+  #phases li.failed::before { background: #b42318; border-color: #b42318; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #help { margin-top: 20px; padding: 16px 18px; background: #fff; border: 1px solid #e4e1da;
+          border-radius: 14px; }
+  #help-title { margin: 0 0 8px; font-weight: 600; }
+  #help-title.fatal { color: #b42318; }
+  #hints { margin: 0 0 12px; padding-left: 20px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 4px; }
+  .actions a, .actions button { font: inherit; padding: 7px 14px; border-radius: 10px; cursor: pointer;
+    border: 1px solid #d6d2c9; background: #fff; color: #1c1b19; text-decoration: none; }
+  .actions a.primary { background: #1c1b19; color: #fff; border-color: #1c1b19; }
+  pre { white-space: pre-wrap; word-break: break-word; font-size: 12px; background: #f7f6f2;
+        padding: 10px; border-radius: 8px; max-height: 240px; overflow: auto; }
 </style>
 </head>
 <body>
-<div id="status"><div><strong>PeerChalk</strong><span id="message">Loading…</span></div></div>
 <div id="screen"></div>
-<script src="peerchalk.js"></script>
-<script>
-  // Starts the WebAssembly app in #screen, then runs its main function.
-  async function startPeerChalk() {
-    const screen = document.getElementById("screen");
-    const status = document.getElementById("status");
-    const fail = (text) => {
-      document.getElementById("message").textContent = "PeerChalk could not start: " + text;
-      status.style.display = "grid";
-      screen.style.display = "none";
-    };
-    screen.style.display = "block";
-    try {
-      const app = await window.peerchalk_entry({
-        qtContainerElements: [screen],
-        noInitialRun: true,
-        onRuntimeInitialized: () => { status.style.display = "none"; },
-        onAbort: (reason) => fail(String(reason)),
-      });
-      app.callMain([]);
-    } catch (error) {
-      if (error !== "unwind") { // what the app's event loop throws when it starts normally
-        console.error(error);
-        fail(error.message || String(error));
-      }
-    }
-  }
-  startPeerChalk();
-</script>
+<div id="loading">
+  <div class="card">
+    <h1>PeerChalk</h1>
+    <ul id="phases" aria-live="polite"></ul>
+    <div id="help" hidden>
+      <p id="help-title"></p>
+      <ul id="hints"></ul>
+      <div class="actions">
+        <button id="reload" type="button">Reload</button>
+        <button id="copy" type="button">Copy details</button>
+        <a id="report" class="primary" target="_blank" rel="noopener">Report the problem on GitHub</a>
+      </div>
+      <details id="details-box"><summary>Details</summary><pre id="details"></pre></details>
+    </div>
+  </div>
+</div>
+<script src="loader.js"></script>
 </body>
 </html>

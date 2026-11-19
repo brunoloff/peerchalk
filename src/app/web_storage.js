@@ -120,6 +120,7 @@
   };
 
   function restored(error) {
+    globalThis.peerchalkLoader?.note(error ? `storage failed: ${error}` : "storage opened");
     if (error) {
       console.error("PeerChalk could not open browser storage:", error);
       alert("PeerChalk cannot use this browser's storage, so nothing will be kept after this page closes.");
@@ -133,6 +134,7 @@
   }
 
   function mountStorage() {
+    globalThis.peerchalkLoader?.note("opening storage");
     addRunDependency("peerchalk-storage");
     claimSlot().then(() => {
       for (const root of [rootFor(index), ...others.map((other) => other.root)]) {

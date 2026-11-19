@@ -8,11 +8,31 @@
 
 #include <chrono>
 #include <exception>
+#include <memory>
+
+#ifdef __EMSCRIPTEN__
+#include <emscripten/emscripten.h>
+#endif
 
 namespace peerchalk {
 namespace {
 
 constexpr auto networkStopTimeout = std::chrono::seconds(3);
+
+// Tells the page's loading screen (deploy/web/site/loader.js) that the app is on screen.
+void reportShownOnce(QQuickWindow *window) {
+#ifdef __EMSCRIPTEN__
+    if (window == nullptr)
+        return;
+    auto connection = std::make_shared<QMetaObject::Connection>();
+    *connection = QObject::connect(window, &QQuickWindow::frameSwapped, window, [connection] {
+        QObject::disconnect(*connection);
+        emscripten_run_script("globalThis.peerchalkLoader && peerchalkLoader.ready()");
+    });
+#else
+    Q_UNUSED(window)
+#endif
+}
 
 QQuickWindow *rootWindow(QQmlApplicationEngine *engine) {
     if (engine == nullptr || engine->rootObjects().isEmpty())
@@ -86,6 +106,8 @@ void AppController::load(const char *type, const QString &accountDirectory) {
                                       {QStringLiteral("width"), previous->width()},
                                       {QStringLiteral("height"), previous->height()}});
     engine->loadFromModule("PeerChalk", type);
+    if (previous == nullptr)
+        reportShownOnce(rootWindow(engine.get()));
     if (QQuickWindow *window = rootWindow(engine.get()); window != nullptr && previous != nullptr)
         window->setVisibility(previous->visibility());
     if (engine_)
