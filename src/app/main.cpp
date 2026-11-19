@@ -16,6 +16,7 @@ Q_IMPORT_QML_PLUGIN(PeerChalkPlugin)
 int main(int argc, char **argv) {
     // Warnings from anywhere also go to Settings → Troubleshooting.
     peerchalk::sync::ConnectionLog::captureQtMessages();
+    peerchalk::sync::ConnectionLog::quietDesktopPortalInAppImages();
 #ifdef __EMSCRIPTEN__
     // web_storage.js keeps this folder in the browser's IndexedDB.
     qputenv("PEERCHALK_DATA_DIR", "/peerchalk");

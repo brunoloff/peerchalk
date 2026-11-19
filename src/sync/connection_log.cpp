@@ -1,5 +1,6 @@
 #include "sync/connection_log.hpp"
 
+#include <QLoggingCategory>
 #include <QMutexLocker>
 
 namespace peerchalk::sync {
@@ -90,6 +91,11 @@ void ConnectionLog::captureQtMessages() {
     const QtMessageHandler previous = qInstallMessageHandler(handleQtMessage);
     if (previous != handleQtMessage)
         previousHandler = previous;
+}
+
+void ConnectionLog::quietDesktopPortalInAppImages() {
+    if (qEnvironmentVariableIsSet("APPIMAGE"))
+        QLoggingCategory::setFilterRules(QStringLiteral("qt.qpa.services.warning=false"));
 }
 
 void logInfo(const QString &area, const QString &text) {

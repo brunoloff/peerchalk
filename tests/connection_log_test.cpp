@@ -1,6 +1,7 @@
 #include "sync/connection_log.hpp"
 #include "sync/p2pdc_names.hpp"
 
+#include <QLoggingCategory>
 #include <QtLogging>
 
 #include <gtest/gtest.h>
@@ -64,6 +65,19 @@ TEST(P2pdcNames, DescribeResultsAndKeys) {
     p2pdc::SigningPublicKey key{};
     key[0] = std::byte{0xab};
     EXPECT_EQ(shortDevice(key), QStringLiteral("ab000000"));
+}
+
+TEST(ConnectionLog, QuietsTheDesktopPortalOnlyInAppImages) {
+    const QLoggingCategory portal("qt.qpa.services");
+    qunsetenv("APPIMAGE");
+    ConnectionLog::quietDesktopPortalInAppImages();
+    EXPECT_TRUE(portal.isWarningEnabled());
+    qputenv("APPIMAGE", "/tmp/PeerChalk.AppImage");
+    ConnectionLog::quietDesktopPortalInAppImages();
+    EXPECT_FALSE(portal.isWarningEnabled());
+    EXPECT_TRUE(QLoggingCategory("qt.qpa.other").isWarningEnabled());
+    qunsetenv("APPIMAGE");
+    QLoggingCategory::setFilterRules(QString());
 }
 
 } // namespace

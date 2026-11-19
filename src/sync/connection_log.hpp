@@ -37,6 +37,10 @@ class ConnectionLog {
     // Also records Qt warnings and errors, and PeerChalk's own messages, from anywhere in the
     // app. Messages still reach the previous handler.
     static void captureQtMessages();
+    // Turns off Qt's desktop portal warning when PeerChalk runs as an AppImage, which installs
+    // no desktop entry for the portal to find; nothing else depends on that registration.
+    // QT_LOGGING_RULES still turns it back on.
+    static void quietDesktopPortalInAppImages();
 
   private:
     mutable QMutex mutex_;
