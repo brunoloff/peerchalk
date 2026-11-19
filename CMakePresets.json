@@ -29,6 +29,28 @@
       }
     },
     {
+      "name": "deps-macos",
+      "displayName": "Dependencies for macOS 13 and later",
+      "inherits": "base",
+      "cacheVariables": {
+        "PEERCHALK_BUILD_DEPENDENCIES": "ON",
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_OSX_DEPLOYMENT_TARGET": "13.0",
+        "CMAKE_INSTALL_PREFIX": "${fileDir}/build/prefix-macos"
+      }
+    },
+    {
+      "name": "macos",
+      "displayName": "macOS app and tests",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_OSX_DEPLOYMENT_TARGET": "13.0",
+        "CMAKE_IGNORE_PREFIX_PATH": "/opt/homebrew;/usr/local",
+        "CMAKE_PREFIX_PATH": "${fileDir}/build/prefix-macos;$env{HOME}/Qt/6.11.2/macos"
+      }
+    },
+    {
       "name": "deps-web",
       "displayName": "Dependencies for browsers",
       "inherits": "base",
@@ -62,10 +84,17 @@
   "buildPresets": [
     { "name": "deps", "configurePreset": "deps" },
     { "name": "linux", "configurePreset": "linux" },
+    { "name": "deps-macos", "configurePreset": "deps-macos" },
+    { "name": "macos", "configurePreset": "macos" },
     { "name": "deps-web", "configurePreset": "deps-web" },
     { "name": "web", "configurePreset": "web", "targets": ["peerchalk"] }
   ],
   "testPresets": [
+    {
+      "name": "macos",
+      "configurePreset": "macos",
+      "output": { "outputOnFailure": true }
+    },
     {
       "name": "linux",
       "configurePreset": "linux",
@@ -86,6 +115,43 @@
         { "type": "configure", "name": "linux" },
         { "type": "build", "name": "linux" },
         { "type": "test", "name": "linux" }
+      ]
+    },
+    {
+      "name": "deps-macos",
+      "displayName": "Dependencies for macOS 13 and later",
+      "inherits": "base",
+      "cacheVariables": {
+        "PEERCHALK_BUILD_DEPENDENCIES": "ON",
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_OSX_DEPLOYMENT_TARGET": "13.0",
+        "CMAKE_INSTALL_PREFIX": "${fileDir}/build/prefix-macos"
+      }
+    },
+    {
+      "name": "macos",
+      "displayName": "macOS app and tests",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_OSX_DEPLOYMENT_TARGET": "13.0",
+        "CMAKE_IGNORE_PREFIX_PATH": "/opt/homebrew;/usr/local",
+        "CMAKE_PREFIX_PATH": "${fileDir}/build/prefix-macos;$env{HOME}/Qt/6.11.2/macos"
+      }
+    },
+    {
+      "name": "deps-macos",
+      "steps": [
+        { "type": "configure", "name": "deps-macos" },
+        { "type": "build", "name": "deps-macos" }
+      ]
+    },
+    {
+      "name": "macos",
+      "steps": [
+        { "type": "configure", "name": "macos" },
+        { "type": "build", "name": "macos" },
+        { "type": "test", "name": "macos" }
       ]
     },
     {

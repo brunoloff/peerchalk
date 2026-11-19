@@ -61,6 +61,53 @@ jobs:
           name: linux-${{ matrix.runner }}
           path: dist/
 
+  macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-15, macos-15-intel] # Apple Silicon and Intel
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install build tools
+        run: |
+          brew install ninja meson pkgconf autoconf automake libtool
+          command -v rustup >/dev/null || { brew install rustup && rustup-init -y --no-modify-path; }
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - name: Restore Qt
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/Qt
+          key: qt-${{ matrix.runner }}-${{ hashFiles('tools/setup.sh') }}
+      - name: Install toolchains
+        run: tools/setup.sh desktop
+      - name: Restore dependencies
+        id: deps
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: build/prefix-macos
+          key: deps-${{ matrix.runner }}-${{ hashFiles('deps/**', 'cmake/P2pdcSource.cmake', 'src/math/engine/**', 'tools/setup.sh') }}
+      - name: Build dependencies
+        if: steps.deps.outputs.cache-hit != 'true'
+        run: cmake --workflow --preset deps-macos
+      - name: Build
+        run: |
+          cmake --preset macos
+          cmake --build --preset macos
+      - name: Package
+        run: deploy/macos/package.sh
+      - name: Check that the app starts from its disk image
+        run: |
+          hdiutil attach -nobrowse -mountpoint "$RUNNER_TEMP/dmg" dist/*.dmg
+          QT_QPA_PLATFORM=offscreen PEERCHALK_NETWORK=off PEERCHALK_DATA_DIR="$RUNNER_TEMP/data"             PEERCHALK_SMOKE_TEST="$PWD/dist/screenshot-macos-$(uname -m).png"             "$RUNNER_TEMP/dmg/PeerChalk.app/Contents/MacOS/PeerChalk"
+          hdiutil detach "$RUNNER_TEMP/dmg"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: macos-${{ matrix.runner }}
+          path: dist/
+      - name: Test
+        run: ctest --preset macos
+
   # The AppImage on other distributions, as people would get them, with no build tools.
   linux-distributions:
     needs: linux

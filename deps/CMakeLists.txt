@@ -12,6 +12,10 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     message(FATAL_ERROR "Set CMAKE_INSTALL_PREFIX to the folder that receives the dependencies")
 endif()
 set(rust_environment ${CMAKE_COMMAND} -E env RUSTUP_TOOLCHAIN=1.96.1)
+if(APPLE)
+    # Rust reads the oldest macOS to support from the environment.
+    list(APPEND rust_environment MACOSX_DEPLOYMENT_TARGET=13.0)
+endif()
 set(engine "${CMAKE_CURRENT_LIST_DIR}/../src/math/engine")
 
 set(p2pdc_arguments -DP2PDC_BUILD_DEPENDENCIES=ON -DCMAKE_BUILD_TYPE=Release
@@ -38,12 +42,18 @@ if(EMSCRIPTEN)
             ${prefix}/math-worker)
 else()
     set(yrs_target)
-    set(yrs_library <BINARY_DIR>/release/libyrs.so)
+    set(yrs_library <BINARY_DIR>/release/${CMAKE_SHARED_LIBRARY_PREFIX}yrs${CMAKE_SHARED_LIBRARY_SUFFIX})
     set(yrs_patch)
     set(engine_mode)
     set(engine_install
         ${CMAKE_COMMAND} -E make_directory ${prefix}/lib
         COMMAND ${CMAKE_COMMAND} -E copy <BINARY_DIR>/release/libpeerchalk_math.a ${prefix}/lib)
+endif()
+
+# Apps find a macOS library by the name recorded inside it, so it names its final place.
+set(yrs_fix_name)
+if(APPLE)
+    set(yrs_fix_name COMMAND install_name_tool -id ${prefix}/lib/libyrs.dylib ${prefix}/lib/libyrs.dylib)
 endif()
 
 ExternalProject_Add(yrs
@@ -57,7 +67,8 @@ ExternalProject_Add(yrs
         ${yrs_target}
     INSTALL_COMMAND ${CMAKE_COMMAND} -E make_directory ${prefix}/include ${prefix}/lib
         COMMAND ${CMAKE_COMMAND} -E copy <SOURCE_DIR>/tests-ffi/include/libyrs.h ${prefix}/include
-        COMMAND ${CMAKE_COMMAND} -E copy ${yrs_library} ${prefix}/lib)
+        COMMAND ${CMAKE_COMMAND} -E copy ${yrs_library} ${prefix}/lib
+        ${yrs_fix_name})
 
 ExternalProject_Add(math_engine
     SOURCE_DIR "${engine}"

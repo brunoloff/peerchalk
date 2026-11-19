@@ -4,6 +4,6 @@
 include(FetchContent)
 FetchContent_Declare(p2pdc
     GIT_REPOSITORY https://github.com/brunoloff/p2pdc.git
-    GIT_TAG 2d81612b396914d3cde8bf6781003836cb68f78f
+    GIT_TAG 6649c74d6db4969a845fc7e72cd12f714b6ba87c
     SOURCE_SUBDIR download-only)
 FetchContent_MakeAvailable(p2pdc)
