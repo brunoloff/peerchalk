@@ -24,4 +24,7 @@ case ${1:-} in
         ;;
     *) printf 'usage: build.sh [web]\n' >&2; exit 2 ;;
 esac
-nice -n 15 ionice -c 3 cargo "${arguments[@]}"
+# Low priority where the tools exist (ionice is Linux-only).
+low_priority=(nice -n 15)
+command -v ionice >/dev/null && low_priority+=(ionice -c 3)
+"${low_priority[@]}" cargo "${arguments[@]}"
