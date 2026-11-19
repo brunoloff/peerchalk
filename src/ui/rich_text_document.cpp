@@ -6,6 +6,8 @@
 #include <QTextCursor>
 #include <QTextDocument>
 
+#include <optional>
+
 namespace peerchalk {
 namespace {
 
@@ -45,6 +47,7 @@ void appendFragment(RichText &out, const QTextFragment &fragment) {
 void insertUnits(QTextCursor &cursor, const RichText &text, std::size_t first, std::size_t end) {
     QString pending;
     QTextCharFormat format;
+    std::optional<RichUnit> formatStyle; // the style `format` was made for
     const auto flush = [&] {
         if (!pending.isEmpty())
             cursor.insertText(pending, format);
@@ -59,9 +62,10 @@ void insertUnits(QTextCursor &cursor, const RichText &text, std::size_t first, s
             flush();
             cursor.insertBlock();
         } else {
-            if (i == first || !unit.sameStyle(text[i - 1]) || text[i - 1].equation) {
+            if (!formatStyle || !unit.sameStyle(*formatStyle)) {
                 flush();
                 format = styleFormat(unit);
+                formatStyle = unit;
             }
             pending += QChar(unit.ch);
         }

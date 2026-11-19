@@ -39,6 +39,18 @@ TEST(RichTextDocument, RoundTripsFormattingBreaksAndEquations) {
     EXPECT_EQ(readRichText(document), sampleText());
 }
 
+TEST(RichTextDocument, StylesDoNotLeakAcrossLineBreaksAndEquations) {
+    RichText body = plainRichText(u"ab\n");
+    body[1].bold = true;
+    body.push_back(equationUnit("x", true));
+    body.push_back(plainRichText(u"\n").front());
+    for (const RichUnit &unit : plainRichText(u"cd"))
+        body.push_back(unit);
+    QTextDocument document;
+    applyRichText(document, body);
+    EXPECT_EQ(readRichText(document), body);
+}
+
 TEST(RichTextDocument, EditsLeaveOtherCursorsInPlace) {
     QTextDocument document;
     applyRichText(document, plainRichText(u"hello world"));
