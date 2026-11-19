@@ -7,7 +7,7 @@ set(peerchalk_native_qml)
 set(peerchalk_instance_link ../sync/instance_link_web.cpp)
 set(peerchalk_math_engine_source ../math/math_engine_web.cpp)
 if(NOT EMSCRIPTEN)
-    set(peerchalk_native_qml NativeBackupFiles.qml)
+    set(peerchalk_native_qml NativeBackupFiles.qml NativeSaveFile.qml)
     set(peerchalk_instance_link ../sync/instance_link_native.cpp)
     set(peerchalk_math_engine_source ../math/math_engine_native.cpp)
 endif()
@@ -31,7 +31,8 @@ qt_add_qml_module(peerchalk_ui URI PeerChalk VERSION 1.0
         ../math/math_smoothing.hpp ${peerchalk_math_engine_source}
         math_item.cpp math_item.hpp text_box_model.cpp text_box_model.hpp
         rich_text_document.cpp rich_text_document.hpp rich_text_binding.cpp rich_text_binding.hpp
-        rich_text_binding_equations.cpp equation_syntax.cpp equation_syntax.hpp
+        rich_text_binding_equations.cpp equation_syntax.cpp equation_syntax.hpp equation_geometry.hpp
+        board_pdf.cpp board_pdf.hpp board_exporter.cpp board_exporter.hpp
         row_model.cpp row_model.hpp
         app_style.cpp app_style.hpp
         account_manager.cpp account_manager.hpp web_files.cpp web_files.hpp
@@ -46,7 +47,7 @@ qt_add_qml_module(peerchalk_ui URI PeerChalk VERSION 1.0
         NetworkPane.qml SettingField.qml PaperTab.qml ColorPalette.qml
         AccountsWindow.qml AccountRow.qml AccountPane.qml BackupFlow.qml PassphraseDialog.qml
         BoardLinkSection.qml SiteLinks.qml EquationPanel.qml BoardShortcuts.qml
-        TextBoxLayer.qml TextBoxView.qml TextBoxChrome.qml
+        TextBoxLayer.qml TextBoxView.qml TextBoxChrome.qml PdfExportButton.qml
         CreateAccountDialog.qml RemoveAccountDialog.qml ${peerchalk_native_qml})
 target_include_directories(peerchalk_ui PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/..")
 # The generated QML type registrations include headers by file name.

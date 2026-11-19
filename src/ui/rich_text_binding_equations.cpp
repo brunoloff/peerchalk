@@ -1,5 +1,6 @@
 // The equations of RichTextBinding: editing them, measuring them and finding their places.
 #include "ui/board_canvas.hpp"
+#include "ui/equation_geometry.hpp"
 #include "ui/equation_syntax.hpp"
 #include "ui/rich_text_binding.hpp"
 #include "ui/rich_text_document.hpp"
@@ -17,7 +18,6 @@
 namespace peerchalk {
 namespace {
 
-constexpr qreal equationPaddingEm = 0.08;
 constexpr double failedCharacterWidthEm = 0.55;
 
 QString metricsKey(const QString &tex, bool display) {
@@ -198,10 +198,8 @@ void RichTextBinding::metricsArrived(const QString &key, const MathFormula &form
 QSizeF RichTextBinding::intrinsicSize(QTextDocument *document, int, const QTextFormat &format) {
     const Metrics &m = metricsFor(format.stringProperty(equationTexProperty),
                                   format.boolProperty(equationDisplayProperty));
-    const qreal axis = QFontMetricsF(document->defaultFont()).xHeight() / 2.0;
-    const qreal above = m.height * fontSize_ - axis;
-    const qreal below = m.depth * fontSize_ + axis;
-    return {(m.width + 2.0 * equationPaddingEm) * fontSize_, 2.0 * std::max(above, below)};
+    return equationObjectSize(m.width, m.height, m.depth, fontSize_,
+                              QFontMetricsF(document->defaultFont()).xHeight());
 }
 
 void RichTextBinding::updateLayoutInfo() {

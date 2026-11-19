@@ -15,6 +15,7 @@ QtObject {
     readonly property string bold: "M7 5h6a3.5 3.5 0 0 1 0 7H7zM7 12h7a3.5 3.5 0 0 1 0 7H7z"
     readonly property string italic: "M10 5h7M7 19h7M14 5l-4 14"
     readonly property string trash: "M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12M10.5 11v4M13.5 11v4"
+    readonly property string exportFile: "M12 4v10.5M7.5 10L12 14.5 16.5 10M5 17.5V19a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-1.5"
     readonly property string plus: "M12 5v14M5 12h14"
     readonly property string minus: "M5 12h14"
     readonly property string pin: "M9 3.5h6M10 3.5v6.2L7 13v1.5h10V13l-3-3.3V3.5M12 14.5v6"

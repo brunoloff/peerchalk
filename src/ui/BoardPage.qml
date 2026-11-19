@@ -159,7 +159,17 @@ Item {
                         color: Theme.muted
                     }
                 }
+
+                PdfExportButton {
+                    canvas: canvas
+                    title: page.boardName
+                    onReported: message => exportToast.show(message)
+                }
             }
+        }
+
+        Toast {
+            id: exportToast
         }
 
         Panel {
