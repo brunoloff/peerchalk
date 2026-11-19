@@ -38,6 +38,9 @@ main() {
     app=$stage/PeerChalk.app
     DYLD_LIBRARY_PATH=$root/build/prefix-macos/lib "$qt/bin/macdeployqt" "$app" \
         -qmldir="$root/src/ui" -libpath="$root/build/prefix-macos/lib" -verbose=1
+    # Qt's SQL drivers come along with its QML modules and load database libraries from outside
+    # the app; PeerChalk uses none of them.
+    rm -rf "$app/Contents/PlugIns/sqldrivers"
     codesign --force --deep --sign - "$app" # an ad-hoc signature, which Apple Silicon requires
     check_bundle "$app"
     rm -f "$dist/$name.dmg"
