@@ -23,7 +23,9 @@ package() {
     local folder="$_name-$pkgver-linux-$CARCH" share
     install -d "$pkgdir/opt/$_name" "$pkgdir/usr/bin"
     cp -a "$folder/." "$pkgdir/opt/$_name/"
-    ln -s "/opt/$_name/AppRun" "$pkgdir/usr/bin/$_name"
+    # AppRun finds its files beside the path it was started by, so a link would not do.
+    printf '#!/bin/sh\nexec /opt/%s/AppRun "$@"\n' "$_name" > "$pkgdir/usr/bin/$_name"
+    chmod 755 "$pkgdir/usr/bin/$_name"
     share="$pkgdir/opt/$_name/usr/share"
     install -Dm644 "$share/applications/io.github.brunoloff.PeerChalk.desktop" \
         "$pkgdir/usr/share/applications/io.github.brunoloff.PeerChalk.desktop"
