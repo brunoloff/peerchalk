@@ -33,7 +33,7 @@ main() {
     DESTDIR=$appdir cmake --install "$root/build/linux" --prefix /usr
     export PATH=$tools:$PATH APPIMAGE_EXTRACT_AND_RUN=1 QMAKE="$(qt_kit)/bin/qmake"
     export QML_SOURCES_PATHS=$root/src/ui EXTRA_PLATFORM_PLUGINS=libqwayland.so
-    export EXTRA_QT_MODULES=waylandcompositor LD_LIBRARY_PATH=$root/build/prefix-linux/lib
+    export EXTRA_QT_MODULES=waylandcompositor LD_LIBRARY_PATH=$root/build/prefix-linux/lib:$(qt_kit)/lib
     export OUTPUT="$dist/$name.AppImage"
     (cd "$dist" && "linuxdeploy-$arch.AppImage" --appdir "$appdir" --plugin qt --output appimage \
         --desktop-file "$appdir/usr/share/applications/io.github.brunoloff.PeerChalk.desktop" \

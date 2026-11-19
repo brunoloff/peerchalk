@@ -24,7 +24,15 @@ aqt() {
 install_qt() {
     local folder=$1
     shift
-    [ -d "$qt_root/$qt_version/$folder" ] || aqt install-qt "$@" -O "$qt_root"
+    [ -d "$qt_root/$qt_version/$folder" ] && return
+    local attempt
+    for attempt in 1 2 3; do # downloads occasionally arrive damaged
+        aqt install-qt "$@" -O "$qt_root" && return
+        printf 'tools/setup.sh: Qt download attempt %s failed\n' "$attempt" >&2
+        rm -rf "${qt_root:?}/$qt_version/$folder"
+        sleep 10
+    done
+    return 1
 }
 
 install_emscripten() {
