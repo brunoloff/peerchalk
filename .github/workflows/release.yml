@@ -175,6 +175,51 @@ jobs:
           ctest --preset windows
 
   # The AppImage on other distributions, as people would get them, with no build tools.
+  flatpak:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install flatpak-builder
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q flatpak flatpak-builder
+          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+      - name: Check the Cargo source lists
+        run: |
+          python3 deploy/flatpak/test_cargo_sources.py
+          python3 deploy/flatpak/cargo_sources.py src/math/engine/Cargo.lock |
+            diff -u deploy/flatpak/math-cargo-sources.json - ||
+            { echo "::error::Run deploy/flatpak/cargo_sources.py again for the math engine"; exit 1; }
+      - name: Build from this commit
+        # The manifest names the published repository; here it builds the checked-out sources.
+        run: |
+          cd deploy/flatpak
+          python3 - <<'PY'
+          import yaml
+          manifest = yaml.safe_load(open("io.github.brunoloff.PeerChalk.yml"))
+          manifest["modules"][-1]["sources"][0] = {"type": "dir", "path": "../.."}
+          yaml.safe_dump(manifest, open("ci.yml", "w"), sort_keys=False)
+          PY
+          # Everything flatpak-builder writes stays outside the sources it copies.
+          flatpak-builder --user --install-deps-from=flathub --disable-rofiles-fuse --force-clean \
+            --state-dir="$RUNNER_TEMP/state" --repo="$RUNNER_TEMP/repo" "$RUNNER_TEMP/build" ci.yml
+          mkdir -p ../../dist
+          flatpak build-bundle "$RUNNER_TEMP/repo" ../../dist/peerchalk-linux-$(uname -m).flatpak io.github.brunoloff.PeerChalk
+      - name: Start the app
+        run: |
+          flatpak install --user -y --noninteractive dist/*.flatpak
+          flatpak run --filesystem="$PWD/dist" --env=QT_QPA_PLATFORM=offscreen --env=PEERCHALK_NETWORK=off \
+            --env=PEERCHALK_SMOKE_TEST="$PWD/dist/screenshot-flatpak-$(uname -m).png" io.github.brunoloff.PeerChalk
+          test -f dist/screenshot-flatpak-$(uname -m).png
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: flatpak-${{ matrix.runner }}
+          path: dist/
+
   linux-distributions:
     needs: linux
     strategy:

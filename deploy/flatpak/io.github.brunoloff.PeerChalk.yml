@@ -1,0 +1,129 @@
+# Flatpak manifest for PeerChalk, buildable offline as Flathub requires: every source is pinned
+# here, and Rust crates are listed in *-cargo-sources.json (made by cargo_sources.py).
+app-id: io.github.brunoloff.PeerChalk
+runtime: org.kde.Platform
+runtime-version: '6.11'
+sdk: org.kde.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+command: peerchalk
+finish-args:
+  - --share=network # peers, the DHT and STUN/TURN servers
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+build-options:
+  append-path: /usr/lib/sdk/rust-stable/bin
+cleanup:
+  - /include
+  - /lib/cmake
+  - /lib/pkgconfig
+  - '*.a'
+
+modules:
+  - name: libsodium
+    sources:
+      - type: archive
+        url: https://download.libsodium.org/libsodium/releases/libsodium-1.0.22.tar.gz
+        sha256: adbdd8f16149e81ac6078a03aca6fc03b592b89ef7b5ed83841c086191be3349
+
+  - name: msgpack-cxx
+    buildsystem: cmake-ninja
+    config-opts: [-DMSGPACK_USE_BOOST=OFF, -DMSGPACK_BUILD_TESTS=OFF, -DMSGPACK_BUILD_EXAMPLES=OFF]
+    sources:
+      - type: archive
+        url: https://github.com/msgpack/msgpack-c/releases/download/cpp-8.0.0/msgpack-cxx-8.0.0.tar.gz
+        sha256: 4a3c0c0ac55ef4456c2d0b93c21b5d105aa3a8f21ef8fa9758550feaf989b92f
+
+  - name: argon2
+    buildsystem: simple
+    build-commands:
+      - make -j $FLATPAK_BUILDER_N_JOBS PREFIX=/app LIBRARY_REL=lib OPTTARGET=none
+      - make install PREFIX=/app LIBRARY_REL=lib OPTTARGET=none
+    sources:
+      - type: archive
+        url: https://github.com/P-H-C/phc-winner-argon2/archive/refs/tags/20190702.tar.gz
+        sha256: daf972a89577f8772602bf2eb38b6a3dd3d922bf5724d45e7f9589b5e830442c
+
+  - name: fmt
+    buildsystem: cmake-ninja
+    config-opts: [-DFMT_TEST=OFF, -DFMT_DOC=OFF, -DBUILD_SHARED_LIBS=ON]
+    sources:
+      - type: archive
+        url: https://github.com/fmtlib/fmt/releases/download/11.2.0/fmt-11.2.0.zip
+        sha256: 203eb4e8aa0d746c62d8f903df58e0419e3751591bb53ff971096eaa0ebd4ec3
+
+  - name: opendht
+    buildsystem: cmake-ninja
+    config-opts: [-DBUILD_TESTING=OFF, -DOPENDHT_USE_PKGCONFIG=ON, -DOPENDHT_HTTP=OFF,
+                  -DOPENDHT_PEER_DISCOVERY=OFF, -DOPENDHT_PROXY_CLIENT=OFF, -DOPENDHT_PROXY_SERVER=OFF,
+                  -DOPENDHT_TOOLS=OFF, -DOPENDHT_EXAMPLES=OFF, -DOPENDHT_PYTHON=OFF, -DOPENDHT_C=OFF,
+                  -DOPENDHT_DOWNLOAD_DEPS=OFF]
+    sources:
+      - type: git
+        url: https://github.com/savoirfairelinux/opendht.git
+        commit: 621b44c8e807e9d3b98794f6b5f8101ad216fd8f # v4.4.1
+
+  # libnice and libdatachannel carry p2p-discovery-connect's patches.
+  - name: libnice
+    buildsystem: simple
+    build-commands:
+      - patch -p1 -i p2pdc/patches/libnice-v0.1.24-p2pdc-tls.patch
+      - meson setup _build --prefix=/app --libdir=lib --buildtype=release -Dcrypto-library=openssl
+        -Dgupnp=disabled -Dgstreamer=disabled -Dintrospection=disabled -Dtests=disabled
+        -Dexamples=disabled
+      - meson install -C _build
+    sources:
+      - type: git
+        url: https://github.com/libnice/libnice.git
+        commit: af62014d520ac09c8fe1974bda1b253114c68843 # 0.1.24
+      - &p2pdc
+        type: git
+        url: https://github.com/brunoloff/p2pdc.git
+        commit: bcaabbc40112e3ac75877cdd7bf088fb0d1f14ab
+        dest: p2pdc
+
+  - name: libdatachannel
+    buildsystem: simple
+    build-commands:
+      - patch -p1 -i p2pdc/patches/libdatachannel-v0.23.2-p2pdc.patch
+      - cmake -S . -B _build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/app
+        -DCMAKE_INSTALL_LIBDIR=lib -DUSE_NICE=ON -DNO_MEDIA=ON -DNO_WEBSOCKET=ON -DNO_EXAMPLES=ON
+        -DNO_TESTS=ON
+      - cmake --build _build --target datachannel
+      - cmake --install _build
+    sources:
+      - type: git
+        url: https://github.com/paullouisageneau/libdatachannel.git
+        commit: 9e6a13abbb6846c003d817d0387b6706466e2b03 # v0.23.2
+      - *p2pdc
+
+  - name: yrs
+    buildsystem: simple
+    build-commands:
+      - CARGO_HOME=$PWD/cargo cargo build --offline --locked --release --package yffi
+      - install -Dm644 tests-ffi/include/libyrs.h /app/include/libyrs.h
+      - install -Dm755 target/release/libyrs.so /app/lib/libyrs.so
+    sources:
+      - type: git
+        url: https://github.com/y-crdt/y-crdt.git
+        commit: 23b7f5693bbf9e7d26340c521ee8647f79bdfba2 # v0.28.0
+      - yrs-cargo-sources.json
+
+  - name: peerchalk
+    buildsystem: simple
+    build-commands:
+      - CARGO_HOME=$PWD/cargo CARGO_TARGET_DIR=$PWD/math cargo build --offline --locked --release
+        --lib --manifest-path src/math/engine/Cargo.toml
+      - cmake -S . -B _build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/app
+        -DBUILD_TESTING=OFF -DFETCHCONTENT_SOURCE_DIR_P2PDC=$PWD/p2pdc
+        -DFETCHCONTENT_FULLY_DISCONNECTED=ON -DPEERCHALK_MATH_LIBRARY=$PWD/math/release/libpeerchalk_math.a
+      - cmake --build _build
+      - cmake --install _build
+    sources:
+      - type: git
+        url: https://github.com/brunoloff/peerchalk.git
+        branch: packaging # a release pins a tag and commit instead
+      - *p2pdc
+      - math-cargo-sources.json
