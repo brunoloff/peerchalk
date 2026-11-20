@@ -43,9 +43,20 @@ main() {
     rm -rf "$app/Contents/PlugIns/sqldrivers"
     codesign --force --deep --sign - "$app" # an ad-hoc signature, which Apple Silicon requires
     check_bundle "$app"
-    rm -f "$dist/$name.dmg"
-    hdiutil create -volname PeerChalk -srcfolder "$app" -format UDZO "$dist/$name.dmg"
+    make_dmg "$app" "$dist/$name.dmg"
     (cd "$dist" && shasum -a 256 "$name.dmg")
+}
+
+# hdiutil sometimes fails with "Resource busy" on build machines; a later try usually works.
+make_dmg() { # app dmg
+    local attempt
+    for attempt in 1 2 3 4; do
+        rm -f "$2"
+        hdiutil create -volname PeerChalk -srcfolder "$1" -format UDZO "$2" && return 0
+        printf 'hdiutil failed (attempt %s); trying again\n' "$attempt" >&2
+        sleep $((attempt * 10))
+    done
+    return 1
 }
 
 main "$@"
