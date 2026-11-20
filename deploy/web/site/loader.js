@@ -292,7 +292,19 @@
   });
   $("reload").addEventListener("click", () => location.reload());
 
+  // The joke on the logo shows on the first visit only; the browser remembers the visit.
+  function markFirstVisit() {
+    try {
+      if (localStorage.getItem("peerchalk-visited")) return;
+      localStorage.setItem("peerchalk-visited", "1");
+      document.body.classList.add("first-visit");
+    } catch (error) {
+      note(`no local storage: ${error}`);
+    }
+  }
+
   window.peerchalkLoader = { phase, ready, note, details };
+  markFirstVisit();
   offerApp();
   start();
 })();

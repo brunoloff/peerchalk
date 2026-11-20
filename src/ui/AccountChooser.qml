@@ -128,13 +128,24 @@ Rectangle {
             color: Theme.border
         }
 
-        RowLayout {
+        // Three buttons share a row when their labels fit; otherwise "New account" takes a
+        // row of its own, so no label is cut short.
+        GridLayout {
+            id: actions
+
+            readonly property bool fits: newButton.implicitWidth + linkButton.implicitWidth
+                + importButton.implicitWidth + 2 * columnSpacing <= width
+
             Layout.fillWidth: true
-            spacing: 8
+            columns: fits || !newButton.visible ? 3 : 2
+            columnSpacing: 8
+            rowSpacing: 8
 
             PaperButton {
+                id: newButton
+
                 Layout.fillWidth: true
-                Layout.preferredWidth: 1
+                Layout.columnSpan: actions.fits ? 1 : 2
                 visible: chooser.lastAccount !== null
                 implicitHeight: 44
                 text: qsTr("New account")
@@ -142,16 +153,20 @@ Rectangle {
             }
 
             PaperButton {
+                id: linkButton
+
                 Layout.fillWidth: true
-                Layout.preferredWidth: 1
+                Layout.preferredWidth: actions.fits ? implicitWidth : 1
                 implicitHeight: 44
                 text: qsTr("Link a device")
                 onClicked: chooser.linkRequested()
             }
 
             PaperButton {
+                id: importButton
+
                 Layout.fillWidth: true
-                Layout.preferredWidth: 1
+                Layout.preferredWidth: actions.fits ? implicitWidth : 1
                 implicitHeight: 44
                 text: qsTr("Import")
                 onClicked: chooser.importRequested()

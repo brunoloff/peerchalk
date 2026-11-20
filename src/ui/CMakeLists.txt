@@ -18,6 +18,7 @@ qt_add_qml_module(peerchalk_ui URI PeerChalk VERSION 1.0
         board_minimap.cpp board_minimap.hpp
         conversions.hpp scene_nodes.cpp scene_nodes.hpp stroke_layer.cpp stroke_layer.hpp
         board_preview.cpp board_preview.hpp library.cpp library.hpp library_people.cpp
+        desktop_launcher.cpp desktop_launcher.hpp app_updater.cpp app_updater.hpp
         library_boards.cpp library_links.cpp board_document.cpp board_document.hpp
         ../sync/messages.cpp ../sync/messages.hpp ../sync/network.cpp ../sync/network.hpp
         ../sync/network_config.cpp ../sync/network_config.hpp ../sync/network_peers.cpp
@@ -48,7 +49,8 @@ qt_add_qml_module(peerchalk_ui URI PeerChalk VERSION 1.0
         NetworkStatus.qml PersonRoleRow.qml RequestsDialog.qml SettingsPage.qml
         NetworkPane.qml SettingField.qml PaperTab.qml ColorPalette.qml
         AccountsWindow.qml AccountRow.qml AccountMenu.qml AccountChooser.qml ContinueButton.qml
-        WelcomeLogo.qml WelcomeAbout.qml WelcomeFact.qml ReadyMark.qml AccountPane.qml BackupFlow.qml PassphraseDialog.qml
+        WelcomeLogo.qml WelcomeAbout.qml WelcomeFact.qml ReadyMark.qml UpdateStatus.qml
+        AccountPane.qml BackupFlow.qml PassphraseDialog.qml
         BoardLinkSection.qml SiteLinks.qml EquationPanel.qml BoardShortcuts.qml TroubleshootingPane.qml
         TextBoxLayer.qml TextBoxView.qml TextBoxChrome.qml PdfExportButton.qml
         CreateAccountDialog.qml RemoveAccountDialog.qml ${peerchalk_native_qml})

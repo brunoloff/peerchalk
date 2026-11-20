@@ -11,7 +11,7 @@ ApplicationWindow {
     id: window
 
     property string createdAccountId
-    readonly property bool wide: width >= 920
+    readonly property bool wide: width >= 1140
     readonly property int pageMargin: wide ? 40 : 24
 
     width: 1280
@@ -53,7 +53,9 @@ ApplicationWindow {
                 Layout.alignment: Qt.AlignVCenter
                 spacing: 24
 
-                WelcomeLogo {}
+                WelcomeLogo {
+                    showJoke: Accounts.accounts.length === 0
+                }
 
                 WelcomeAbout {
                     Layout.fillWidth: true
@@ -90,6 +92,7 @@ ApplicationWindow {
                     titleSize: 40
                     noteSize: 12
                     showSubtitle: false
+                    showJoke: Accounts.accounts.length === 0
                 }
 
                 ReadyMark {
@@ -223,6 +226,14 @@ ApplicationWindow {
 
     Toast {
         id: toast
+    }
+
+    Connections {
+        target: Launcher
+
+        function onErrorOccurred(message: string) {
+            toast.show(message);
+        }
     }
 
     Connections {

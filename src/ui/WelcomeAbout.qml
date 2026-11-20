@@ -3,7 +3,8 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 // What PeerChalk is, on the account screen: a note from its author, four points about how
-// it works, and links to the app for computers and to feature requests.
+// it works, and links to the app for computers and to feature requests. AppImages can add
+// themselves to the app launcher, and installed apps can look for a newer version.
 ColumnLayout {
     id: about
 
@@ -17,9 +18,10 @@ ColumnLayout {
 
     spacing: 24
 
+    // The browser build's Qt has no emoji font, so it leaves the emoji out.
     Label {
         Layout.fillWidth: true
-        text: qsTr("I had Codex & Claude build this because I don't like the other boards. I'm amazed that with 50 prompts over two days it's already better than the rest.\nThe end of math... the end of software... that's AI for you, yeay! 😬")
+        text: qsTr("I had Codex & Claude build this because I don't like the other boards. I'm amazed that with 50 prompts over two days it's already better than the rest.\nThe end of math... the end of software... that's AI for you, yeay!") + (about.inBrowser ? "" : " 😬")
         wrapMode: Text.WordWrap
         font.pixelSize: about.noteSize
         lineHeight: 1.25
@@ -85,6 +87,23 @@ ColumnLayout {
         }
 
         PaperButton {
+            visible: Launcher.available && Launcher.state !== Launcher.State.Current
+            strong: true
+            implicitHeight: 44
+            text: Launcher.state === Launcher.State.Missing ? qsTr("Add to app launcher")
+                : qsTr("Update the app launcher")
+            onClicked: Launcher.install()
+        }
+
+        PaperButton {
+            visible: !about.inBrowser && Updates.status !== Updates.Status.Checking
+                && Updates.status !== Updates.Status.Downloading
+            implicitHeight: 44
+            text: qsTr("Check for updates")
+            onClicked: Updates.check()
+        }
+
+        PaperButton {
             implicitHeight: 44
             text: qsTr("Request a feature")
             onClicked: Qt.openUrlExternally(about.issuesUrl)
@@ -93,6 +112,11 @@ ColumnLayout {
         SiteLinks {
             height: 44
         }
+    }
+
+    UpdateStatus {
+        Layout.fillWidth: true
+        Layout.topMargin: -12
     }
 
     Label {

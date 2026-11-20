@@ -3,7 +3,8 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 // PeerChalk's logo on the account screen: the tilted icon beside the name, under a joke
-// scribbled above it with an arrow to the icon.
+// scribbled above it with an arrow to the icon. The joke keeps its space while hidden, so
+// showing it moves nothing.
 ColumnLayout {
     id: logo
 
@@ -12,14 +13,34 @@ ColumnLayout {
     property int noteSize: 13
     property bool showSubtitle: true
     property int subtitleSize: 23
+    // The joke shows on the first run; otherwise only while the logo is hovered or after a
+    // tap on it, which is how phones show it.
+    property bool showJoke: false
+    property bool tapped: false
+    readonly property bool jokeShown: showJoke || tapped || hover.hovered
 
     spacing: 2
+
+    HoverHandler {
+        id: hover
+    }
+
+    TapHandler {
+        onTapped: logo.tapped = !logo.tapped
+    }
 
     RowLayout {
         Layout.leftMargin: -logo.noteSize / 2
         spacing: 4
         rotation: -5
         transformOrigin: Item.BottomLeft
+        opacity: logo.jokeShown ? 1 : 0
+
+        Behavior on opacity {
+            NumberAnimation {
+                duration: 150
+            }
+        }
 
         Label {
             text: qsTr("Yes, the name is stupid,\nbut the icon is cute.\nAlso, fuck you.")
