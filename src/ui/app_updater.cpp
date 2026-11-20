@@ -12,7 +12,9 @@
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
+#ifndef __EMSCRIPTEN__
 #include <QProcess>
+#endif
 #include <QSysInfo>
 #include <QVersionNumber>
 
@@ -173,7 +175,13 @@ void AppUpdater::finishAppImage(QNetworkReply *reply, const QByteArray &checksum
 }
 
 void AppUpdater::restart() {
-    if (status_ != Status::Installed || !QProcess::startDetached(installedPath_, {}))
+#ifdef __EMSCRIPTEN__ // browsers start no processes, and have no AppImage to install
+    const bool started = false;
+#else
+    const bool started =
+        status_ == Status::Installed && QProcess::startDetached(installedPath_, {});
+#endif
+    if (!started)
         return fail(tr("Could not start the new version; start PeerChalk again by hand."));
     QCoreApplication::quit();
 }

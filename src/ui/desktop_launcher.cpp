@@ -3,7 +3,9 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#ifndef __EMSCRIPTEN__
 #include <QProcess>
+#endif
 #include <QSaveFile>
 #include <QStandardPaths>
 
@@ -110,11 +112,13 @@ bool DesktopLauncher::install() {
         emit errorOccurred(QString::fromStdString(error.what()));
         return false;
     }
+#ifndef __EMSCRIPTEN__ // browsers start no processes, and have no AppImage
     // Desktops that cache launchers notice the change sooner; the rest read the folder.
     const QString refresh =
         QStandardPaths::findExecutable(QStringLiteral("update-desktop-database"));
     if (!refresh.isEmpty())
         QProcess::startDetached(refresh, {QFileInfo(desktopFilePath()).absolutePath()});
+#endif
     emit stateChanged();
     return true;
 }
