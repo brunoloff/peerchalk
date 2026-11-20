@@ -203,8 +203,22 @@ QString AccountStore::current() const {
     return !id.isEmpty() && !QUuid::fromString(id).isNull() && read(id) ? id : QString();
 }
 
-void AccountStore::setCurrent(const QString &id) {
-    writeJsonObject(sessionPath(root_), {{QStringLiteral("current"), id}}, formatVersion, true);
+void AccountStore::setCurrent(const QString &id) { updateSession(QStringLiteral("current"), id); }
+
+bool AccountStore::opensLastAccount() const {
+    const auto session = readJsonObject(sessionPath(root_), formatVersion);
+    return session && session->value(QStringLiteral("openLastAccount")).toBool();
+}
+
+void AccountStore::setOpensLastAccount(bool opens) {
+    updateSession(QStringLiteral("openLastAccount"), opens);
+}
+
+// session.json holds several settings; each change keeps the others.
+void AccountStore::updateSession(const QString &key, const QJsonValue &value) {
+    QJsonObject session = readJsonObject(sessionPath(root_), formatVersion).value_or(QJsonObject());
+    session.insert(key, value);
+    writeJsonObject(sessionPath(root_), session, formatVersion, true);
 }
 
 } // namespace peerchalk

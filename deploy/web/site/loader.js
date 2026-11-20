@@ -40,14 +40,30 @@
             "Close other PeerChalk tabs, then reload."],
   };
 
-  function render(downloaded) {
+  // progress: how much of the app has arrived, { text, fraction } (fraction 0 when unknown).
+  function render(progress) {
     const at = phaseIndex(current);
     $("phases").replaceChildren(...phases.map(([name, label], index) => {
       const item = document.createElement("li");
-      item.textContent = name === "download" && downloaded ? `${label} (${downloaded})` : label;
+      item.textContent = label;
       item.className = index < at ? "done" : index > at ? "" : failed ? "failed" : "active";
+      if (name === "download" && progress && index === at)
+        item.append(...progressParts(progress));
       return item;
     }));
+  }
+
+  function progressParts({ text, fraction }) {
+    const amount = document.createElement("span");
+    amount.className = "amount";
+    amount.textContent = text;
+    if (!fraction) return [amount];
+    const bar = document.createElement("span");
+    bar.className = "bar";
+    const filled = document.createElement("span");
+    filled.style.width = `${Math.min(100, fraction * 100).toFixed(1)}%`;
+    bar.append(filled);
+    return [amount, bar];
   }
 
   function watch() {
@@ -167,12 +183,17 @@
     const reader = response.body.getReader();
     const chunks = [];
     let received = 0;
+    // A compressed response's length counts compressed bytes, so it gives no fraction.
+    const total = response.headers.get("Content-Encoding")
+      ? 0 : Number(response.headers.get("Content-Length")) || 0;
+    const megabytes = (bytes) => (bytes / 1048576).toFixed(1);
     for (;;) {
       const { done, value } = await reader.read();
       if (done) break;
       chunks.push(value);
       received += value.length;
-      render(`${(received / 1048576).toFixed(1)} MB`);
+      render({ text: total ? `${megabytes(received)} / ${megabytes(total)} MB` : `${megabytes(received)} MB`,
+               fraction: total ? received / total : 0 });
       watch();
     }
     note(`downloaded ${(received / 1048576).toFixed(1)} MB`);
@@ -235,6 +256,29 @@
     }
   }
 
+  // The computer system in the browser's user agent, as AccountManager's
+  // systemFromUserAgent names it: "" for phones, tablets and others.
+  function visitorSystem() {
+    const agent = navigator.userAgent;
+    if (/Android|iPhone|iPad|iPod|Mobile/.test(agent)) return "";
+    if (agent.includes("Windows")) return "Windows";
+    if (agent.includes("Macintosh")) return "macOS";
+    if (agent.includes("Linux") && !agent.includes("CrOS")) return "Linux";
+    return "";
+  }
+
+  // Names the visitor's system on the download button, as the account screen does.
+  function offerApp() {
+    const system = visitorSystem();
+    if (!system) return;
+    $("download").textContent = `Download for ${system}`;
+    const others = document.createElement("a");
+    others.href = $("download").href;
+    others.textContent = ["Linux", "Windows", "macOS"].filter((name) => name !== system).join(" and ");
+    $("systems").replaceChildren("The app for your computer starts faster than this browser version " +
+      "and keeps boards outside the browser's storage. Also for ", others, ".");
+  }
+
   addEventListener("error", (event) => note(`page error: ${event.message}`));
   addEventListener("unhandledrejection", (event) => note(`unhandled: ${event.reason}`));
   $("copy").addEventListener("click", async () => {
@@ -249,5 +293,6 @@
   $("reload").addEventListener("click", () => location.reload());
 
   window.peerchalkLoader = { phase, ready, note, details };
+  offerApp();
   start();
 })();

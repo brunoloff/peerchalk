@@ -18,7 +18,8 @@ target_compile_options(peerchalk_library_tests PRIVATE
 gtest_discover_tests(peerchalk_library_tests)
 
 add_executable(peerchalk_ui_tests qt_test_main.cpp board_canvas_test.cpp board_minimap_test.cpp
-    main_window_test.cpp library_test.cpp account_manager_test.cpp math_engine_test.cpp rich_text_test.cpp board_pdf_test.cpp)
+    main_window_test.cpp library_test.cpp account_manager_test.cpp math_engine_test.cpp rich_text_test.cpp board_pdf_test.cpp
+    accounts_window_test.cpp)
 target_link_libraries(peerchalk_ui_tests PRIVATE peerchalk_uiplugin peerchalk_ui Qt6::QuickControls2 Qt6::Test Qt6::GuiPrivate
     GTest::gtest)
 target_compile_options(peerchalk_ui_tests PRIVATE

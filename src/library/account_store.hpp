@@ -4,6 +4,7 @@
 
 #include <QByteArray>
 #include <QDateTime>
+#include <QJsonValue>
 #include <QString>
 
 #include <optional>
@@ -28,10 +29,10 @@ struct ImportedAccount {
 
 // The accounts kept under `root`: accounts/<id>/ holds everything of one account (the
 // files IdentityStore and Workspace use, plus account.json), and session.json names the
-// signed-in account. New accounts are assembled in a hidden folder and renamed into place,
-// so an interruption never leaves half an account. Accounts are local: nothing here
-// contacts a server. Failures throw std::runtime_error or, for bad input,
-// std::invalid_argument.
+// signed-in account and whether the app reopens it at start. New accounts are assembled
+// in a hidden folder and renamed into place, so an interruption never leaves half an
+// account. Accounts are local: nothing here contacts a server. Failures throw
+// std::runtime_error or, for bad input, std::invalid_argument.
 class AccountStore {
   public:
     explicit AccountStore(QString root);
@@ -57,6 +58,9 @@ class AccountStore {
     void markBackedUp(const QString &id);
     [[nodiscard]] QString current() const; // empty when signed out
     void setCurrent(const QString &id);
+    // Whether the installed app skips the account screen and reopens the signed-in account.
+    [[nodiscard]] bool opensLastAccount() const;
+    void setOpensLastAccount(bool opens);
 
   private:
     [[nodiscard]] QString accountsDirectory() const;
@@ -67,6 +71,7 @@ class AccountStore {
     void updateMetadata(const QString &id, const char *field);
     void adoptLastBackup(const QString &id, const QDateTime &when);
     [[nodiscard]] QByteArray keyOf(const QString &id) const;
+    void updateSession(const QString &key, const QJsonValue &value);
 
     QString root_;
 };

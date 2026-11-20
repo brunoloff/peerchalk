@@ -71,6 +71,36 @@ TEST_F(AccountManagerTest, RemembersABoardLinkUntilItIsTaken) {
     EXPECT_FALSE(accounts_.hasPendingBoardLink()); // an ordinary address is not a link
 }
 
+TEST_F(AccountManagerTest, ChangingWhetherToReopenTheLastAccountIsAnnouncedOnce) {
+    QSignalSpy changed(&accounts_, &AccountManager::opensLastAccountChanged);
+    accounts_.setOpensLastAccount(true);
+    accounts_.setOpensLastAccount(true);
+    EXPECT_TRUE(accounts_.opensLastAccount());
+    EXPECT_EQ(changed.size(), 1);
+    EXPECT_TRUE(AccountManager(root_.path()).opensLastAccount());
+}
+
+TEST(SystemFromUserAgent, NamesComputersAndLeavesOutPhones) {
+    EXPECT_EQ(systemFromUserAgent(QStringLiteral(
+                  "Mozilla/5.0 (X11; Linux x86_64; rv:140.0) Gecko/20100101 Firefox/140.0")),
+              QStringLiteral("Linux"));
+    EXPECT_EQ(systemFromUserAgent(QStringLiteral(
+                  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140.0")),
+              QStringLiteral("Windows"));
+    EXPECT_EQ(systemFromUserAgent(QStringLiteral(
+                  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15")),
+              QStringLiteral("macOS"));
+    EXPECT_EQ(systemFromUserAgent(QStringLiteral(
+                  "Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 Mobile Safari")),
+              QString());
+    EXPECT_EQ(systemFromUserAgent(QStringLiteral(
+                  "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Mobile/15E148")),
+              QString());
+    EXPECT_EQ(systemFromUserAgent(QStringLiteral("Mozilla/5.0 (X11; CrOS x86_64 16002.0.0)")),
+              QString());
+    EXPECT_EQ(systemFromUserAgent(QString()), QString());
+}
+
 TEST_F(AccountManagerTest, KnownPeopleMoveBetweenAccounts) {
     const QString ana = accounts_.createAccount(QStringLiteral("Ana"));
     const QString ben = accounts_.createAccount(QStringLiteral("Ben"));

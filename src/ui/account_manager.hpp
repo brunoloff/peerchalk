@@ -18,6 +18,10 @@ class QJSEngine;
 
 namespace peerchalk {
 
+// The computer system a browser's user agent names: "Linux", "Windows", "macOS", or "" for
+// phones, tablets and anything else.
+[[nodiscard]] QString systemFromUserAgent(const QString &userAgent);
+
 // The accounts on this device for QML: choosing, creating, linking, backing up and
 // restoring them. Failures emit errorOccurred with a message for the user. Opening and
 // signing out are carried out by the application, which swaps the screens.
@@ -34,6 +38,12 @@ class AccountManager : public QObject {
     // The name of the board in the link the app was opened with; "" without one.
     Q_PROPERTY(QString pendingBoardName READ pendingBoardName NOTIFY pendingBoardLinkChanged)
     Q_PROPERTY(bool hasPendingBoardLink READ hasPendingBoardLink NOTIFY pendingBoardLinkChanged)
+    // Whether the installed app reopens the signed-in account instead of the account screen.
+    Q_PROPERTY(bool opensLastAccount READ opensLastAccount WRITE setOpensLastAccount NOTIFY
+                   opensLastAccountChanged)
+    // In browsers, the visitor's computer system ("Linux", "Windows" or "macOS") for the
+    // download button; "" elsewhere, on phones and when unknown.
+    Q_PROPERTY(QString visitorSystem READ visitorSystem CONSTANT)
 
   public:
     explicit AccountManager(const QString &root, QObject *parent = nullptr);
@@ -48,6 +58,9 @@ class AccountManager : public QObject {
     }
 
     [[nodiscard]] static QString siteUrl();
+    [[nodiscard]] bool opensLastAccount() const;
+    void setOpensLastAccount(bool opens);
+    [[nodiscard]] static QString visitorSystem();
     [[nodiscard]] QString pendingBoardName() const;
     [[nodiscard]] bool hasPendingBoardLink() const { return !pendingBoardLink_.isEmpty(); }
     // Remembers a board link to open once an account is signed in.
@@ -85,6 +98,7 @@ class AccountManager : public QObject {
   signals:
     void accountsChanged();
     void pendingBoardLinkChanged();
+    void opensLastAccountChanged();
     void errorOccurred(const QString &message);
     void noticeOccurred(const QString &message);
     void importFileReady();

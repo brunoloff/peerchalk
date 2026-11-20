@@ -1,0 +1,94 @@
+/* The loading page: the same layout as the account screen that follows it
+   (src/ui/AccountsWindow.qml), with progress where the accounts will be. */
+:root { --paper: #f7f6f2; --surface: #fff; --ink: #1c1b19; --muted: #5e5b55; --faint: #6d6962;
+        --border: #e4e1da; --accent: #2f5bea; --done: #2e9467; --failed: #b42318; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: var(--paper); }
+#screen { width: 100%; height: 100%; display: none; }
+#loading { position: fixed; inset: 0; overflow: auto; background: var(--paper); color: var(--ink);
+           font: 15px/1.5 system-ui, sans-serif; }
+#loading[hidden] { display: none; }
+a { color: var(--accent); }
+.page { box-sizing: border-box; width: min(520px, 100% - 32px); margin: 0 auto; padding: 24px 0;
+        display: flex; flex-direction: column; gap: 20px; }
+.intro, .about { display: flex; flex-direction: column; gap: 20px; }
+
+.joke { display: flex; align-items: flex-end; gap: 4px; margin: 0 0 2px -6px; transform: rotate(-5deg);
+        transform-origin: left bottom; font: 600 12px/1.3 system-ui, sans-serif; color: var(--muted); }
+.joke svg { flex: none; margin-bottom: -10px; }
+.brand { display: flex; align-items: center; gap: 16px; }
+.brand img { width: 104px; height: 104px; transform: rotate(-3deg); flex: none; }
+.name { font-size: 40px; font-weight: 700; line-height: 1; letter-spacing: -0.02em; }
+h1 { margin: 0; font-size: 20px; font-weight: 600; line-height: 1.25; }
+h1 span { white-space: nowrap; }
+.note { margin: 0; font-size: 14px; line-height: 1.55; color: var(--muted); }
+
+.facts { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px 32px; }
+.fact { display: flex; gap: 12px; align-items: flex-start; font-size: 14px; line-height: 1.5;
+        color: var(--muted); }
+.fact b { display: block; color: var(--ink); font-weight: 600; }
+.fact svg { flex: none; margin-top: 2px; }
+.get { border-top: 1px solid var(--border); padding-top: 18px; display: flex; flex-direction: column;
+       gap: 10px; }
+.buttons { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.button { display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 16px;
+          box-sizing: border-box; border-radius: 10px; border: 1px solid #d6d2c9; background: var(--surface);
+          color: var(--ink); text-decoration: none; font: 500 15px system-ui, sans-serif; cursor: pointer; }
+.button.strong { background: var(--ink); border-color: var(--ink); color: #fff; font-weight: 600; }
+.get p { margin: 0; font-size: 13px; color: var(--muted); }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 18px;
+        display: flex; flex-direction: column; gap: 14px; box-sizing: border-box; }
+.card h2 { margin: 0; font-size: 22px; font-weight: 600; }
+.card .size { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
+#phases { list-style: none; padding: 0; margin: 0; }
+#phases li { display: flex; flex-wrap: wrap; align-items: center; gap: 0 12px; padding: 7px 0;
+             font-size: 14px; color: var(--faint); }
+#phases li::before { content: ""; width: 11px; height: 11px; border-radius: 50%; flex: none;
+                     border: 1.5px solid #c9c5bc; box-sizing: border-box; }
+#phases li.done { color: var(--ink); }
+#phases li.done::before { background: var(--done); border-color: var(--done); }
+#phases li.active { color: var(--ink); font-weight: 600; }
+#phases li.active::before { border-color: var(--accent); border-top-color: transparent;
+                            animation: spin 0.8s linear infinite; }
+#phases li.failed { color: var(--failed); font-weight: 600; }
+#phases li.failed::before { background: var(--failed); border-color: var(--failed); }
+#phases .amount { margin-left: auto; font: 500 12px ui-monospace, monospace; color: var(--muted); }
+#phases .bar { flex-basis: 100%; height: 4px; margin: 6px 0 0 23px; border-radius: 2px; background: #eeece6; }
+#phases .bar span { display: block; height: 100%; border-radius: 2px; background: var(--accent); }
+@keyframes spin { to { transform: rotate(360deg); } }
+.later { margin-top: auto; border-top: 1px solid var(--border); padding-top: 14px; font-size: 13px;
+         color: var(--muted); }
+
+#help { padding: 14px 16px; background: var(--paper); border-radius: 12px; }
+#help-title { margin: 0 0 8px; font-weight: 600; }
+#help-title.fatal { color: var(--failed); }
+#hints { margin: 0 0 12px; padding-left: 20px; }
+#help .buttons a.button { background: var(--ink); border-color: var(--ink); color: #fff; }
+pre { white-space: pre-wrap; word-break: break-word; font-size: 12px; background: var(--surface);
+      padding: 10px; border-radius: 8px; max-height: 240px; overflow: auto; }
+
+/* Phones: the current step only, between the logo and what PeerChalk is. */
+@media (max-width: 919px) {
+  .page > .intro { display: contents; }
+  .brand { flex-wrap: wrap; row-gap: 16px; }
+  .titles { display: contents; }
+  h1 { flex-basis: 100%; }
+  .intro .head { order: 1; } .card { order: 2; } .about { order: 3; }
+  .card .size, .later { display: none; }
+  #phases li:not(.active):not(.failed) { display: none; }
+}
+@media (min-width: 920px) {
+  .page { width: min(1104px, 100% - 64px); min-height: 100%; padding: 40px 0; flex-direction: row;
+          align-items: center; gap: 64px; }
+  .intro { flex: 1; min-width: 0; gap: 24px; }
+  .about { gap: 24px; }
+  .joke { font-size: 13px; }
+  .brand { gap: 24px; }
+  .brand img { width: 176px; height: 176px; }
+  .name { font-size: 60px; }
+  .titles { display: flex; flex-direction: column; gap: 14px; }
+  h1 { font-size: 23px; }
+  .note { font-size: 16px; line-height: 1.6; }
+  .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 32px; }
+  .card { flex: none; width: 400px; min-height: 480px; padding: 28px 30px; gap: 18px; }
+}

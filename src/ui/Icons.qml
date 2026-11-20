@@ -24,4 +24,12 @@ QtObject {
     readonly property string more: "M5 12h.01M12 12h.01M19 12h.01"
     readonly property string share: "M12 15V4M8 7.5l4-4 4 4M5 12.5V18a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5.5"
     readonly property string check: "M5 12.5l5 5L19.5 7"
+    readonly property string arrowRight: "M5 12h14M13 6l6 6-6 6"
+    readonly property string download: "M12 3v12M7 10l5 5 5-5M5 21h14"
+    readonly property string peers: "M5 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM19 2.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM19 16.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM7.3 11l9.4-4.8M7.3 13l9.4 4.8M19 7.5v9"
+    readonly property string browser: "M5 4h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM3 8h18M8 21h8"
+    readonly property string bolt: "M13 2L4 14h7l-1 8 9-12h-7z"
+    readonly property string relay: "M4 12h5M15 12h5M9 8h6v8H9z"
+    // A hand-drawn arrow curving down and to the right.
+    readonly property string scribbleArrow: "M2 4c10-1 17 5 18 16M20 20l-5-4M20 20l1.5-6.5"
 }

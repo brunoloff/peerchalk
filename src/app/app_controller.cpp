@@ -58,11 +58,18 @@ void AppController::start(const QString &boardLink) {
     instanceLink_ = sync::InstanceLink::create(slot_);
     accounts_.setPendingBoardLink(boardLink);
     accounts_.readLinkFromPage();
+    // Browsers always greet with the account screen while the page explains PeerChalk;
+    // the installed app reopens the signed-in account when the person asked it to.
     const QString current = accounts_.store().current();
-    if (current.isEmpty())
-        showAccountScreen();
-    else
+#ifdef __EMSCRIPTEN__
+    const bool reopen = false;
+#else
+    const bool reopen = !current.isEmpty() && accounts_.store().opensLastAccount();
+#endif
+    if (reopen)
         showAccount(current);
+    else
+        showAccountScreen();
 }
 
 // A slot that could not be read is left in place, to be tried again next time.

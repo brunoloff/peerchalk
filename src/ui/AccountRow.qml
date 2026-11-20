@@ -64,20 +64,11 @@ Panel {
             Accessible.name: qsTr("More for %1").arg(row.account.name)
             onClicked: menu.popup()
 
-            Menu {
+            AccountMenu {
                 id: menu
 
-                width: 250
-
-                MenuItem {
-                    text: qsTr("Save a backup…")
-                    onTriggered: row.backupRequested()
-                }
-
-                MenuItem {
-                    text: qsTr("Remove from this device…")
-                    onTriggered: row.removeRequested()
-                }
+                onBackupRequested: row.backupRequested()
+                onRemoveRequested: row.removeRequested()
             }
         }
     }

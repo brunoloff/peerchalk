@@ -4,11 +4,15 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-// The first screen: choose an account on this device, or add one.
+// The first screen: what PeerChalk is, and a choice of account on this device or a new
+// one. Wide windows put the two side by side, as the loading page in browsers does
+// (deploy/web/site); narrow ones stack them and fold the explanation away.
 ApplicationWindow {
     id: window
 
     property string createdAccountId
+    readonly property bool wide: width >= 920
+    readonly property int pageMargin: wide ? 40 : 24
 
     width: 1280
     height: 800
@@ -26,68 +30,111 @@ ApplicationWindow {
 
         anchors.fill: parent
         contentWidth: availableWidth
+        contentHeight: page.implicitHeight + 2 * window.pageMargin
 
-        ColumnLayout {
+        Loader {
+            id: page
+
             x: Math.max(16, (scroll.availableWidth - width) / 2)
-            y: Math.max(24, (window.height - implicitHeight) / 2)
-            width: Math.min(520, scroll.availableWidth - 32)
-            spacing: 14
+            y: window.wide ? Math.max(window.pageMargin, (window.height - implicitHeight) / 2) : window.pageMargin
+            width: window.wide ? Math.min(1104, scroll.availableWidth - 64) : Math.min(520, scroll.availableWidth - 32)
+            sourceComponent: window.wide ? wideLayout : narrowLayout
+        }
+    }
 
-            Label {
+    Component {
+        id: wideLayout
+
+        RowLayout {
+            spacing: 64
+
+            ColumnLayout {
                 Layout.fillWidth: true
-                text: Accounts.hasPendingBoardLink && Accounts.pendingBoardName.length > 0
-                    ? qsTr("Join “%1”").arg(Accounts.pendingBoardName)
-                    : Accounts.accounts.length > 0 ? qsTr("Choose an account") : qsTr("Welcome to PeerChalk")
-                font.family: Theme.headingFont
-                font.pixelSize: 28
-                font.weight: Font.DemiBold
-                color: Theme.ink
-            }
+                Layout.alignment: Qt.AlignVCenter
+                spacing: 24
 
-            Label {
-                Layout.fillWidth: true
-                wrapMode: Text.WordWrap
-                color: Theme.muted
-                text: Accounts.hasPendingBoardLink
-                    ? qsTr("Choose who to join as. Accounts are kept on this device, not on a server.")
-                    : qsTr("Accounts are kept on this device, not on a server.")
-            }
+                WelcomeLogo {}
 
-            Repeater {
-                model: Accounts.accounts
-
-                AccountRow {
-                    required property var modelData
-
+                WelcomeAbout {
                     Layout.fillWidth: true
-                    account: modelData
-                    onOpenRequested: Accounts.openAccount(account.id)
-                    onBackupRequested: backups.exportAccount(account.id, "everything")
-                    onRemoveRequested: removeDialog.ask(account)
                 }
             }
 
-            PaperButton {
+            AccountChooser {
+                Layout.preferredWidth: 400
+                Layout.alignment: Qt.AlignVCenter
+                onOpenRequested: accountId => Accounts.openAccount(accountId)
+                onBackupRequested: accountId => backups.exportAccount(accountId, "everything")
+                onRemoveRequested: account => removeDialog.ask(account)
+                onCreateRequested: createDialog.ask()
+                onLinkRequested: linkDialog.ask("")
+                onImportRequested: backups.importAccount()
+            }
+        }
+    }
+
+    Component {
+        id: narrowLayout
+
+        ColumnLayout {
+            spacing: 20
+
+            Item {
                 Layout.fillWidth: true
-                primary: true
-                text: qsTr("Create a new account")
-                onClicked: createDialog.ask()
+                implicitHeight: phoneLogo.implicitHeight
+
+                WelcomeLogo {
+                    id: phoneLogo
+
+                    iconSize: 104
+                    titleSize: 40
+                    noteSize: 12
+                    showSubtitle: false
+                }
+
+                ReadyMark {
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.topMargin: 4
+                    visible: Qt.platform.os === "wasm"
+                }
             }
 
-            PaperButton {
+            AccountChooser {
                 Layout.fillWidth: true
-                text: qsTr("Link with another device")
-                onClicked: linkDialog.ask("")
+                framed: false
+                onOpenRequested: accountId => Accounts.openAccount(accountId)
+                onBackupRequested: accountId => backups.exportAccount(accountId, "everything")
+                onRemoveRequested: account => removeDialog.ask(account)
+                onCreateRequested: createDialog.ask()
+                onLinkRequested: linkDialog.ask("")
+                onImportRequested: backups.importAccount()
             }
 
-            PaperButton {
+            Rectangle {
                 Layout.fillWidth: true
-                text: qsTr("Import a backup")
-                onClicked: backups.importAccount()
+                implicitHeight: 1
+                color: Theme.border
             }
 
-            SiteLinks {
-                Layout.alignment: Qt.AlignHCenter
+            ItemDelegate {
+                id: aboutToggle
+
+                objectName: "aboutToggle"
+                Layout.fillWidth: true
+                Layout.topMargin: -12
+                checkable: true
+                text: qsTr("What is PeerChalk?")
+                font.weight: Font.Medium
+                leftPadding: 0
+            }
+
+            WelcomeAbout {
+                Layout.fillWidth: true
+                Layout.bottomMargin: 24
+                visible: aboutToggle.checked
+                factColumns: 1
+                noteSize: 14
             }
         }
     }

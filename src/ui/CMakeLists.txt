@@ -47,10 +47,15 @@ qt_add_qml_module(peerchalk_ui URI PeerChalk VERSION 1.0
         ConfirmDialog.qml CodeDialog.qml Toast.qml MembersDialog.qml RemoteCursor.qml
         NetworkStatus.qml PersonRoleRow.qml RequestsDialog.qml SettingsPage.qml
         NetworkPane.qml SettingField.qml PaperTab.qml ColorPalette.qml
-        AccountsWindow.qml AccountRow.qml AccountPane.qml BackupFlow.qml PassphraseDialog.qml
+        AccountsWindow.qml AccountRow.qml AccountMenu.qml AccountChooser.qml ContinueButton.qml
+        WelcomeLogo.qml WelcomeAbout.qml WelcomeFact.qml ReadyMark.qml AccountPane.qml BackupFlow.qml PassphraseDialog.qml
         BoardLinkSection.qml SiteLinks.qml EquationPanel.qml BoardShortcuts.qml TroubleshootingPane.qml
         TextBoxLayer.qml TextBoxView.qml TextBoxChrome.qml PdfExportButton.qml
         CreateAccountDialog.qml RemoveAccountDialog.qml ${peerchalk_native_qml})
+# The app's icon, for the logo on the account screen.
+set(peerchalk_logo "${CMAKE_CURRENT_SOURCE_DIR}/../../deploy/icons/peerchalk-512.png")
+set_source_files_properties("${peerchalk_logo}" PROPERTIES QT_RESOURCE_ALIAS peerchalk-logo.png)
+qt_add_resources(peerchalk_ui peerchalk_logo PREFIX /PeerChalk FILES "${peerchalk_logo}")
 target_include_directories(peerchalk_ui PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/..")
 # The generated QML type registrations include headers by file name.
 target_include_directories(peerchalk_ui PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../sync")

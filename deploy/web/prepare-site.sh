@@ -33,8 +33,10 @@ mkdir -p "$out"
 cp "$build/peerchalk.js" "$build/peerchalk.wasm" "$out/"
 cp "$math/peerchalk_math_worker.js" "$math/peerchalk_math_worker.wasm" \
     "$root/src/math/engine/web/math-worker.js" "$out/"
-cp -r "$pages/page.css" "$pages/privacy.html" "$pages/licenses" "$pages/loader.js" "$out/"
+cp -r "$pages/page.css" "$pages/loading.css" "$pages/privacy.html" "$pages/licenses" \
+    "$pages/loader.js" "$out/"
 cp "$root/deploy/icons/peerchalk-256.png" "$out/icon.png"
+cp "$root/deploy/icons/peerchalk-512.png" "$out/logo.png"
 build_id=$(git -C "$root" describe --always --dirty 2>/dev/null || echo unknown)
 sed -e "s|@BASE@|$base|" -e "s|@BUILD@|$build_id|" "$pages/index.template.html" > "$out/index.html"
 cp "$out/index.html" "$out/404.html"

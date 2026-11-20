@@ -36,6 +36,19 @@ QString fileNameFor(const QString &account, const QString &kind) {
 
 } // namespace
 
+QString systemFromUserAgent(const QString &userAgent) {
+    static const QRegularExpression mobile(QStringLiteral("Android|iPhone|iPad|iPod|Mobile"));
+    if (userAgent.contains(mobile))
+        return {};
+    if (userAgent.contains(QStringLiteral("Windows")))
+        return QStringLiteral("Windows");
+    if (userAgent.contains(QStringLiteral("Macintosh")))
+        return QStringLiteral("macOS");
+    if (userAgent.contains(QStringLiteral("Linux")) && !userAgent.contains(QStringLiteral("CrOS")))
+        return QStringLiteral("Linux");
+    return {};
+}
+
 AccountManager::AccountManager(const QString &root, QObject *parent)
     : QObject(parent), store_(root) {}
 
@@ -77,6 +90,23 @@ QDateTime AccountManager::currentLastBackup() const {
     const std::vector<AccountInfo> all = store_.accounts();
     const auto it = std::ranges::find(all, id, &AccountInfo::id);
     return it == all.end() ? QDateTime() : it->lastBackup;
+}
+
+bool AccountManager::opensLastAccount() const { return store_.opensLastAccount(); }
+
+void AccountManager::setOpensLastAccount(bool opens) {
+    if (opens == opensLastAccount())
+        return;
+    if (attempt([&] { store_.setOpensLastAccount(opens); }))
+        emit opensLastAccountChanged();
+}
+
+QString AccountManager::visitorSystem() {
+#ifdef __EMSCRIPTEN__
+    return systemFromUserAgent(pageUserAgent());
+#else
+    return {};
+#endif
 }
 
 QString AccountManager::siteUrl() {

@@ -18,6 +18,8 @@ void pickFile(std::function<void(QByteArray)> chosen);
 [[nodiscard]] QString pageUrl();
 [[nodiscard]] QString pageSiteUrl();
 void removeSecretFromPageUrl();
+// The browser's user agent string.
+[[nodiscard]] QString pageUserAgent();
 
 } // namespace peerchalk
 

@@ -45,6 +45,19 @@ TEST_F(AccountStoreTest, CreatedAccountsAreListedAndRemembered) {
     EXPECT_TRUE(store_.current().isEmpty());
 }
 
+TEST_F(AccountStoreTest, RemembersWhetherToReopenTheLastAccount) {
+    const QString ana = store_.create(QStringLiteral("Ana"));
+    EXPECT_FALSE(store_.opensLastAccount()); // the account screen greets by default
+    store_.setOpensLastAccount(true);
+    store_.setCurrent(ana); // changing the signed-in account keeps the choice
+    const AccountStore reopened(root_.path());
+    EXPECT_TRUE(reopened.opensLastAccount());
+    EXPECT_EQ(reopened.current(), ana);
+    store_.setOpensLastAccount(false);
+    EXPECT_EQ(store_.current(), ana); // and changing the choice keeps the account
+    EXPECT_FALSE(store_.opensLastAccount());
+}
+
 TEST_F(AccountStoreTest, RemovingAnAccountDeletesItAndSignsItOut) {
     const QString id = store_.create(QStringLiteral("Ana"));
     const QString directory = store_.directory(id);

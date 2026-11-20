@@ -50,6 +50,10 @@ void removeSecretFromPageUrl() {
     emscripten_run_script("history.replaceState(null, '', location.pathname)");
 }
 
+QString pageUserAgent() {
+    return QString::fromUtf8(emscripten_run_script_string("navigator.userAgent"));
+}
+
 void pickFile(std::function<void(QByteArray)> chosen) {
     pickedCallback = std::move(chosen);
     peerchalk_pick_file();
