@@ -2,7 +2,7 @@
 # Repackages the release tarball, which carries its own Qt, into /opt/peerchalk.
 pkgname=peerchalk-bin
 _name=peerchalk
-pkgver=0.1
+pkgver=0.1.1
 pkgrel=1
 pkgdesc='Shared whiteboard: draw and write together, directly between devices (prebuilt)'
 arch=('x86_64' 'aarch64')
