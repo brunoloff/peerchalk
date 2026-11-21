@@ -235,3 +235,16 @@ Each milestone lands on main with tests, and keeps infinite boards working.
   from view but kept until the deletion is undone or forgotten).
 - **Notices.** PDFium's third-party licences (FreeType, libjpeg-turbo, OpenJPEG, Little CMS,
   zlib) join the generated notices for every package.
+
+## Progress
+
+Work happens on the `page-boards` branch, one commit per finished piece.
+
+- [x] Plan and interface designs
+- [x] M1 · `layoutPages`, paper sizes, `itemsIn` and `pageAt` (`src/board/page_layout.*`, 7 tests)
+- [ ] M1 · `PageBoard`: the Yrs branches above (columns with nested item arrays,
+      `pageStrokes`, `pageText`), add/remove/move items and columns, undo, merges between
+      two replicas, saving and loading
+- [ ] M1 · `Board` knows its kind (`layout` map); the library shows "Pages · N columns"
+- [ ] M0 · PDFium trial on Linux first (pdfium-binaries), then CI for the other targets
+      (needs a push, so ask first)
