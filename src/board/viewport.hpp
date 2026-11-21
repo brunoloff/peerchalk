@@ -10,7 +10,8 @@ namespace peerchalk {
 // screen = world * scale + offset.
 class Viewport {
   public:
-    static constexpr float minScale = 0.01F;
+    // Far enough out to see a column of hundreds of pages.
+    static constexpr float minScale = 0.001F;
     static constexpr float maxScale = 8.0F;
 
     [[nodiscard]] float scale() const { return scale_; }
@@ -26,6 +27,7 @@ class Viewport {
     void zoomAt(Point anchor, float factor);
     void centerOn(Point world, float width, float height);
     // Shows all of content with margin pixels around it, never zooming in past maxFitScale.
+    // It may zoom out past minScale, so that overviews such as the minimap fit anything.
     // Throws std::invalid_argument when the screen is not larger than twice the margin.
     void fit(const Bounds &content, float width, float height, float margin, float maxFitScale);
 

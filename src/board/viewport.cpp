@@ -9,6 +9,7 @@ namespace {
 constexpr float baseGridSpacing = 24.0F;
 constexpr float minDotGapPx = 12.0F;
 constexpr std::size_t maxGridDots = 80000; // about a 4K screen at the densest spacing
+constexpr float minFitScale = 1e-6F;
 
 void requireFinite(Point point, const char *what) {
     if (!std::isfinite(point.x) || !std::isfinite(point.y))
@@ -59,7 +60,7 @@ void Viewport::fit(const Bounds &content, float width, float height, float margi
     const float contentHeight = std::max(content.height(), 1.0F);
     const float fitted = std::min({(width - 2.0F * margin) / contentWidth,
                                    (height - 2.0F * margin) / contentHeight, maxFitScale});
-    scale_ = std::clamp(fitted, minScale, maxScale);
+    scale_ = std::clamp(fitted, minFitScale, maxScale);
     centerOn({(content.left + content.right) / 2.0F, (content.top + content.bottom) / 2.0F}, width,
              height);
 }

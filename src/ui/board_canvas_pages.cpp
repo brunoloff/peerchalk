@@ -4,8 +4,12 @@
 
 #include "board/board_pages.hpp"
 #include "ui/conversions.hpp"
+#include "ui/pdf_renderer.hpp"
+#include "ui/pdf_textures.hpp"
 #include "ui/scene_nodes.hpp"
 
+#include <QQuickWindow>
+#include <QSGImageNode>
 #include <QSGTransformNode>
 
 #include <algorithm>
@@ -168,24 +172,77 @@ std::optional<TextBox> BoardCanvas::newTextBoxAt(Point world) const {
     return box;
 }
 
-void BoardCanvas::appendPageSheets(QSGNode *parent) const {
+// The pixel height to render a page at, for the screen it is shown on.
+int BoardCanvas::pdfHeightFor(const Bounds &page) const {
+    const qreal ratio = window() != nullptr ? window()->effectiveDevicePixelRatio() : 1.0;
+    return PdfRenderer::bucketFor(page.height() * viewport_.scale() * ratio);
+}
+
+void BoardCanvas::requestPdfPages() {
+    PdfRenderer *pdfs = document_ ? document_->pdfRenderer() : nullptr;
+    if (pdfs == nullptr || !pageBoard_)
+        return;
     const Bounds visible =
         viewport_.visibleWorld(static_cast<float>(width()), static_cast<float>(height()));
+    const Point centre{(visible.left + visible.right) / 2.0F,
+                       (visible.top + visible.bottom) / 2.0F};
+    std::vector<std::pair<float, PdfRenderer::Request>> wanted;
+    for (const PlacedPage &page :
+         pageMap_.pagesIn(grown(visible, visible.width() / 2.0F, visible.height() / 2.0F))) {
+        if (!page.pdf)
+            continue;
+        const float dx = (page.bounds.left + page.bounds.right) / 2.0F - centre.x;
+        const float dy = (page.bounds.top + page.bounds.bottom) / 2.0F - centre.y;
+        wanted.push_back({dx * dx + dy * dy, {*page.pdf, pdfHeightFor(page.bounds)}});
+    }
+    std::ranges::sort(wanted, {}, &std::pair<float, PdfRenderer::Request>::first);
+    std::vector<PdfRenderer::Request> requests;
+    for (auto &[distance, request] : wanted)
+        requests.push_back(std::move(request));
+    pdfs->want(std::move(requests));
+}
+
+void BoardCanvas::appendPdfImages(QSGNode *parent, PdfTextureNode &textures,
+                                  const std::vector<PlacedPage> &pages) const {
+    PdfRenderer *pdfs = document_ ? document_->pdfRenderer() : nullptr;
+    if (pdfs == nullptr || window() == nullptr)
+        return;
+    for (const PlacedPage &page : pages) {
+        if (!page.pdf)
+            continue;
+        const QImage image = pdfs->best(*page.pdf, pdfHeightFor(page.bounds));
+        QSGTexture *texture = image.isNull() ? nullptr : textures.texture(*window(), image);
+        if (texture == nullptr)
+            continue;
+        QSGImageNode *node = window()->createImageNode();
+        node->setTexture(texture);
+        node->setOwnsTexture(false);
+        node->setFiltering(QSGTexture::Linear);
+        node->setRect(toRect(page.bounds));
+        parent->appendChildNode(node);
+    }
+}
+
+void BoardCanvas::appendPageSheets(PdfTextureNode *parent) const {
+    const Bounds visible =
+        viewport_.visibleWorld(static_cast<float>(width()), static_cast<float>(height()));
+    const std::vector<PlacedPage> pages = pageMap_.pagesIn(visible);
+    if (pages.empty())
+        return;
     std::vector<Bounds> sheets;
     std::vector<Bounds> edges;
     Pattern pattern;
     const float edge = 1.0F / viewport_.scale();
-    for (const PlacedPage &page : pageMap_.pagesIn(visible)) {
+    for (const PlacedPage &page : pages) {
         sheets.push_back(page.bounds);
         edges.push_back(grown(page.bounds, edge, edge));
         pattern.add(page, visible, viewport_.scale());
     }
-    if (sheets.empty())
-        return;
     auto *transform = new QSGTransformNode;
     transform->setMatrix(viewMatrix());
     transform->appendChildNode(createRectsNode(edges, gridColor_));
     transform->appendChildNode(createRectsNode(sheets, pageColor_));
+    appendPdfImages(transform, *parent, pages);
     QColor rule = gridColor_;
     rule.setAlphaF(rule.alphaF() * 0.6F);
     if (!pattern.lines.empty())

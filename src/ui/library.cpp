@@ -1,5 +1,7 @@
 #include "ui/library.hpp"
 
+#include "ui/pdf_renderer.hpp"
+
 #include <QClipboard>
 #include <QGuiApplication>
 #include <QQmlEngine>
@@ -35,10 +37,19 @@ QUuid parseId(const QString &id) {
 
 QString idText(const QUuid &id) { return id.toString(QUuid::WithoutBraces); }
 
+// Rendered PDF pages kept in memory; browsers have less to spare.
+#ifdef Q_OS_WASM
+constexpr std::size_t pdfImageBudget = std::size_t(128) << 20;
+#else
+constexpr std::size_t pdfImageBudget = std::size_t(384) << 20;
+#endif
+
 } // namespace
 
 Library::Library(const QString &directory, QObject *parent)
-    : QObject(parent), directory_(directory), identity_(directory, defaultDisplayName()),
+    : QObject(parent), directory_(directory), blobs_(directory + QStringLiteral("/blobs")),
+      pdfRenderer_(new PdfRenderer(blobs_, pdfImageBudget, this)),
+      identity_(directory, defaultDisplayName()),
       workspace_(directory, identity_.signingKey(), identity_.identity().signer()),
       saveTimer_(new QTimer(this)),
       projects_(new RowModel({"projectId", "name", "colorIndex", "boardCount", "admin", "pending"},

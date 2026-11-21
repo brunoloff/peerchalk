@@ -19,6 +19,7 @@ Item {
 
     signal renameRequested(string columnId, string title)
     signal deleteRequested(string columnId, string title)
+    signal importRequested(string before)
 
     implicitHeight: 40
 
@@ -105,7 +106,31 @@ Item {
             implicitHeight: 32
             text: qsTr("Add a column here")
             iconPath: Icons.plus
-            onClicked: ruler.canvas.addColumn(next !== null ? next.columnId : "")
+            onClicked: {
+                const before = next !== null ? next.columnId : "";
+                if (!Library.pdfSupported) {
+                    ruler.canvas.addColumn(before);
+                    return;
+                }
+                addMenu.before = before;
+                addMenu.popup(this, 0, height);
+            }
+        }
+    }
+
+    Menu {
+        id: addMenu
+
+        property string before
+
+        MenuItem {
+            text: qsTr("Blank pages")
+            onTriggered: ruler.canvas.addColumn(addMenu.before)
+        }
+
+        MenuItem {
+            text: qsTr("Import a PDF…")
+            onTriggered: ruler.importRequested(addMenu.before)
         }
     }
 
@@ -115,5 +140,6 @@ Item {
         canvas: ruler.canvas
         onRenameRequested: (columnId, title) => ruler.renameRequested(columnId, title)
         onDeleteRequested: (columnId, title) => ruler.deleteRequested(columnId, title)
+        onImportRequested: before => ruler.importRequested(before)
     }
 }

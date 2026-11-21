@@ -272,5 +272,15 @@ Work happens on the `page-boards` branch, one commit per finished piece.
       and remove; page numbers; the minimap shows pages; boards open on their first column.
       The printed h1 is left to the ruler on screen (export will print it); an outline of
       columns and subheadings in the side panel jumps to them
-- [ ] M0 · PDFium trial on Linux first (pdfium-binaries), then CI for the other targets
-      (needs a push, so ask first)
+- [x] M0 · PDFium on Linux: pdfium-binaries chromium/8125 through the dependency build
+      (`deps/CMakeLists.txt`); builds without it get `pdf_document_none.cpp` and hide import
+- [ ] M0 · PDFium for Windows, macOS and the browser, checked in CI (needs a push, so ask
+      first)
+- [x] M4 · PDF display and import (Linux): `PdfDocument` (PDFium behind one lock),
+      `BlobStore` (`<account>/blobs/<sha256>`), `BoardPages::addPdfColumn` (PDF pages keep
+      their size), `Library::importPdf` (200 MB limit, clear refusals), `PdfRenderer` (one
+      worker thread, √2 size buckets from 64 to 4096 px, 384 MB / 128 MB image budget, the
+      view's wishes replace the queue), textures held by the canvas's root scene node;
+      "Import a PDF…" on the ruler's + and in the column menu
+- [ ] M4 · still to do: tiles above 4096 px, progressive rendering in the browser, the
+      "Fetching PDF" placeholder, the 300-page timing

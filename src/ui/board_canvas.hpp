@@ -21,6 +21,7 @@
 
 namespace peerchalk {
 
+class PdfTextureNode;
 class StrokeLayer;
 
 // The infinite board: draws a dotted grid and, through two child layers, the strokes,
@@ -218,7 +219,12 @@ class BoardCanvas : public QQuickItem {
     [[nodiscard]] Point boxOrigin(const TextBox &box) const;
     // A box at a board position, on the page there; none between pages.
     [[nodiscard]] std::optional<TextBox> newTextBoxAt(Point world) const;
-    void appendPageSheets(QSGNode *parent) const;
+    void appendPageSheets(PdfTextureNode *parent) const;
+    // Asks the document's PDF renderer for the PDF pages in and near the view.
+    void requestPdfPages();
+    [[nodiscard]] int pdfHeightFor(const Bounds &page) const;
+    void appendPdfImages(QSGNode *parent, PdfTextureNode &textures,
+                         const std::vector<PlacedPage> &pages) const;
     void syncPageOverlay();
     // Runs edit on the board's pages unless readOnly, then shows the change.
     template <typename Edit> void editPages(Edit edit);

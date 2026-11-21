@@ -5,6 +5,24 @@ Item {
     id: chrome
 
     required property BoardCanvas canvas
+    required property string boardId
+    // Where an imported PDF goes: before this column, or "" for the end.
+    property string importBefore
+    property bool inBrowser: Qt.platform.os === "wasm"
+
+    signal reported(string message)
+
+    function importPdf(before: string) {
+        chrome.importBefore = before;
+        const picker = chrome.pdfPicker();
+        if (picker !== null)
+            picker.choose();
+    }
+
+    // Untyped: NativePdfFile does not exist in the browser build.
+    function pdfPicker(): var {
+        return pdfFiles.item;
+    }
 
     function renameSubheading(columnId: string, itemId: string, text: string) {
         subheadingDialog.columnId = columnId;
@@ -43,12 +61,30 @@ Item {
             headingDialog.columnId = columnId;
             headingDialog.ask(title);
         }
+        onImportRequested: before => chrome.importPdf(before)
         onDeleteRequested: (columnId, title) => {
             deleteDialog.columnId = columnId;
             deleteDialog.message = title.length > 0
                 ? qsTr("Delete the column “%1” with all its pages and what is written on them?").arg(title)
                 : qsTr("Delete this column with all its pages and what is written on them?");
             deleteDialog.open();
+        }
+    }
+
+    // Untyped: NativePdfFile does not exist in the browser build.
+    Loader {
+        id: pdfFiles
+
+        source: chrome.inBrowser ? "" : "NativePdfFile.qml"
+    }
+
+    Connections {
+        target: pdfFiles.item
+        ignoreUnknownSignals: true
+
+        function onChosen(file: url) {
+            if (Library.importPdf(chrome.boardId, file, chrome.importBefore))
+                chrome.reported(qsTr("PDF added as a new column"));
         }
     }
 

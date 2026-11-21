@@ -7,7 +7,7 @@ set(peerchalk_native_qml)
 set(peerchalk_instance_link ../sync/instance_link_web.cpp)
 set(peerchalk_math_engine_source ../math/math_engine_web.cpp)
 if(NOT EMSCRIPTEN)
-    set(peerchalk_native_qml NativeBackupFiles.qml NativeSaveFile.qml)
+    set(peerchalk_native_qml NativeBackupFiles.qml NativeSaveFile.qml NativePdfFile.qml)
     set(peerchalk_instance_link ../sync/instance_link_native.cpp)
     set(peerchalk_math_engine_source ../math/math_engine_native.cpp)
 endif()
@@ -19,7 +19,8 @@ qt_add_qml_module(peerchalk_ui URI PeerChalk VERSION 1.0
         page_overlay_model.hpp
         board_minimap.cpp board_minimap.hpp
         conversions.hpp scene_nodes.cpp scene_nodes.hpp stroke_layer.cpp stroke_layer.hpp
-        page_scene.cpp page_scene.hpp
+        page_scene.cpp page_scene.hpp pdf_renderer.cpp pdf_renderer.hpp library_pdfs.cpp
+        pdf_textures.cpp pdf_textures.hpp
         board_preview.cpp board_preview.hpp library.cpp library.hpp library_people.cpp
         desktop_launcher.cpp desktop_launcher.hpp app_updater.cpp app_updater.hpp
         library_boards.cpp library_links.cpp board_document.cpp board_document.hpp
@@ -67,7 +68,7 @@ qt_add_resources(peerchalk_ui peerchalk_logo PREFIX /PeerChalk FILES "${peerchal
 target_include_directories(peerchalk_ui PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/..")
 # The generated QML type registrations include headers by file name.
 target_include_directories(peerchalk_ui PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../sync")
-target_link_libraries(peerchalk_ui PUBLIC peerchalk_board peerchalk_library p2pdc::p2pdc Qt6::Core Qt6::Gui Qt6::Network Qt6::Qml Qt6::Quick
+target_link_libraries(peerchalk_ui PUBLIC peerchalk_board peerchalk_library peerchalk_pdf p2pdc::p2pdc Qt6::Core Qt6::Gui Qt6::Network Qt6::Qml Qt6::Quick
     Qt6::QuickControls2)
 if(NOT EMSCRIPTEN)
     target_link_libraries(peerchalk_ui PRIVATE peerchalk_math_engine)

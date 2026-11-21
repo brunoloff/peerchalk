@@ -26,7 +26,7 @@ add_library(peerchalk_library STATIC library/codes.cpp library/files.cpp
     library/access_log.cpp library/access_rules.cpp library/workspace.cpp
     library/workspace_roles.cpp library/workspace_io.cpp library/workspace_migration.cpp
     library/account_store.cpp library/account_import.cpp library/backup.cpp
-    library/workspace_links.cpp
+    library/workspace_links.cpp library/blob_store.cpp
     $<IF:$<BOOL:${EMSCRIPTEN}>,library/instance_slot_web.cpp,library/instance_slot_native.cpp>)
 target_include_directories(peerchalk_library PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_include_directories(peerchalk_library SYSTEM PRIVATE "${SODIUM_INCLUDE_DIR}")

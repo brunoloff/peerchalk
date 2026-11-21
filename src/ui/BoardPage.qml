@@ -134,6 +134,8 @@ Item {
 
             anchors.fill: parent
             canvas: canvas
+            boardId: page.boardId
+            onReported: message => exportToast.show(message)
             visible: canvas.pageBoard
         }
 

@@ -1,6 +1,8 @@
 #include "ui/board_canvas.hpp"
 
 #include "ui/conversions.hpp"
+#include "ui/pdf_renderer.hpp"
+#include "ui/pdf_textures.hpp"
 #include "ui/scene_nodes.hpp"
 #include "ui/stroke_layer.hpp"
 
@@ -50,6 +52,8 @@ void BoardCanvas::setDocument(BoardDocument *document) {
     // Remote changes (and saved state loading) arrive through the document.
     connect(document_, &BoardDocument::changed, this, &BoardCanvas::strokesUpdated);
     connect(document_, &BoardDocument::remoteDraftsChanged, this, &BoardCanvas::updateDrafts);
+    if (PdfRenderer *pdfs = document_->pdfRenderer())
+        connect(pdfs, &PdfRenderer::rendered, this, &QQuickItem::update);
     if (document_ != &ownDocument_) // that one goes away together with the canvas
         connect(document_, &QObject::destroyed, this, [this] { setDocument(nullptr); });
     strokesUpdated();
@@ -205,10 +209,11 @@ QPointF BoardCanvas::toScreen(QPointF worldPoint) const {
 }
 
 QSGNode *BoardCanvas::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *) {
-    QSGNode *grid = oldNode != nullptr ? oldNode : new QSGNode;
+    auto *grid = oldNode != nullptr ? static_cast<PdfTextureNode *>(oldNode) : new PdfTextureNode;
     deleteChildren(grid);
     if (pageBoard_) {
         appendPageSheets(grid);
+        grid->endFrame();
         return grid;
     }
     grid->appendChildNode(createDotsNode(
@@ -227,6 +232,7 @@ void BoardCanvas::geometryChange(const QRectF &newGeometry, const QRectF &oldGeo
 
 void BoardCanvas::viewUpdated() {
     syncPageOverlay();
+    requestPdfPages();
     emit viewChanged();
     update();
     highlighterLayer_->update();
@@ -236,6 +242,7 @@ void BoardCanvas::viewUpdated() {
 void BoardCanvas::strokesUpdated() {
     refreshPages();
     syncPageOverlay();
+    requestPdfPages();
     update();
     emit strokesChanged();
     textBoxesUpdated();

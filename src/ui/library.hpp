@@ -1,5 +1,6 @@
 #pragma once
 
+#include "library/blob_store.hpp"
 #include "library/identity_store.hpp"
 #include "library/workspace.hpp"
 #include "ui/board_document.hpp"
@@ -8,6 +9,7 @@
 #include <QByteArray>
 #include <QObject>
 #include <QString>
+#include <QUrl>
 #include <QVariantList>
 #include <QVariantMap>
 #include <QtQml/qqmlregistration.h>
@@ -18,6 +20,10 @@
 class QQmlEngine;
 class QJSEngine;
 class QTimer;
+
+namespace peerchalk {
+class PdfRenderer;
+}
 
 namespace peerchalk {
 
@@ -36,6 +42,8 @@ class Library : public QObject {
     Q_PROPERTY(peerchalk::RowModel *boards READ boards CONSTANT)
     Q_PROPERTY(peerchalk::RowModel *contacts READ contacts CONSTANT)
     Q_PROPERTY(QString sharedId READ sharedId CONSTANT)
+    // Whether this build can show and import PDFs.
+    Q_PROPERTY(bool pdfSupported READ pdfSupported CONSTANT)
     Q_PROPERTY(int sharedBoardCount READ sharedBoardCount NOTIFY workspaceChanged)
     Q_PROPERTY(QString currentProjectId READ currentProjectId WRITE setCurrentProjectId NOTIFY
                    currentProjectChanged)
@@ -118,6 +126,14 @@ class Library : public QObject {
     // background is "blank", "ruled", "squared" or "dotted". Returns "" on failure.
     Q_INVOKABLE QString createPageBoard(const QString &name, const QString &paper, bool landscape,
                                         const QString &background);
+    // Adds a PDF file to a page board as a new column before the column `before` ("" for
+    // the end). Returns whether it did; errorOccurred says why not.
+    Q_INVOKABLE bool importPdf(const QString &boardId, const QUrl &file, const QString &before);
+    // The same with the PDF's contents; name stands in for a PDF without a title.
+    bool addPdf(const QString &boardId, const QByteArray &pdf, const QString &name,
+                const QString &before);
+    [[nodiscard]] BlobStore &blobs() { return blobs_; }
+    [[nodiscard]] static bool pdfSupported();
     Q_INVOKABLE void renameBoard(const QString &boardId, const QString &name);
     Q_INVOKABLE void removeBoard(const QString &boardId);
     Q_INVOKABLE bool isBoardAdmin(const QString &boardId);
@@ -212,6 +228,8 @@ class Library : public QObject {
     void ensureValidSelection();
 
     QString directory_;
+    BlobStore blobs_;
+    PdfRenderer *pdfRenderer_;
     int workspaceRevision_{0};
     IdentityStore identity_;
     Workspace workspace_;

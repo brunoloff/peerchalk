@@ -15,6 +15,8 @@ Menu {
 
     signal renameRequested(string columnId, string title)
     signal deleteRequested(string columnId, string title)
+    // Asks for a PDF to add as a column before the column `before` ("" for the end).
+    signal importRequested(string before)
 
     readonly property string columnId: column.columnId ?? ""
 
@@ -80,6 +82,13 @@ Menu {
     }
 
     MenuSeparator {}
+
+    MenuItem {
+        text: qsTr("Import a PDF to the right…")
+        visible: Library.pdfSupported
+        height: visible ? implicitHeight : 0
+        onTriggered: menu.importRequested(menu.nextId)
+    }
 
     MenuItem {
         text: qsTr("Add column to the left")

@@ -11,6 +11,8 @@
 
 namespace peerchalk {
 
+class PdfRenderer;
+
 // A board's live Yrs document, shared by everything showing or syncing that board.
 // `changed` is emitted on the next event-loop turn after the strokes change, locally or
 // from a peer, so receivers may freely read and modify the board.
@@ -27,6 +29,9 @@ class BoardDocument : public QObject {
     // Counts changes as they happen (before `changed` is emitted), so savers can tell
     // whether anything changed since they last saved.
     [[nodiscard]] quint64 revision() const { return revision_; }
+    // What draws the PDF pages of page boards; null when nothing does.
+    [[nodiscard]] PdfRenderer *pdfRenderer() const { return pdfRenderer_; }
+    void setPdfRenderer(PdfRenderer *renderer) { pdfRenderer_ = renderer; }
 
     // Strokes still being drawn. They are not part of the board: the canvas reports
     // yours to the listener as you draw, and other people's are kept here for display.
@@ -44,6 +49,7 @@ class BoardDocument : public QObject {
   private:
     Board board_;
     quint64 revision_{0};
+    PdfRenderer *pdfRenderer_{nullptr};
     bool notifyQueued_{false};
     DraftListener draftListener_;
     std::map<QString, Stroke> remoteDrafts_;

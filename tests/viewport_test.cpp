@@ -69,6 +69,12 @@ TEST(Viewport, FitDoesNotZoomPastTheLimit) {
     EXPECT_FLOAT_EQ(viewport.scale(), 1.0F);
 }
 
+TEST(Viewport, FitGoesFurtherOutThanZoomingWhenItMust) {
+    Viewport viewport;
+    viewport.fit({0.0F, 0.0F, 1000.0F, 600000.0F}, 150.0F, 150.0F, 0.0F, 1.0F);
+    EXPECT_FLOAT_EQ(viewport.scale(), 150.0F / 600000.0F); // a 500-page column in a minimap
+}
+
 TEST(Grid, SpacingGrowsWhenZoomedOut) {
     EXPECT_FLOAT_EQ(gridSpacing(1.0F), 24.0F);
     EXPECT_FLOAT_EQ(gridSpacing(0.25F), 48.0F);
