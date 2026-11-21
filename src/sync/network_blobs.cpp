@@ -18,6 +18,7 @@ namespace peerchalk::sync {
 namespace {
 
 constexpr qsizetype blobPieceBytes = qsizetype{256} * 1024;
+constexpr quint64 piecesAhead = 4; // a round trip per piece is slow on a slow link
 
 QByteArray rawHash(const std::string &hex) { return QByteArray::fromHex(QByteArray(hex.c_str())); }
 
@@ -34,15 +35,29 @@ void Network::requestMissingBlobs(const PeerId &id, Peer &peer, const QUuid &boa
         if (!BlobStore::isHash(QString::fromStdString(hash)) ||
             blobs.has(QString::fromStdString(hash)) || downloads_.contains(hash))
             continue;
-        downloads_[hash] = Download{id, {}, {}};
-        downloads_[hash].quiet.start();
+        Download &download = downloads_[hash];
+        download.from = id;
+        download.quiet.start();
         downloadTimer_.start();
         library_.setBlobProgress(QString::fromStdString(hash), 0, 0, peer.user->name);
-        queue(peer, BlobWant{rawHash(hash), 0});
+        askAhead(peer, hash, download);
         asked = true;
     }
     if (asked)
         flush(id);
+}
+
+// Asks for the pieces after the ones already asked for, up to piecesAhead past what came;
+// just the first piece while the size is unknown. Pieces come in order over a connection.
+void Network::askAhead(Peer &peer, const std::string &hash, Download &download) {
+    const auto have = static_cast<quint64>(download.data.size());
+    download.asked = std::max(download.asked, have);
+    const quint64 end =
+        download.total == 0 ? 1 : std::min(download.total, have + piecesAhead * blobPieceBytes);
+    while (download.asked < end) {
+        queue(peer, BlobWant{rawHash(hash), download.asked});
+        download.asked += blobPieceBytes;
+    }
 }
 
 bool Network::blobSharedWith(const Peer &peer, const std::string &hash) const {
@@ -75,10 +90,11 @@ void Network::handleBlobChunk(const PeerId &id, Peer &peer, const BlobChunk &chu
     QByteArray &data = download->second.data;
     data += chunk.data;
     download->second.quiet.restart();
+    download->second.total = chunk.total;
     library_.setBlobProgress(QString::fromStdString(hash), data.size(),
                              static_cast<qint64>(chunk.total), peer.user->name);
     if (static_cast<quint64>(data.size()) < chunk.total) {
-        queue(peer, BlobWant{chunk.hash, static_cast<quint64>(data.size())});
+        askAhead(peer, hash, download->second);
         flush(id);
         return;
     }
@@ -108,8 +124,9 @@ bool Network::handOver(const std::string &hash, Download &download) {
     logInfo(QStringLiteral("sync"), QStringLiteral("%1: goes on fetching a PDF from %2")
                                         .arg(peerLabel(from), peerLabel(other->first)));
     download.from = other->first;
+    download.asked = 0; // what the one who left still owed never comes
     download.quiet.restart();
-    queue(*other->second, BlobWant{rawHash(hash), static_cast<quint64>(download.data.size())});
+    askAhead(*other->second, hash, download);
     flush(other->first);
     return true;
 }

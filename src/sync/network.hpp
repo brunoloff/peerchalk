@@ -193,6 +193,8 @@ class Network : public QObject {
     struct Download {
         PeerId from;
         QByteArray data;
+        quint64 asked{0};    // offset up to which pieces were asked for
+        quint64 total{0};    // the blob's size, once the first piece told it
         QElapsedTimer quiet; // since the last piece came, or the request went
     };
 
@@ -236,6 +238,7 @@ class Network : public QObject {
     void dropDownloadsFrom(const PeerId &id);
     // Asks another peer for the rest of a download; false when there is no one to ask.
     bool handOver(const std::string &hash, Download &download);
+    void askAhead(Peer &peer, const std::string &hash, Download &download);
     void checkStalledDownloads();
     // An owner of the board, here or connected and sharing it.
     [[nodiscard]] bool boardLive(const QUuid &board) const;

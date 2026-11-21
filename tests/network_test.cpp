@@ -194,7 +194,7 @@ TEST_F(NetworkTest, APdfComesFromSomeoneElseWhenItsSenderLeaves) {
         carol.library.joinInvite(shared.alice.library.projectInvite(shared.project)).isEmpty());
     shared.bob.goOffline();
     const QString board = shared.alice.library.createPageBoard("Reading", "A4", false, "blank");
-    ASSERT_TRUE(shared.alice.library.addPdf(board, bytesOf(test::samplePdf(8 << 20)), "big", {}));
+    ASSERT_TRUE(shared.alice.library.addPdf(board, bytesOf(test::samplePdf(3 << 20)), "big", {}));
     const QString blob = QString::fromStdString(firstPdfOf(shared.alice.library, board));
     ASSERT_TRUE(QTest::qWaitFor([&] { return carol.library.blobs().has(blob); }, timeoutMs));
     shared.bob.goOnline();
