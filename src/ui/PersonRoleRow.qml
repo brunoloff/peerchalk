@@ -66,32 +66,33 @@ RowLayout {
         iconPath: Icons.more
         onClicked: menu.popup()
 
-        Menu {
+        PaperMenu {
             id: menu
 
-            MenuItem {
+            PaperMenuItem {
                 visible: row.isAdmin && row.role === "member"
                 height: visible ? implicitHeight : 0
                 text: qsTr("Make owner")
                 onTriggered: row.roleRequested(row.modelData.key, "owner")
             }
 
-            MenuItem {
+            PaperMenuItem {
                 visible: row.isAdmin && row.role === "owner"
                 height: visible ? implicitHeight : 0
                 text: qsTr("Make member")
                 onTriggered: row.roleRequested(row.modelData.key, "member")
             }
 
-            MenuItem {
+            PaperMenuItem {
                 visible: row.isAdmin
                 height: visible ? implicitHeight : 0
                 text: qsTr("Make admin (you become an owner)")
                 onTriggered: row.adminRequested(row.modelData.key)
             }
 
-            MenuItem {
+            PaperMenuItem {
                 text: qsTr("Remove access")
+                destructive: true
                 onTriggered: row.roleRequested(row.modelData.key, "none")
             }
         }

@@ -4,6 +4,7 @@
 #include "ui/library.hpp"
 #include "ui/pdf_renderer.hpp"
 
+#include <QFile>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
@@ -64,6 +65,17 @@ TEST(LibraryPdfs, AddsAPdfAsAColumnOfItsPages) {
     ASSERT_EQ(pdf.items.size(), 2U);
     EXPECT_TRUE(library.blobs().has(QString::fromStdString(pdf.items[0].pdf->blob)));
     EXPECT_FALSE(library.importPdf(board, QUrl::fromLocalFile(dir.path() + "/missing.pdf"), {}));
+    QFile file(dir.path() + "/notes.pdf");
+    ASSERT_TRUE(file.open(QIODevice::WriteOnly));
+    file.write(samplePdf());
+    file.close();
+    const QString started =
+        library.createPageBoardFromPdf("From a PDF", QUrl::fromLocalFile(file.fileName()));
+    ASSERT_FALSE(started.isEmpty());
+    const BoardPages &startedPages = library.openBoard(started)->board().pages();
+    ASSERT_EQ(startedPages.columns().size(), 1U);
+    EXPECT_EQ(startedPages.columns()[0].title, "Lemma notes");
+    EXPECT_EQ(library.boardName(started), "From a PDF");
 }
 
 } // namespace

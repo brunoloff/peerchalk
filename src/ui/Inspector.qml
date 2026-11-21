@@ -13,11 +13,24 @@ Rectangle {
     required property BoardCanvas canvas
     required property bool autoHide
     property bool floating: false
-    readonly property bool drawing: canvas.tool === BoardCanvas.Pen || canvas.tool === BoardCanvas.Highlighter
-        || canvas.tool === BoardCanvas.Text
+    readonly property bool drawing: !pageTab && (canvas.tool === BoardCanvas.Pen
+        || canvas.tool === BoardCanvas.Highlighter || canvas.tool === BoardCanvas.Text)
+    // Page boards: the Page tab, about the current page and its column, is open.
+    property bool pageTab: false
+    readonly property bool showsPage: pageTab && canvas.pageBoard
+    readonly property string toolName: {
+        switch (inspector.canvas.tool) {
+        case BoardCanvas.Pen: return qsTr("Pen");
+        case BoardCanvas.Highlighter: return qsTr("Highlighter");
+        case BoardCanvas.Eraser: return qsTr("Eraser");
+        case BoardCanvas.Text: return qsTr("Text");
+        default: return qsTr("Pan");
+        }
+    }
 
     signal autoHideToggled(bool enabled)
     signal closeRequested()
+    signal exportColumnRequested(string columnId, string title)
 
     color: Theme.surface
     implicitWidth: 280
@@ -41,19 +54,24 @@ Rectangle {
 
             Label {
                 Layout.fillWidth: true
-                text: {
-                    switch (inspector.canvas.tool) {
-                    case BoardCanvas.Pen: return qsTr("Pen");
-                    case BoardCanvas.Highlighter: return qsTr("Highlighter");
-                    case BoardCanvas.Eraser: return qsTr("Eraser");
-                    case BoardCanvas.Text: return qsTr("Text");
-                    default: return qsTr("Pan");
-                    }
-                }
+                visible: !inspector.canvas.pageBoard
+                text: inspector.toolName
                 font.family: Theme.headingFont
                 font.pixelSize: 20
                 font.weight: Font.DemiBold
                 color: Theme.ink
+            }
+
+            PaperSegments { // page boards: the tool's options, or the current page's
+                objectName: "inspectorTabs"
+                Layout.fillWidth: true
+                visible: inspector.canvas.pageBoard
+                stretch: true
+                segmentHeight: 30
+                choices: [{value: "tool", text: inspector.toolName},
+                          {value: "page", text: qsTr("Page")}]
+                value: inspector.pageTab ? "page" : "tool"
+                onChosen: value => inspector.pageTab = value === "page"
             }
 
             RailButton {
@@ -125,7 +143,7 @@ Rectangle {
 
         Label {
             Layout.fillWidth: true
-            visible: !inspector.drawing
+            visible: !inspector.drawing && !inspector.showsPage
             wrapMode: Text.WordWrap
             lineHeight: 1.3
             color: Theme.muted
@@ -134,27 +152,24 @@ Rectangle {
                 : qsTr("Drag to move around the board. With any tool you can also drag with the right or middle mouse button, scroll to pan, or hold Ctrl and scroll to zoom.")
         }
 
-        SectionLabel {
-            visible: inspector.canvas.pageBoard
-            text: qsTr("Outline")
-        }
-
-        PageOutline {
-            objectName: "pageOutline"
+        PageInspector {
+            objectName: "pageInspector"
             Layout.fillWidth: true
             Layout.fillHeight: true
-            visible: inspector.canvas.pageBoard
+            visible: inspector.showsPage
             canvas: inspector.canvas
+            onExportRequested: (columnId, title) => inspector.exportColumnRequested(columnId, title)
         }
 
         Item {
             Layout.fillHeight: true
-            visible: !inspector.canvas.pageBoard
+            visible: !inspector.showsPage
         }
 
         NavigatorPanel {
             objectName: "panelNavigator"
             Layout.fillWidth: true
+            visible: !inspector.showsPage
             canvas: inspector.canvas
             stretch: true
         }

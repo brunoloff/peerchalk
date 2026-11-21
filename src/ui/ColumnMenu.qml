@@ -4,7 +4,7 @@ import QtQuick
 import QtQuick.Controls
 
 // What can be done to one column of a page board, from the column ruler.
-Menu {
+PaperMenu {
     id: menu
 
     required property BoardCanvas canvas
@@ -17,25 +17,36 @@ Menu {
     signal deleteRequested(string columnId, string title)
     // Asks for a PDF to add as a column before the column `before` ("" for the end).
     signal importRequested(string before)
+    signal exportRequested(string columnId, string title)
 
     readonly property string columnId: column.columnId ?? ""
+    readonly property var backgrounds: [{value: "blank", text: qsTr("Blank")},
+        {value: "ruled", text: qsTr("Ruled")}, {value: "squared", text: qsTr("Squared")},
+        {value: "dotted", text: qsTr("Dotted")}]
 
     function setPaper(paper: string, landscape: bool, allPages: bool) {
         canvas.setColumnPaper(columnId, paper, landscape, allPages);
     }
 
-    MenuItem {
+    function backgroundName(value: string): string {
+        return backgrounds.find(entry => entry.value === value)?.text ?? "";
+    }
+
+    width: 240
+
+    PaperMenuItem {
         text: qsTr("Rename heading…")
         onTriggered: menu.renameRequested(menu.columnId, menu.column.title ?? "")
     }
 
-    Menu {
-        title: qsTr("Paper for new pages")
+    PaperMenu {
+        title: qsTr("Paper size")
+        value: (menu.column.paper ?? "").length > 0 ? menu.column.paper : qsTr("Custom")
 
         Repeater {
             model: ["A4", "Letter", "A5", "Legal"]
 
-            MenuItem {
+            PaperMenuItem {
                 required property string modelData
 
                 text: modelData
@@ -45,9 +56,9 @@ Menu {
             }
         }
 
-        MenuSeparator {}
+        PaperMenuSeparator {}
 
-        MenuItem {
+        PaperMenuItem {
             text: qsTr("Landscape")
             checkable: true
             checked: menu.column.landscape ?? false
@@ -55,22 +66,21 @@ Menu {
             onTriggered: menu.setPaper(menu.column.paper, checked, false)
         }
 
-        MenuItem {
-            text: qsTr("Apply to all pages in this column")
+        PaperMenuItem {
+            text: qsTr("Apply to all pages")
             enabled: (menu.column.paper ?? "").length > 0
             onTriggered: menu.setPaper(menu.column.paper, menu.column.landscape, true)
         }
     }
 
-    Menu {
+    PaperMenu {
         title: qsTr("Background")
+        value: menu.backgroundName(menu.column.background ?? "")
 
         Repeater {
-            model: [{value: "blank", text: qsTr("Blank")}, {value: "ruled", text: qsTr("Ruled")},
-                    {value: "squared", text: qsTr("Squared")},
-                    {value: "dotted", text: qsTr("Dotted")}]
+            model: menu.backgrounds
 
-            MenuItem {
+            PaperMenuItem {
                 required property var modelData
 
                 text: modelData.text
@@ -81,41 +91,46 @@ Menu {
         }
     }
 
-    MenuSeparator {}
+    PaperMenuSeparator {}
 
-    MenuItem {
-        text: qsTr("Import a PDF to the right…")
+    PaperMenuItem {
+        text: qsTr("Import a PDF here…")
         visible: Library.pdfSupported
-        height: visible ? implicitHeight : 0
         onTriggered: menu.importRequested(menu.nextId)
     }
 
-    MenuItem {
+    PaperMenuItem {
         text: qsTr("Add column to the left")
         onTriggered: menu.canvas.addColumn(menu.columnId)
     }
 
-    MenuItem {
+    PaperMenuItem {
         text: qsTr("Add column to the right")
         onTriggered: menu.canvas.addColumn(menu.nextId)
     }
 
-    MenuItem {
+    PaperMenuItem {
         text: qsTr("Move left")
-        enabled: menu.previousId.length > 0
+        visible: menu.previousId.length > 0
         onTriggered: menu.canvas.moveColumn(menu.columnId, menu.previousId)
     }
 
-    MenuItem {
+    PaperMenuItem {
         text: qsTr("Move right")
-        enabled: menu.nextId.length > 0
+        visible: menu.nextId.length > 0
         onTriggered: menu.canvas.moveColumn(menu.columnId, menu.afterNextId)
     }
 
-    MenuSeparator {}
+    PaperMenuSeparator {}
 
-    MenuItem {
+    PaperMenuItem {
+        text: qsTr("Export column as PDF…")
+        onTriggered: menu.exportRequested(menu.columnId, menu.column.title ?? "")
+    }
+
+    PaperMenuItem {
         text: qsTr("Delete column")
+        destructive: true
         onTriggered: menu.deleteRequested(menu.columnId, menu.column.title ?? "")
     }
 }

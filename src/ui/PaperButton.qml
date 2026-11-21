@@ -1,7 +1,8 @@
 import QtQuick
 import QtQuick.Controls
 
-// A text button in the Paper style: filled ("primary"), dark ("strong") or outlined.
+// A text button in the Paper style: filled ("primary"), dark ("strong"), outlined, or with
+// no outline until hovered ("flat").
 Button {
     id: control
 
@@ -26,8 +27,11 @@ Button {
 
     background: Rectangle {
         radius: Theme.controlRadius
-        color: control.primary ? Theme.accent : control.strong ? Theme.ink : control.hovered ? Theme.hover : Theme.surface
-        border.width: control.primary || control.strong ? 0 : 1
+        color: control.primary ? Theme.accent
+             : control.strong ? Theme.ink
+             : control.hovered ? Theme.hover
+             : control.flat ? "transparent" : Theme.surface
+        border.width: control.primary || control.strong || control.flat ? 0 : 1
         border.color: Theme.border
         opacity: control.down ? 0.85 : 1
     }

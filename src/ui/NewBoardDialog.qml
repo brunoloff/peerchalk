@@ -4,11 +4,11 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-// Asks for a new board's name and kind: infinite, or pages with their paper and background.
+// Asks for a new board's name and kind: infinite, or pages with their paper and background,
+// or pages that start from a PDF.
 Dialog {
     id: dialog
 
-    property alias name: nameField.text
     property bool pages: pagesCard.checked
     property string paper: "A4"
     property bool landscape: false
@@ -16,6 +16,7 @@ Dialog {
 
     // Infinite boards: submitted(name, false, "", false, "").
     signal submitted(string name, bool pages, string paper, bool landscape, string background)
+    signal pdfStartRequested(string name)
 
     function ask(initial: string) {
         nameField.text = initial;
@@ -25,138 +26,198 @@ Dialog {
         nameField.forceActiveFocus();
     }
 
+    readonly property string name: nameField.text.trim()
+
     parent: Overlay.overlay
     anchors.centerIn: parent
-    width: Math.min(520, parent.width - 32)
+    width: Math.min(640, parent.width - 32)
     modal: true
     focus: true
-    title: qsTr("New board")
+    padding: 28
+    topPadding: 24
     onAccepted: {
-        if (nameField.text.trim().length > 0)
-            dialog.submitted(nameField.text.trim(), dialog.pages, dialog.paper, dialog.landscape,
+        if (dialog.name.length > 0)
+            dialog.submitted(dialog.name, dialog.pages, dialog.paper, dialog.landscape,
                              dialog.pageBackground);
     }
 
-    component ChoiceRow: ColumnLayout {
-        id: row
-
-        property string label
-        property var choices // [{value, text}]
-        property string value
-
-        signal chosen(string value)
-
-        Layout.fillWidth: true
-        spacing: 6
-
-        Label {
-            text: row.label
-            font.pixelSize: 13
-            font.weight: Font.Medium
-            color: Theme.ink
+    background: Item {
+        SoftShadow {
+            anchors.fill: parent
+            radius: 18
+            spread: 36
+            strength: 0.22
         }
 
-        Flow {
-            Layout.fillWidth: true
-            spacing: 8
-
-            ButtonGroup {
-                id: group
-            }
-
-            Repeater {
-                model: row.choices
-
-                ChoiceChip {
-                    required property var modelData
-
-                    text: modelData.text
-                    checked: row.value === modelData.value
-                    ButtonGroup.group: group
-                    onClicked: row.chosen(modelData.value)
-                }
-            }
+        Rectangle {
+            anchors.fill: parent
+            radius: 18
+            color: Theme.surface
         }
+    }
+
+    header: Item {}
+
+    component FieldLabel: Label {
+        font.pixelSize: 13
+        font.weight: Font.Medium
+        color: Theme.ink
     }
 
     ColumnLayout {
         anchors.fill: parent
-        spacing: 14
+        spacing: 18
 
-        TextField {
-            id: nameField
+        Label {
+            text: qsTr("New board")
+            font.family: Theme.headingFont
+            font.pixelSize: 22
+            font.weight: Font.DemiBold
+            color: Theme.ink
+        }
 
-            Layout.fillWidth: true
-            placeholderText: qsTr("Board name")
-            Accessible.name: qsTr("Name")
-            onAccepted: dialog.accept()
+        ColumnLayout {
+            spacing: 6
+
+            FieldLabel {
+                text: qsTr("Name")
+            }
+
+            PaperField {
+                id: nameField
+
+                Layout.fillWidth: true
+                placeholderText: qsTr("Board name")
+                Accessible.name: qsTr("Name")
+                onAccepted: dialog.accept()
+            }
         }
 
         ButtonGroup {
             id: kinds
         }
 
-        BoardKindCard {
-            id: infiniteCard
-
+        GridLayout {
             Layout.fillWidth: true
-            objectName: "infiniteKind"
-            text: qsTr("Infinite board")
-            summary: qsTr("Draw anywhere, in every direction. Exports as one large page.")
-            checked: true
-            ButtonGroup.group: kinds
+            columns: dialog.width > 520 ? 2 : 1
+            columnSpacing: 12
+            rowSpacing: 12
+
+            BoardKindCard {
+                id: infiniteCard
+
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                Layout.preferredWidth: 1
+                objectName: "infiniteKind"
+                text: qsTr("Infinite board")
+                summary: qsTr("Draw anywhere, in every direction. Exports as one large page.")
+                checked: true
+                ButtonGroup.group: kinds
+            }
+
+            BoardKindCard {
+                id: pagesCard
+
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                Layout.preferredWidth: 1
+                objectName: "pagesKind"
+                pages: true
+                text: qsTr("Pages")
+                summary: qsTr("Columns of real-size pages, with headings. Import PDFs to read and annotate.")
+                ButtonGroup.group: kinds
+            }
         }
 
-        BoardKindCard {
-            id: pagesCard
+        ColumnLayout {
+            visible: dialog.pages
+            spacing: 8
 
+            FieldLabel {
+                text: qsTr("Paper")
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 6
+
+                ButtonGroup {
+                    id: papers
+                }
+
+                Repeater {
+                    model: ["A4", "Letter", "A5", "Legal"]
+
+                    ChoiceChip {
+                        required property string modelData
+
+                        text: modelData
+                        checked: dialog.paper === modelData
+                        ButtonGroup.group: papers
+                        onClicked: dialog.paper = modelData
+                    }
+                }
+
+                Item {
+                    Layout.fillWidth: true
+                }
+
+                PaperSegments {
+                    choices: [{value: "portrait", text: qsTr("Portrait")},
+                              {value: "landscape", text: qsTr("Landscape")}]
+                    value: dialog.landscape ? "landscape" : "portrait"
+                    onChosen: value => dialog.landscape = value === "landscape"
+                }
+            }
+        }
+
+        ColumnLayout {
+            visible: dialog.pages
+            spacing: 8
+
+            FieldLabel {
+                text: qsTr("Background")
+            }
+
+            BackgroundTiles {
+                Layout.fillWidth: true
+                value: dialog.pageBackground
+                onChosen: value => dialog.pageBackground = value
+            }
+        }
+
+        RowLayout {
             Layout.fillWidth: true
-            objectName: "pagesKind"
-            text: qsTr("Pages")
-            summary: qsTr("Columns of real-size pages, with headings. Import PDFs to read and annotate.")
-            ButtonGroup.group: kinds
-        }
+            Layout.topMargin: 4
+            spacing: 10
 
-        ChoiceRow {
-            visible: dialog.pages
-            label: qsTr("Paper")
-            value: dialog.paper
-            choices: [{value: "A4", text: "A4"}, {value: "Letter", text: "Letter"},
-                      {value: "A5", text: "A5"}, {value: "Legal", text: "Legal"}]
-            onChosen: value => dialog.paper = value
-        }
+            PaperButton {
+                visible: dialog.pages && Library.pdfSupported && Qt.platform.os !== "wasm"
+                text: qsTr("Start from a PDF…")
+                enabled: dialog.name.length > 0
+                onClicked: {
+                    dialog.close();
+                    dialog.pdfStartRequested(dialog.name);
+                }
+            }
 
-        ChoiceRow {
-            visible: dialog.pages
-            label: qsTr("Orientation")
-            value: dialog.landscape ? "landscape" : "portrait"
-            choices: [{value: "portrait", text: qsTr("Portrait")},
-                      {value: "landscape", text: qsTr("Landscape")}]
-            onChosen: value => dialog.landscape = value === "landscape"
-        }
+            Item {
+                Layout.fillWidth: true
+            }
 
-        ChoiceRow {
-            visible: dialog.pages
-            label: qsTr("Background")
-            value: dialog.pageBackground
-            choices: [{value: "blank", text: qsTr("Blank")}, {value: "ruled", text: qsTr("Ruled")},
-                      {value: "squared", text: qsTr("Squared")},
-                      {value: "dotted", text: qsTr("Dotted")}]
-            onChosen: value => dialog.pageBackground = value
-        }
-    }
+            PaperButton {
+                text: qsTr("Cancel")
+                flat: true
+                onClicked: dialog.reject()
+            }
 
-    footer: DialogButtonBox {
-        PaperButton {
-            text: qsTr("Cancel")
-            DialogButtonBox.buttonRole: DialogButtonBox.RejectRole
-        }
-
-        PaperButton {
-            text: qsTr("Create board")
-            primary: true
-            enabled: nameField.text.trim().length > 0
-            DialogButtonBox.buttonRole: DialogButtonBox.AcceptRole
+            PaperButton {
+                text: qsTr("Create board")
+                primary: true
+                enabled: dialog.name.length > 0
+                onClicked: dialog.accept()
+            }
         }
     }
 }

@@ -33,17 +33,52 @@ bool Library::pdfSupported() { return PdfDocument::available(); }
 
 void Library::blobArrived() { pdfRenderer_->forgetFailures(); }
 
+namespace {
+
+// What a column needs from a PDF: its pages' sizes and a heading. Throws std::runtime_error
+// with a message for the person when it cannot be used.
+struct PdfColumn {
+    std::vector<PaperSize> sizes;
+    std::string title;
+};
+
+PdfColumn inspect(const QByteArray &pdf, const QString &name) {
+    if (pdf.size() > maxPdfBytes)
+        throw std::runtime_error("PDFs of up to 200 MB can be imported");
+    const auto *begin = reinterpret_cast<const std::byte *>(pdf.constData());
+    const PdfDocument::Opened opened =
+        PdfDocument::open(std::make_shared<const Bytes>(begin, begin + pdf.size()));
+    if (!opened.document)
+        throw std::runtime_error(refusal(*opened.error));
+    PdfColumn column{{}, opened.document->title()};
+    for (int i = 0; i < opened.document->pageCount(); ++i)
+        column.sizes.push_back(opened.document->pageSize(i));
+    if (column.sizes.empty())
+        throw std::runtime_error("This PDF has no pages");
+    if (column.title.empty())
+        column.title = name.toStdString();
+    return column;
+}
+
+QByteArray readPdfFile(const QString &path) {
+    if (QFileInfo(path).size() > maxPdfBytes)
+        throw std::runtime_error("PDFs of up to 200 MB can be imported");
+    std::optional<QByteArray> read = readFile(path);
+    if (!read)
+        throw std::runtime_error("The file is no longer there");
+    return *std::move(read);
+}
+
+QString localPath(const QUrl &file) {
+    return file.isLocalFile() ? file.toLocalFile() : file.toString();
+}
+
+} // namespace
+
 bool Library::importPdf(const QString &boardId, const QUrl &file, const QString &before) {
     QByteArray contents;
-    const QString path = file.isLocalFile() ? file.toLocalFile() : file.toString();
-    if (!attempt([&] {
-            if (QFileInfo(path).size() > maxPdfBytes)
-                throw std::runtime_error("PDFs of up to 200 MB can be imported");
-            std::optional<QByteArray> read = readFile(path);
-            if (!read)
-                throw std::runtime_error("The file is no longer there");
-            contents = *std::move(read);
-        }))
+    const QString path = localPath(file);
+    if (!attempt([&] { contents = readPdfFile(path); }))
         return false;
     return addPdf(boardId, contents, QFileInfo(path).completeBaseName(), before);
 }
@@ -51,27 +86,34 @@ bool Library::importPdf(const QString &boardId, const QUrl &file, const QString 
 bool Library::addPdf(const QString &boardId, const QByteArray &pdf, const QString &name,
                      const QString &before) {
     return attempt([&] {
-        if (pdf.size() > maxPdfBytes)
-            throw std::runtime_error("PDFs of up to 200 MB can be imported");
-        const auto *begin = reinterpret_cast<const std::byte *>(pdf.constData());
-        const PdfDocument::Opened opened =
-            PdfDocument::open(std::make_shared<const Bytes>(begin, begin + pdf.size()));
-        if (!opened.document)
-            throw std::runtime_error(refusal(*opened.error));
-        std::vector<PaperSize> sizes;
-        for (int i = 0; i < opened.document->pageCount(); ++i)
-            sizes.push_back(opened.document->pageSize(i));
-        if (sizes.empty())
-            throw std::runtime_error("This PDF has no pages");
-        std::string title = opened.document->title();
-        if (title.empty())
-            title = name.toStdString();
+        const PdfColumn column = inspect(pdf, name);
         BoardPages &pages = document(QUuid::fromString(boardId)).board().pages();
         if (pages.kind() != BoardKind::Pages)
             throw std::runtime_error("PDFs go on page boards");
         const QString hash = blobs_.put(pdf);
-        pages.addPdfColumn(before.toStdString(), title, hash.toStdString(), sizes);
+        pages.addPdfColumn(before.toStdString(), column.title, hash.toStdString(), column.sizes);
     });
+}
+
+QString Library::createPageBoardFromPdf(const QString &name, const QUrl &file) {
+    QByteArray contents;
+    std::optional<PdfColumn> column;
+    const QString path = localPath(file);
+    if (!attempt([&] {
+            contents = readPdfFile(path);
+            column = inspect(contents, QFileInfo(path).completeBaseName());
+        }))
+        return {};
+    const QString id = createBoard(name);
+    if (id.isEmpty() || !attempt([&] {
+            const QString hash = blobs_.put(contents);
+            document(QUuid::fromString(id))
+                .board()
+                .pages()
+                .startWithPdf(column->title, hash.toStdString(), column->sizes);
+        }))
+        return {};
+    return id;
 }
 
 } // namespace peerchalk

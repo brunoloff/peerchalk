@@ -84,6 +84,7 @@ void BoardExporter::finish() {
         if (!canvas_)
             throw std::invalid_argument("The board was closed");
         BoardPdfInput input{&canvas_->board(), std::move(formulas_), fontFamily_, title_};
+        input.column = columnId_.toStdString();
         if (const PdfRenderer *pdfs = canvas_->document()->pdfRenderer())
             input.pdfBlob = [&blobs = pdfs->blobs()](const std::string &hash) {
                 return blobs.get(QString::fromStdString(hash));

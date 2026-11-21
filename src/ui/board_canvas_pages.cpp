@@ -68,6 +68,28 @@ struct Pattern {
     }
 };
 
+const QColor ruleColor(0xC9, 0xD4, 0xF5);
+const QColor patternDotColor(0xB9, 0xB4, 0xAA);
+
+// A soft shadow under each sheet, as paper lying on the desk: a close dark edge and a wide
+// faint one below, sized in screen pixels.
+void appendSheetShadows(QSGNode *parent, const std::vector<Bounds> &sheets, float scale) {
+    struct Layer {
+        float grow, drop, alpha;
+    };
+    for (const Layer layer :
+         {Layer{6.0F, 6.0F, 0.025F}, Layer{3.0F, 3.0F, 0.035F}, Layer{1.0F, 1.0F, 0.10F}}) {
+        std::vector<Bounds> rects;
+        for (const Bounds &sheet : sheets) {
+            const Bounds wide = grown(sheet, layer.grow / scale, layer.grow / scale);
+            rects.push_back({wide.left, wide.top + layer.drop / scale, wide.right,
+                             wide.bottom + layer.drop / scale});
+        }
+        parent->appendChildNode(
+            createRectsNode(rects, QColor::fromRgbF(0.11F, 0.106F, 0.098F, layer.alpha)));
+    }
+}
+
 } // namespace
 
 void BoardCanvas::refreshPages() {
@@ -78,7 +100,8 @@ void BoardCanvas::refreshPages() {
     showStartOfPages();
 }
 
-// A page board opens on the top of its first column, at 100 % when the column fits.
+// A page board opens on the top of its first column, below topInset, at 100 % when the
+// column fits.
 void BoardCanvas::showStartOfPages() {
     constexpr float marginPx = 24.0F;
     if (!startViewPending_ || width() <= 2.0 * marginPx || pageMap_.layout().columns.empty())
@@ -89,7 +112,8 @@ void BoardCanvas::showStartOfPages() {
     const float scale = std::min(1.0F, (w - 2.0F * marginPx) / column.width());
     viewport_ = Viewport{};
     viewport_.zoomAt({0.0F, 0.0F}, scale);
-    viewport_.panBy(w / 2.0F - (column.left + column.width() / 2.0F) * scale, marginPx);
+    viewport_.panBy(w / 2.0F - (column.left + column.width() / 2.0F) * scale,
+                    static_cast<float>(topInset_) + marginPx / 2.0F);
     viewUpdated();
 }
 
@@ -230,26 +254,22 @@ void BoardCanvas::appendPageSheets(PdfTextureNode *parent) const {
     if (pages.empty())
         return;
     std::vector<Bounds> sheets;
-    std::vector<Bounds> edges;
     Pattern pattern;
-    const float edge = 1.0F / viewport_.scale();
     for (const PlacedPage &page : pages) {
         sheets.push_back(page.bounds);
-        edges.push_back(grown(page.bounds, edge, edge));
         pattern.add(page, visible, viewport_.scale());
     }
     auto *transform = new QSGTransformNode;
     transform->setMatrix(viewMatrix());
-    transform->appendChildNode(createRectsNode(edges, gridColor_));
+    appendSheetShadows(transform, sheets, viewport_.scale());
     transform->appendChildNode(createRectsNode(sheets, pageColor_));
     appendPdfImages(transform, *parent, pages);
-    QColor rule = gridColor_;
-    rule.setAlphaF(rule.alphaF() * 0.6F);
     if (!pattern.lines.empty())
-        transform->appendChildNode(createRectsNode(pattern.lines, rule));
+        transform->appendChildNode(createRectsNode(pattern.lines, ruleColor));
     if (!pattern.dots.empty())
         transform->appendChildNode(
-            createDotsNode(pattern.dots, dotPixels / viewport_.scale(), gridColor_));
+            createDotsNode(pattern.dots, dotPixels / viewport_.scale(), patternDotColor));
+    appendCurrentPageOutline(transform);
     parent->appendChildNode(transform);
 }
 

@@ -7,6 +7,10 @@ QtObject {
     readonly property color background: "#F7F6F2"
     readonly property color boardBackground: "#FBFAF7"
     readonly property color gridDot: "#D6D2C9"
+    // Page boards: the desk the pages lie on, and its dots.
+    readonly property color desk: "#ECEAE4"
+    readonly property color deskDot: "#DCD8CF"
+    readonly property color accentInk: "#1E40AF" // accent text on accentSoft
     readonly property color surface: "#FFFFFF"
     readonly property color ink: "#1C1B19"
     readonly property color muted: "#5E5B55"

@@ -5,6 +5,8 @@ Item {
     id: chrome
 
     required property BoardCanvas canvas
+    // Where the ruler ends: the board opens below it.
+    readonly property real rulerBottom: ruler.y + ruler.height
     required property string boardId
     // Where an imported PDF goes: before this column, or "" for the end.
     property string importBefore
@@ -33,6 +35,10 @@ Item {
         subheadingDialog.ask(text);
     }
 
+    function exportColumn(columnId: string, title: string) {
+        columnExport.start(title.length > 0 ? title : qsTr("Column"), columnId);
+    }
+
     function addSubheading(columnId: string, before: string) {
         subheadingDialog.columnId = columnId;
         subheadingDialog.itemId = before;
@@ -42,26 +48,41 @@ Item {
         subheadingDialog.ask("");
     }
 
-    // The ruler sits on the columns' heading band and stays below the board's title when the
-    // band scrolls away, so the headings stay in sight far down a column.
+    // The desk fades out under the ruler, so pages slide under it rather than meeting an edge.
+    Rectangle {
+        width: parent.width
+        height: chrome.rulerBottom + 40
+        gradient: Gradient {
+            GradientStop {
+                position: 0
+                color: Theme.desk
+            }
+            GradientStop {
+                position: (chrome.rulerBottom) / (chrome.rulerBottom + 40)
+                color: Theme.desk
+            }
+            GradientStop {
+                position: 1
+                color: Qt.rgba(0.925, 0.918, 0.894, 0)
+            }
+        }
+    }
+
+    // Pinned below the board's title, in step with the columns.
     ColumnRuler {
-        readonly property real stickyTop: Theme.gap + 60
-        readonly property var first: chrome.canvas.pageColumns[0] ?? null
-        readonly property real bandBottom: first === null ? 0
-            : first.headingBottom * chrome.canvas.zoom + chrome.height / 2
-              - chrome.canvas.viewCenter.y * chrome.canvas.zoom
+        id: ruler
 
         objectName: "columnRuler"
         anchors.left: parent.left
         anchors.right: parent.right
-        y: Math.max(stickyTop, bandBottom - height - 8)
-        visible: readable
+        y: Theme.gap + 60
         canvas: chrome.canvas
         onRenameRequested: (columnId, title) => {
             headingDialog.columnId = columnId;
             headingDialog.ask(title);
         }
         onImportRequested: before => chrome.importPdf(before)
+        onExportRequested: (columnId, title) => chrome.exportColumn(columnId, title)
         onDeleteRequested: (columnId, title) => {
             deleteDialog.columnId = columnId;
             deleteDialog.message = title.length > 0
@@ -69,6 +90,13 @@ Item {
                 : qsTr("Delete this column with all its pages and what is written on them?");
             deleteDialog.open();
         }
+    }
+
+    PdfExportFlow {
+        id: columnExport
+
+        canvas: chrome.canvas
+        onReported: message => chrome.reported(message)
     }
 
     // Untyped: NativePdfFile does not exist in the browser build.

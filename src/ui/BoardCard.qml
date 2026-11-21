@@ -83,23 +83,24 @@ AbstractButton {
                 iconPath: Icons.more
                 onClicked: menu.popup()
 
-                Menu {
+                PaperMenu {
                     id: menu
 
-                    MenuItem {
+                    PaperMenuItem {
                         text: card.admin ? qsTr("Share and projects…") : qsTr("Who has access…")
                         enabled: !card.pending
                         onTriggered: card.shareRequested(card.boardId)
                     }
 
-                    MenuItem {
+                    PaperMenuItem {
                         text: qsTr("Rename…")
                         enabled: Library.isBoardAdmin(card.boardId)
                         onTriggered: card.renameRequested(card.boardId, card.name)
                     }
 
-                    MenuItem {
+                    PaperMenuItem {
                         text: Library.isBoardAdmin(card.boardId) ? qsTr("Delete for everyone…") : qsTr("Remove from this device…")
+                        destructive: true
                         onTriggered: card.deleteRequested(card.boardId, card.name)
                     }
                 }

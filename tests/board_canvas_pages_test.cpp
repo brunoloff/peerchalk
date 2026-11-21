@@ -172,6 +172,26 @@ TEST_F(BoardCanvasPagesTest, OutlinesColumnsAndSubheadingsAndShowsThem) {
     EXPECT_LT(canvas_.visibleArea().top(), 0.0);
 }
 
+TEST_F(BoardCanvasPagesTest, KnowsThePageInTheMiddleOfTheView) {
+    QVariantMap current = canvas_.currentPage();
+    EXPECT_EQ(current["pageId"].toString().toStdString(), page_);
+    EXPECT_EQ(current["number"].toInt(), 1);
+    EXPECT_EQ(current["count"].toInt(), 1);
+    EXPECT_EQ(current["columnTitle"].toString(), "Notes");
+    EXPECT_EQ(current["pdfPage"].toInt(), 0);
+    const QString column = current["columnId"].toString();
+    canvas_.addPage(column, {});
+    const std::string second = document_.board().pages().columns()[0].items[1].id;
+    QSignalSpy changed(&canvas_, &BoardCanvas::currentPageChanged);
+    canvas_.showItem(column, QString::fromStdString(second));
+    EXPECT_GE(changed.count(), 1);
+    current = canvas_.currentPage();
+    EXPECT_EQ(current["pageId"].toString().toStdString(), second);
+    EXPECT_EQ(current["number"].toInt(), 2);
+    canvas_.setShowCurrentPage(true);
+    EXPECT_TRUE(canvas_.showCurrentPage());
+}
+
 TEST(PageOverlayRows, ListHeadingsSubheadingsGapsAndNumbersInTheArea) {
     Board board;
     board.pages().start(paperA4, "Notes");

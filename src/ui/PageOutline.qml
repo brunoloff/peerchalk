@@ -11,6 +11,7 @@ ListView {
 
     model: canvas.pageOutline
     clip: true
+    topMargin: 2
     spacing: 2
     boundsBehavior: Flickable.StopAtBounds
     ScrollBar.vertical: ScrollBar {}
@@ -19,9 +20,14 @@ ListView {
         id: entry
 
         required property var modelData
+        readonly property bool current: modelData.level === 1
+            && modelData.columnId === outline.canvas.currentPage.columnId
 
         width: ListView.view.width
-        leftPadding: entry.modelData.level === 1 ? 8 : 22
+        implicitHeight: modelData.level === 1 ? 30 : 24
+        topPadding: 0
+        bottomPadding: 0
+        leftPadding: entry.modelData.level === 1 ? 8 : 20
         highlighted: false
         onClicked: outline.canvas.showItem(entry.modelData.columnId, entry.modelData.itemId)
 
@@ -35,7 +41,9 @@ ListView {
                 elide: Text.ElideRight
                 font.pixelSize: 13
                 font.weight: entry.modelData.level === 1 ? Font.DemiBold : Font.Normal
-                color: entry.modelData.text.length > 0 ? Theme.ink : Theme.muted
+                color: entry.current ? Theme.accentInk
+                     : entry.modelData.level === 1 && entry.modelData.text.length > 0 ? Theme.ink
+                     : Theme.muted
             }
 
             Label {
@@ -48,8 +56,8 @@ ListView {
         }
 
         background: Rectangle {
-            radius: 8
-            color: entry.hovered ? Theme.hover : "transparent"
+            radius: 7
+            color: entry.current ? Theme.accentSoft : entry.hovered ? Theme.hover : "transparent"
         }
     }
 }

@@ -7,8 +7,8 @@
 #include <QPointer>
 #include <QUrl>
 
-#include <functional>
 #include <QtQml/qqmlregistration.h>
+#include <functional>
 
 namespace peerchalk {
 
@@ -21,6 +21,8 @@ class BoardExporter : public QObject {
     QML_ELEMENT
     Q_PROPERTY(peerchalk::BoardCanvas *canvas MEMBER canvas_)
     Q_PROPERTY(QString fontFamily MEMBER fontFamily_)
+    // Page boards: export only the column with this id; "" for the whole board.
+    Q_PROPERTY(QString columnId MEMBER columnId_)
     Q_PROPERTY(bool busy READ busy NOTIFY busyChanged)
 
   public:
@@ -46,6 +48,7 @@ class BoardExporter : public QObject {
 
     QPointer<BoardCanvas> canvas_;
     QString fontFamily_;
+    QString columnId_;
     QString title_;
     bool busy_{false};
     int waiting_{0};

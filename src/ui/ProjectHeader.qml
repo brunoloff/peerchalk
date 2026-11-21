@@ -62,17 +62,18 @@ RowLayout {
         iconPath: Icons.more
         onClicked: menu.popup()
 
-        Menu {
+        PaperMenu {
             id: menu
 
-            MenuItem {
+            PaperMenuItem {
                 text: qsTr("Rename…")
                 enabled: Library.currentProjectIsAdmin
                 onTriggered: header.renameRequested()
             }
 
-            MenuItem {
+            PaperMenuItem {
                 text: Library.currentProjectIsAdmin ? qsTr("Delete for everyone…") : qsTr("Leave project…")
+                destructive: true
                 onTriggered: header.deleteRequested()
             }
         }

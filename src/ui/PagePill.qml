@@ -1,12 +1,12 @@
 import QtQuick
 import QtQuick.Controls
 
-// A small rounded button over a page board, such as "+ Page".
+// One half of the "+ Page | + Subheading" pill over a page board's gaps.
 AbstractButton {
     id: pill
 
-    implicitWidth: label.implicitWidth + 20
-    implicitHeight: 26
+    implicitWidth: label.implicitWidth + 24
+    implicitHeight: 28
     hoverEnabled: true
     font.pixelSize: 12
     font.weight: Font.Medium
@@ -23,8 +23,6 @@ AbstractButton {
     }
 
     background: Rectangle {
-        radius: height / 2
-        color: pill.hovered ? Theme.accentSoft : Theme.surface
-        border.color: pill.hovered ? Theme.accent : Theme.border
+        color: pill.hovered ? Theme.accentSoft : "transparent"
     }
 }

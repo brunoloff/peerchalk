@@ -25,7 +25,8 @@ struct ExportPage {
 
 constexpr qreal ruleSpacing = 8.0 * 96.0 / 25.4; // as on screen: 8 mm rules, a 5 mm grid
 constexpr qreal gridSpacing = 5.0 * 96.0 / 25.4;
-const QColor patternColor(0xD6, 0xD2, 0xC9, 0x99);
+const QColor ruleColor(0xC9, 0xD4, 0xF5); // as the board draws them
+const QColor dotColor(0xB9, 0xB4, 0xAA);
 
 // The page's printed pattern, as the board shows it.
 void drawBackground(QPainter &painter, const ExportPage &page) {
@@ -35,7 +36,7 @@ void drawBackground(QPainter &painter, const ExportPage &page) {
     if (page.background == PageBackground::Blank || page.pdf)
         return;
     painter.save();
-    QPen pen(patternColor);
+    QPen pen(page.background == PageBackground::Dotted ? dotColor : ruleColor);
     pen.setWidthF(page.background == PageBackground::Dotted ? 2.0 : 1.0);
     pen.setCapStyle(Qt::RoundCap);
     painter.setPen(pen);
@@ -54,9 +55,15 @@ void drawBackground(QPainter &painter, const ExportPage &page) {
     painter.restore();
 }
 
-std::vector<ExportPage> exportPages(const BoardPages &pages) {
+bool exported(const ColumnSpec &column, const std::string &only) {
+    return only.empty() || column.id == only;
+}
+
+std::vector<ExportPage> exportPages(const BoardPages &pages, const std::string &only) {
     std::vector<ExportPage> list;
     for (const ColumnSpec &column : pages.columns()) {
+        if (!exported(column, only))
+            continue;
         for (const ColumnItem &item : column.items) {
             if (item.kind == ColumnItemKind::Page)
                 list.push_back(
@@ -68,10 +75,12 @@ std::vector<ExportPage> exportPages(const BoardPages &pages) {
 
 // Each column's heading leads to its first page, and each subheading to the page after it
 // (or, at the end of a column, the page before it).
-std::vector<PdfOutlineEntry> outlineOf(const BoardPages &pages) {
+std::vector<PdfOutlineEntry> outlineOf(const BoardPages &pages, const std::string &only) {
     std::vector<PdfOutlineEntry> entries;
     int page = 0;
     for (const ColumnSpec &column : pages.columns()) {
+        if (!exported(column, only))
+            continue;
         const int first = page;
         std::vector<std::string> waiting; // subheadings until the next page
         for (const ColumnItem &item : column.items) {
@@ -141,7 +150,7 @@ QByteArray drawPages(const BoardPdfInput &input, const std::vector<ExportPage> &
 } // namespace
 
 QByteArray renderPagesPdf(const BoardPdfInput &input) {
-    const std::vector<ExportPage> pages = exportPages(input.board->pages());
+    const std::vector<ExportPage> pages = exportPages(input.board->pages(), input.column);
     if (pages.empty())
         throw std::invalid_argument("The board has no pages");
     const QByteArray ink = drawPages(input, pages);
@@ -160,7 +169,7 @@ QByteArray renderPagesPdf(const BoardPdfInput &input) {
     }
     const auto *begin = reinterpret_cast<const std::byte *>(ink.constData());
     const Bytes combined = addPdfOutline(composePdf(Bytes(begin, begin + ink.size()), composed),
-                                         outlineOf(input.board->pages()));
+                                         outlineOf(input.board->pages(), input.column));
     return {reinterpret_cast<const char *>(combined.data()), qsizetype(combined.size())};
 }
 

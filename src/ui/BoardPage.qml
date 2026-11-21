@@ -95,7 +95,7 @@ Item {
 
         Rectangle {
             anchors.fill: parent
-            color: Theme.boardBackground
+            color: canvas.pageBoard ? Theme.desk : Theme.boardBackground
         }
 
         BoardCanvas {
@@ -105,7 +105,9 @@ Item {
             anchors.fill: parent
             penColor: Theme.penColors[0]
             penWidth: Theme.penWidths[1]
-            gridColor: Theme.gridDot
+            gridColor: pageBoard ? Theme.deskDot : Theme.gridDot
+            topInset: pageBoard ? pageChrome.rulerBottom : 0
+            showCurrentPage: inspector.showsPage && page.inspectorShown
             pageColor: Theme.surface
             document: Library.openBoard(page.boardId)
             readOnly: page.access !== "edit"
@@ -285,7 +287,12 @@ Item {
                 id: coordinates
 
                 anchors.centerIn: parent
-                text: qsTr("x %1 · y %2").arg(Math.round(canvas.viewCenter.x)).arg(Math.round(canvas.viewCenter.y))
+                text: canvas.pageBoard
+                    ? (canvas.currentPage.pageId === undefined ? ""
+                       : qsTr("%1 · page %2 of %3")
+                             .arg(canvas.currentPage.columnTitle.length > 0 ? canvas.currentPage.columnTitle : qsTr("Untitled column"))
+                             .arg(canvas.currentPage.number).arg(canvas.currentPage.count))
+                    : qsTr("x %1 · y %2").arg(Math.round(canvas.viewCenter.x)).arg(Math.round(canvas.viewCenter.y))
                 font.pixelSize: 12
                 color: Theme.muted
             }
@@ -352,6 +359,7 @@ Item {
             page.revealInspector(false);
         }
         onCloseRequested: page.inspectorRevealed = false
+        onExportColumnRequested: (columnId, title) => pageChrome.exportColumn(columnId, title)
 
         Behavior on x {
             NumberAnimation {

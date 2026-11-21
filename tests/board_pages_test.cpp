@@ -297,5 +297,15 @@ TEST_F(BoardPagesTest, AddsAColumnOfPdfPagesThatKeepTheirSizes) {
     EXPECT_THROW(pages().addPdfColumn({}, "", "", {paperA4}), std::invalid_argument);
 }
 
+TEST(BoardPagesStart, CanStartWithAPdfColumnThatIsNotAnUndoStep) {
+    Board board;
+    board.pages().startWithPdf("Paper", "ab12", {paperLetter, paperLetter});
+    EXPECT_EQ(board.pages().kind(), BoardKind::Pages);
+    ASSERT_EQ(board.pages().columns().size(), 1U);
+    EXPECT_EQ(board.pages().columns()[0].items[1].pdf, (PdfSource{"ab12", 1}));
+    EXPECT_FALSE(board.canUndo());
+    EXPECT_THROW(board.pages().startWithPdf("Again", "ab12", {paperA4}), std::logic_error);
+}
+
 } // namespace
 } // namespace peerchalk

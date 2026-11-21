@@ -182,8 +182,39 @@ Item {
     NewBoardDialog {
         id: newBoardDialog
 
+        objectName: "newBoardDialog"
         onSubmitted: (name, pages, paper, landscape, background) =>
                      home.createBoard(name, pages, paper, landscape, background)
+        onPdfStartRequested: name => {
+            pdfStart.name = name;
+            const picker = home.pdfPicker();
+            if (picker !== null)
+                picker.choose();
+        }
+    }
+
+    // A board that starts from a PDF. Untyped: NativePdfFile is not in the browser build.
+    Loader {
+        id: pdfStart
+
+        property string name
+
+        source: Qt.platform.os === "wasm" ? "" : "NativePdfFile.qml"
+    }
+
+    function pdfPicker(): var {
+        return pdfStart.item;
+    }
+
+    Connections {
+        target: pdfStart.item
+        ignoreUnknownSignals: true
+
+        function onChosen(file: url) {
+            const id = Library.createPageBoardFromPdf(pdfStart.name, file);
+            if (id.length > 0)
+                home.openBoard(id);
+        }
     }
 
     TextInputDialog {

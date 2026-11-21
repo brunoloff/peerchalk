@@ -215,14 +215,13 @@ QPointF BoardCanvas::toScreen(QPointF worldPoint) const {
 QSGNode *BoardCanvas::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *) {
     auto *grid = oldNode != nullptr ? static_cast<PdfTextureNode *>(oldNode) : new PdfTextureNode;
     deleteChildren(grid);
-    if (pageBoard_) {
-        appendPageSheets(grid);
-        grid->endFrame();
-        return grid;
-    }
     grid->appendChildNode(createDotsNode(
         gridDots(viewport_, static_cast<float>(width()), static_cast<float>(height())),
         gridDotSizePx, gridColor_));
+    if (pageBoard_) { // pages lie on the dotted desk
+        appendPageSheets(grid);
+        grid->endFrame();
+    }
     return grid;
 }
 
@@ -241,6 +240,7 @@ void BoardCanvas::pdfsArrived() {
 
 void BoardCanvas::viewUpdated() {
     syncPageOverlay();
+    updateCurrentPage();
     requestPdfPages();
     emit viewChanged();
     update();
@@ -251,6 +251,8 @@ void BoardCanvas::viewUpdated() {
 void BoardCanvas::strokesUpdated() {
     refreshPages();
     syncPageOverlay();
+    updateCurrentPage();
+    emit currentPageChanged(); // its number or size may have changed
     requestPdfPages();
     update();
     emit strokesChanged();

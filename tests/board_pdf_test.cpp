@@ -121,6 +121,13 @@ TEST(BoardPdf, PageBoardsBecomeOnePageEachAtItsExactSize) {
     EXPECT_EQ(pdf->outline(),
               (std::vector<PdfOutlineEntry>{
                   {"Notes", 1, 0}, {"Intro", 2, 0}, {"Last words", 2, 0}, {"Wide", 1, 1}}));
+    BoardPdfInput wideOnly = inputFor(board);
+    wideOnly.column = board.pages().columns()[1].id;
+    const std::unique_ptr<PdfDocument> column = openPdf(renderBoardPdf(wideOnly));
+    ASSERT_TRUE(column);
+    ASSERT_EQ(column->pageCount(), 1);
+    EXPECT_NEAR(column->pageSize(0).width, paperLetter.height, 0.05F);
+    EXPECT_EQ(column->outline(), (std::vector<PdfOutlineEntry>{{"Wide", 1, 0}}));
     const PaperSize a4 = pdf->pageSize(0);
     const PdfImage page = pdf->render(0, int(a4.width), int(a4.height)); // 1 pixel per unit
     EXPECT_LT(blueAt(page, 200, 100), 64); // the stroke, where it is on the page
@@ -135,7 +142,11 @@ TEST(BoardPdf, PagesKeepTheirRulesOnPaper) {
     const PaperSize a5 = pdf->pageSize(0);
     const PdfImage page = pdf->render(0, int(a5.width), int(a5.height));
     const int rule = int(8.0 * 96.0 / 25.4); // the first rule, 8 mm down
-    EXPECT_LT(std::min(blueAt(page, 200, rule), blueAt(page, 200, rule + 1)), 0xF0);
+    // Rules are light blue: their red channel shows them.
+    const auto redAt = [&](int x, int y) {
+        return page.pixels[(std::size_t(y) * std::size_t(page.width) + std::size_t(x)) * 4 + 2];
+    };
+    EXPECT_LT(std::min(redAt(200, rule), redAt(200, rule + 1)), 0xF0);
     EXPECT_EQ(blueAt(page, 200, rule / 2), 0xFF);
 }
 

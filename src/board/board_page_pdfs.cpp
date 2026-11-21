@@ -25,11 +25,8 @@ PaperSize mostCommon(const std::vector<PaperSize> &sizes) {
     return best;
 }
 
-} // namespace
-
-std::string BoardPages::addPdfColumn(const std::string &before, const std::string &title,
-                                     const std::string &blob,
-                                     const std::vector<PaperSize> &pageSizes) {
+ColumnSpec pdfColumn(const std::string &title, const std::string &blob,
+                     const std::vector<PaperSize> &pageSizes) {
     if (blob.empty() || pageSizes.empty())
         throw std::invalid_argument("A PDF column needs its PDF and at least one page");
     ColumnSpec spec{newId(), mostCommon(pageSizes), {}, title, PageBackground::Blank};
@@ -41,17 +38,41 @@ std::string BoardPages::addPdfColumn(const std::string &before, const std::strin
                               {},
                               PdfSource{blob, static_cast<int>(i)}});
     }
+    return spec;
+}
+
+void insertPdfColumn(const Board::Native &native, YTransaction *txn, std::uint32_t index,
+                     const ColumnSpec &spec) {
+    insertColumnSpec(native, txn, index, spec);
+    for (const ColumnItem &page : spec.items)
+        createStrokeArray(native, txn, page.id);
+}
+
+} // namespace
+
+std::string BoardPages::addPdfColumn(const std::string &before, const std::string &title,
+                                     const std::string &blob,
+                                     const std::vector<PaperSize> &pageSizes) {
+    const ColumnSpec spec = pdfColumn(title, blob, pageSizes);
     yundo_manager_stop(native_.undo.get());
     {
         const BoardTransaction txn = native_.write(true);
         const std::uint32_t index =
             indexOf(native_.columns, txn.get(), before).value_or(yarray_len(native_.columns));
-        insertColumnSpec(native_, txn.get(), index, spec);
-        for (const ColumnItem &page : spec.items)
-            createStrokeArray(native_, txn.get(), page.id);
+        insertPdfColumn(native_, txn.get(), index, spec);
     }
     yundo_manager_stop(native_.undo.get());
     return spec.id;
+}
+
+void BoardPages::startWithPdf(const std::string &title, const std::string &blob,
+                              const std::vector<PaperSize> &pageSizes) {
+    const ColumnSpec spec = pdfColumn(title, blob, pageSizes);
+    requireEmpty();
+    const BoardTransaction txn = native_.write(false);
+    const YInput kind = yinput_string(pagesKind);
+    ymap_insert(native_.layout, txn.get(), "kind", &kind);
+    insertPdfColumn(native_, txn.get(), 0, spec);
 }
 
 std::set<std::string> BoardPages::pdfBlobs() const {

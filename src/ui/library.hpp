@@ -129,6 +129,8 @@ class Library : public QObject {
     // Adds a PDF file to a page board as a new column before the column `before` ("" for
     // the end). Returns whether it did; errorOccurred says why not.
     Q_INVOKABLE bool importPdf(const QString &boardId, const QUrl &file, const QString &before);
+    // A page board whose first column is the PDF in file. Returns "" on failure.
+    Q_INVOKABLE QString createPageBoardFromPdf(const QString &name, const QUrl &file);
     // The same with the PDF's contents; name stands in for a PDF without a title.
     bool addPdf(const QString &boardId, const QByteArray &pdf, const QString &name,
                 const QString &before);

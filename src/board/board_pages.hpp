@@ -70,6 +70,9 @@ class BoardPages {
     // pages, an empty blob or an invalid size.
     std::string addPdfColumn(const std::string &before, const std::string &title,
                              const std::string &blob, const std::vector<PaperSize> &pageSizes);
+    // Like start(), with a first column of a PDF's pages as addPdfColumn() makes it.
+    void startWithPdf(const std::string &title, const std::string &blob,
+                      const std::vector<PaperSize> &pageSizes);
     // The PDFs that pages show, by blob.
     [[nodiscard]] std::set<std::string> pdfBlobs() const;
     // Moves an item before the item `before` of column `toColumn` (or last); a page keeps its
@@ -94,6 +97,7 @@ class BoardPages {
 
   private:
     void columnsChanged();
+    void requireEmpty() const;
     void strokesChanged(std::uint32_t count, const void *events);
 
     Board::Native &native_;

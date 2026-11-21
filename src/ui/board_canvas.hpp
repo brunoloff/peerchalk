@@ -46,11 +46,19 @@ class BoardCanvas : public QQuickItem {
     Q_PROPERTY(QColor gridColor READ gridColor WRITE setGridColor NOTIFY gridColorChanged)
     Q_PROPERTY(QColor pageColor READ pageColor WRITE setPageColor NOTIFY pageColorChanged)
     Q_PROPERTY(bool pageBoard READ pageBoard NOTIFY strokesChanged)
+    // How much of the top of the canvas other things cover; page boards open below it.
+    Q_PROPERTY(qreal topInset MEMBER topInset_ NOTIFY topInsetChanged)
     // Page boards: what to draw over the pages in view (PageOverlayModel), and the columns
     // as maps {columnId, title, left, right, headingBottom, paper ("A4"... or ""), landscape,
     // background, pages}, left to right, for the column ruler.
     Q_PROPERTY(QAbstractItemModel *pageItems READ pageItems CONSTANT)
     Q_PROPERTY(QVariantList pageColumns READ pageColumns NOTIFY strokesChanged)
+    // The page in the middle of the view: {pageId, columnId, columnTitle, number, count,
+    // width, height, pdfPage (from 1; 0 for none)}, or empty. With showCurrentPage it is
+    // outlined in blue.
+    Q_PROPERTY(QVariantMap currentPage READ currentPage NOTIFY currentPageChanged)
+    Q_PROPERTY(bool showCurrentPage READ showCurrentPage WRITE setShowCurrentPage NOTIFY
+                   showCurrentPageChanged)
     // The outline of a page board: per column {columnId, itemId: "", text, level: 1, pages}
     // followed by its subheadings {columnId, itemId, text, level: 2}.
     Q_PROPERTY(QVariantList pageOutline READ pageOutline NOTIFY strokesChanged)
@@ -86,6 +94,9 @@ class BoardCanvas : public QQuickItem {
     [[nodiscard]] const PageMap &pageMap() const { return pageMap_; }
     [[nodiscard]] QAbstractItemModel *pageItems() { return &overlay_; }
     [[nodiscard]] QVariantList pageColumns() const;
+    [[nodiscard]] QVariantMap currentPage() const;
+    [[nodiscard]] bool showCurrentPage() const { return showCurrentPage_; }
+    void setShowCurrentPage(bool show);
     [[nodiscard]] QVariantList pageOutline() const;
     // What of a page board is in view and around it, for drawing.
     [[nodiscard]] PageView pageView() const;
@@ -166,6 +177,9 @@ class BoardCanvas : public QQuickItem {
     void penWidthChanged();
     void gridColorChanged();
     void pageColorChanged();
+    void topInsetChanged();
+    void currentPageChanged();
+    void showCurrentPageChanged();
     void strokesChanged();
     void viewChanged();
     void textBoxesChanged();
@@ -220,6 +234,8 @@ class BoardCanvas : public QQuickItem {
     // A box at a board position, on the page there; none between pages.
     [[nodiscard]] std::optional<TextBox> newTextBoxAt(Point world) const;
     void appendPageSheets(PdfTextureNode *parent) const;
+    void updateCurrentPage();
+    void appendCurrentPageOutline(QSGNode *parent) const;
     // Asks the document's PDF renderer for the PDF pages in and near the view.
     void requestPdfPages();
     // PDFs may have reached this device: pages waiting for them are shown again.
@@ -239,6 +255,9 @@ class BoardCanvas : public QQuickItem {
     QColor pageColor_{Qt::white};
     bool pageBoard_{false};
     bool startViewPending_{false};
+    qreal topInset_{0.0};
+    QString currentPageId_;
+    bool showCurrentPage_{false};
     PageMap pageMap_;
     std::vector<TextBox> placedBoxes_;
     PageOverlayModel overlay_;

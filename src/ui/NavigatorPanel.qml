@@ -2,30 +2,59 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-// The minimap and zoom controls. Floating, they hug the right edge at a fixed size;
-// with stretch set (inside the side panel) they fill the available width.
+// The minimap and zoom controls; page boards can show their outline in place of the map.
+// Floating, they hug the right edge at a fixed size; with stretch set (inside the side panel)
+// they fill the available width.
 ColumnLayout {
     id: navigator
 
     required property BoardCanvas canvas
     property bool stretch: false
+    property bool outline: false // page boards: the outline tab is open
+    readonly property bool showsOutline: outline && canvas.pageBoard
 
     spacing: 8
 
     Panel {
         Layout.alignment: Qt.AlignRight
         Layout.fillWidth: navigator.stretch
-        implicitWidth: 180
-        implicitHeight: navigator.stretch ? 150 : 120
+        implicitWidth: navigator.canvas.pageBoard ? 236 : 180
+        implicitHeight: (navigator.showsOutline ? 230 : navigator.stretch ? 150 : 120)
+                        + (navigator.canvas.pageBoard ? 36 : 0)
         radius: 12
 
-        BoardMinimap {
+        ColumnLayout {
             anchors.fill: parent
             anchors.margins: 6
-            canvas: navigator.canvas
-            viewportColor: Theme.accent
-            Accessible.role: Accessible.Graphic
-            Accessible.name: qsTr("Minimap. Click to move the view there.")
+            spacing: 4
+
+            PaperSegments {
+                Layout.fillWidth: true
+                visible: navigator.canvas.pageBoard
+                stretch: true
+                choices: [{value: "map", text: qsTr("Map")},
+                          {value: "outline", text: qsTr("Outline")}]
+                value: navigator.outline ? "outline" : "map"
+                onChosen: value => navigator.outline = value === "outline"
+            }
+
+            BoardMinimap {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                visible: !navigator.showsOutline
+                canvas: navigator.canvas
+                viewportColor: Theme.accent
+                Accessible.role: Accessible.Graphic
+                Accessible.name: qsTr("Minimap. Click to move the view there.")
+            }
+
+            PageOutline {
+                objectName: "pageOutline"
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                visible: navigator.showsOutline
+                canvas: navigator.canvas
+            }
         }
     }
 

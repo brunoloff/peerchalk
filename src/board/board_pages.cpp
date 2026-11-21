@@ -64,15 +64,17 @@ BoardKind BoardPages::kind() const {
                                                                      : BoardKind::Infinite;
 }
 
+void BoardPages::requireEmpty() const {
+    const BoardTransaction txn = native_.read();
+    if (yarray_len(native_.strokes) > 0 || ymap_len(native_.textBoxes, txn.get()) > 0 ||
+        yarray_len(native_.columns) > 0 ||
+        mapString(native_.layout, txn.get(), "kind") == pagesKind)
+        throw std::logic_error("only an empty board can become a page board");
+}
+
 void BoardPages::start(PaperSize paper, const std::string &title, PageBackground background) {
     checkPaper(paper);
-    {
-        const BoardTransaction txn = native_.read();
-        if (yarray_len(native_.strokes) > 0 || ymap_len(native_.textBoxes, txn.get()) > 0 ||
-            yarray_len(native_.columns) > 0 ||
-            mapString(native_.layout, txn.get(), "kind") == pagesKind)
-            throw std::logic_error("only an empty board can become a page board");
-    }
+    requireEmpty();
     const BoardTransaction txn = native_.write(false);
     const YInput kind = yinput_string(pagesKind);
     ymap_insert(native_.layout, txn.get(), "kind", &kind);
