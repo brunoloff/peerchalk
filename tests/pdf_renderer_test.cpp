@@ -110,6 +110,10 @@ TEST(LibraryPdfs, AddsAPdfAsAColumnOfItsPages) {
     ASSERT_EQ(startedPages.columns().size(), 1U);
     EXPECT_EQ(startedPages.columns()[0].title, "Lemma notes");
     EXPECT_EQ(library.boardName(started), "From a PDF");
+    QSignalSpy pickerErrors(&library, &Library::errorOccurred);
+    library.pickPdf(board, {}); // the browser's picker only
+    library.pickPdfForNewBoard("No picker");
+    EXPECT_EQ(pickerErrors.count(), 2);
     const QString blob = QString::fromStdString(startedPages.columns()[0].items[0].pdf->blob);
     const QString loose = library.blobs().put("no board shows this");
     QFile looseFile(dir.path() + "/blobs/" + loose);

@@ -7,7 +7,7 @@ pkgrel=1
 pkgdesc='Shared whiteboard: draw and write together, directly between devices (prebuilt)'
 arch=('x86_64' 'aarch64')
 url='https://github.com/brunoloff/peerchalk'
-license=('MIT')
+license=('MIT' 'BSD-3-Clause' 'Apache-2.0') # PeerChalk; PDFium and the libraries inside it
 depends=('glibc' 'gcc-libs' 'fontconfig' 'freetype2' 'libglvnd' 'libxkbcommon' 'dbus'
          'hicolor-icon-theme')
 provides=("$_name")

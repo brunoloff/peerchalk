@@ -238,7 +238,7 @@ void AccountManager::loadImportFile(const QUrl &file) {
 
 void AccountManager::pickImportFile() {
 #ifdef __EMSCRIPTEN__
-    pickFile([this](QByteArray contents) {
+    pickFile(QStringLiteral(".peerchalk"), [this](QByteArray contents, QString) {
         importData_ = std::move(contents);
         emit importFileReady();
     });

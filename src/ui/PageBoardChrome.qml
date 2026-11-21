@@ -17,6 +17,10 @@ Item {
 
     function importPdf(before: string) {
         chrome.importBefore = before;
+        if (chrome.inBrowser) { // files have no paths there: the library reads the one picked
+            Library.pickPdf(chrome.boardId, before);
+            return;
+        }
         const picker = chrome.pdfPicker();
         if (picker !== null)
             picker.choose();
@@ -117,6 +121,15 @@ Item {
         id: pdfFiles
 
         source: chrome.inBrowser ? "" : "NativePdfFile.qml"
+    }
+
+    Connections {
+        target: Library
+
+        function onPdfAdded(boardId: string) {
+            if (boardId === chrome.boardId)
+                chrome.reported(qsTr("PDF added as a new column"));
+        }
     }
 
     Connections {

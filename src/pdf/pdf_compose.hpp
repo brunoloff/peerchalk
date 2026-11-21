@@ -26,8 +26,7 @@ struct PdfComposedPage {
 // it keeps that page as it is (text stays text) and draws the overlay page over it the way
 // the page is shown, rotation included, top left corners together. Throws
 // std::invalid_argument when a PDF cannot be read or the counts differ, and
-// std::runtime_error when PDFium fails. Builds without PDFium return overlay unchanged when
-// nothing goes under it, and throw otherwise.
+// std::runtime_error when PDFium fails.
 [[nodiscard]] Bytes composePdf(const Bytes &overlay, const std::vector<PdfComposedPage> &pages);
 
 } // namespace peerchalk

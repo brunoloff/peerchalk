@@ -175,7 +175,7 @@ PaperDialog {
             spacing: 10
 
             PaperButton {
-                visible: dialog.pages && Library.pdfSupported && Qt.platform.os !== "wasm"
+                visible: dialog.pages && Library.pdfSupported
                 text: qsTr("Start from a PDF…")
                 enabled: dialog.name.length > 0
                 onClicked: {

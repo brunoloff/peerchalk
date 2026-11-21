@@ -39,6 +39,10 @@ std::mutex &lock() {
     return engine;
 }
 
+#ifndef __EMSCRIPTEN__ // the browser's is in pdfium_web_bridge.cpp
+bool present() { return true; }
+#endif
+
 void initialise() {
     static std::once_flag once;
     std::call_once(once, [] {
@@ -68,11 +72,13 @@ PdfDocument::~PdfDocument() {
     FPDF_CloseDocument(native_->document);
 }
 
-bool PdfDocument::available() { return true; }
+bool PdfDocument::available() { return pdf_engine::present(); }
 
 PdfDocument::Opened PdfDocument::open(std::shared_ptr<const Bytes> data) {
     if (!data || data->empty())
         return {nullptr, PdfError::Unreadable};
+    if (!pdf_engine::present())
+        return {nullptr, PdfError::Unsupported};
     const std::lock_guard lock(engineLock());
     initialise();
     auto native = std::make_unique<Native>();

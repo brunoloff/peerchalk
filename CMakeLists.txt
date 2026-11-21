@@ -48,18 +48,28 @@ set_target_properties(peerchalk_yrs PROPERTIES
     IMPORTED_LOCATION "${PEERCHALK_YRS_LIBRARY}"
     INTERFACE_INCLUDE_DIRECTORIES "${PEERCHALK_YRS_INCLUDE_DIR}")
 
-# PDFium shows, imports and exports PDFs. Platforms whose dependencies do not include it yet
-# build without PDF support.
+# PDFium shows, imports and exports PDFs, the same engine on every platform. Desktops link its
+# library; browsers load its own module beside the app, reached through
+# src/pdf/pdfium_web_bridge.cpp, so only its headers are needed here.
 find_path(PEERCHALK_PDFIUM_INCLUDE_DIR fpdfview.h PATH_SUFFIXES pdfium)
-find_library(PEERCHALK_PDFIUM_LIBRARY NAMES pdfium)
-if(PEERCHALK_PDFIUM_INCLUDE_DIR AND PEERCHALK_PDFIUM_LIBRARY)
-    add_library(peerchalk_pdfium UNKNOWN IMPORTED)
-    set_target_properties(peerchalk_pdfium PROPERTIES
-        IMPORTED_LOCATION "${PEERCHALK_PDFIUM_LIBRARY}"
-        INTERFACE_INCLUDE_DIRECTORIES "${PEERCHALK_PDFIUM_INCLUDE_DIR}")
+if(EMSCRIPTEN)
+    # The module sits in the dependency prefix's pdfium folder, beside include/pdfium.
+    get_filename_component(peerchalk_pdfium_prefix "${PEERCHALK_PDFIUM_INCLUDE_DIR}/../.." ABSOLUTE)
+    if(EXISTS "${peerchalk_pdfium_prefix}/pdfium/pdfium.wasm")
+        set(peerchalk_pdfium_found TRUE)
+    endif()
+    add_library(peerchalk_pdfium INTERFACE)
 else()
-    message(STATUS "PDFium not found: building without PDF support")
+    find_library(PEERCHALK_PDFIUM_LIBRARY NAMES pdfium)
+    set(peerchalk_pdfium_found ${PEERCHALK_PDFIUM_LIBRARY})
+    add_library(peerchalk_pdfium UNKNOWN IMPORTED)
+    set_target_properties(peerchalk_pdfium PROPERTIES IMPORTED_LOCATION "${PEERCHALK_PDFIUM_LIBRARY}")
 endif()
+if(NOT PEERCHALK_PDFIUM_INCLUDE_DIR OR NOT peerchalk_pdfium_found)
+    message(FATAL_ERROR "PDFium not found. Build the dependencies as in docs/BUILDING.md.")
+endif()
+set_target_properties(peerchalk_pdfium PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${PEERCHALK_PDFIUM_INCLUDE_DIR}")
 
 # LaTeX layout through RaTeX. Browsers run it in a Web Worker instead (src/math/engine/web).
 if(NOT EMSCRIPTEN)

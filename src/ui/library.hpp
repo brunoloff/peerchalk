@@ -133,6 +133,13 @@ class Library : public QObject {
     Q_INVOKABLE bool importPdf(const QString &boardId, const QUrl &file, const QString &before);
     // A page board whose first column is the PDF in file. Returns "" on failure.
     Q_INVOKABLE QString createPageBoardFromPdf(const QString &name, const QUrl &file);
+    // The same with the PDF's contents; fileName stands in for a PDF without a title.
+    QString createPageBoardFromPdfContents(const QString &name, const QByteArray &pdf,
+                                           const QString &fileName);
+    // Browsers, where files have no paths: ask for a PDF and add it to a board (pdfAdded), or
+    // make a board from it (pageBoardCreated). Must run during a click.
+    Q_INVOKABLE void pickPdf(const QString &boardId, const QString &before);
+    Q_INVOKABLE void pickPdfForNewBoard(const QString &name);
     // The same with the PDF's contents; name stands in for a PDF without a title.
     bool addPdf(const QString &boardId, const QByteArray &pdf, const QString &name,
                 const QString &before);
@@ -229,6 +236,8 @@ class Library : public QObject {
     void errorOccurred(const QString &message);
     void customColorsChanged();
     void blobProgressChanged();
+    void pdfAdded(const QString &boardId);
+    void pageBoardCreated(const QString &boardId);
 
   private:
     // Runs action, reporting a thrown error through errorOccurred; returns success.

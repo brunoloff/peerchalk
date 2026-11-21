@@ -10,13 +10,17 @@
 namespace {
 
 QByteArray pickedFile;
-std::function<void(QByteArray)> pickedCallback;
+QByteArray pickedName;
+std::function<void(QByteArray, QString)> pickedCallback;
 
 EM_JS(void, peerchalk_download,
       (const char *name, unsigned nameSize, const char *data, unsigned size),
       { peerchalkDownloadFile(name, nameSize, data, size); });
 
-EM_JS(void, peerchalk_pick_file, (), { peerchalkPickFile(); });
+EM_JS(void, peerchalk_pick_file, (const char *accept),
+      { peerchalkPickFile(UTF8ToString(accept)); });
+
+EM_JS_DEPS(peerchalk_files, "$UTF8ToString");
 
 } // namespace
 
@@ -26,9 +30,15 @@ EMSCRIPTEN_KEEPALIVE char *peerchalk_file_buffer(unsigned size) {
     return pickedFile.data();
 }
 
+EMSCRIPTEN_KEEPALIVE char *peerchalk_file_name_buffer(unsigned size) {
+    pickedName.resize(static_cast<qsizetype>(size));
+    return pickedName.data();
+}
+
 EMSCRIPTEN_KEEPALIVE void peerchalk_file_ready() {
     if (pickedCallback)
-        std::exchange(pickedCallback, {})(std::exchange(pickedFile, {}));
+        std::exchange(pickedCallback, {})(std::exchange(pickedFile, {}),
+                                          QString::fromUtf8(std::exchange(pickedName, {})));
 }
 }
 
@@ -54,9 +64,9 @@ QString pageUserAgent() {
     return QString::fromUtf8(emscripten_run_script_string("navigator.userAgent"));
 }
 
-void pickFile(std::function<void(QByteArray)> chosen) {
+void pickFile(const QString &accept, std::function<void(QByteArray, QString)> chosen) {
     pickedCallback = std::move(chosen);
-    peerchalk_pick_file();
+    peerchalk_pick_file(accept.toUtf8().constData());
 }
 
 } // namespace peerchalk

@@ -8,7 +8,8 @@ cd "$root"
 export EMSDK_QUIET=1
 # shellcheck disable=SC1091
 source .emsdk/emsdk_env.sh
-[ -d build/prefix-web/math-worker ] || cmake --workflow --preset deps-web
+[ -d build/prefix-web/math-worker ] && [ -d build/prefix-web/pdfium ] ||
+    cmake --workflow --preset deps-web
 cmake --workflow --preset web
 rm -rf build/web/site
 deploy/web/prepare-site.sh "${1:-/}" build/web/site

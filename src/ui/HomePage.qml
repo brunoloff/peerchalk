@@ -186,6 +186,10 @@ Item {
         onSubmitted: (name, pages, paper, landscape, background) =>
                      home.createBoard(name, pages, paper, landscape, background)
         onPdfStartRequested: name => {
+            if (Qt.platform.os === "wasm") { // files have no paths there
+                Library.pickPdfForNewBoard(name);
+                return;
+            }
             pdfStart.name = name;
             const picker = home.pdfPicker();
             if (picker !== null)
@@ -204,6 +208,14 @@ Item {
 
     function pdfPicker(): var {
         return pdfStart.item;
+    }
+
+    Connections {
+        target: Library
+
+        function onPageBoardCreated(boardId: string) {
+            home.openBoard(boardId);
+        }
     }
 
     Connections {

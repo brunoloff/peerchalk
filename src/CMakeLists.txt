@@ -8,14 +8,10 @@ target_link_libraries(peerchalk_board PRIVATE peerchalk_yrs)
 target_compile_options(peerchalk_board PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:${peerchalk_warning_flags}>)
 
-# PDFs through PDFium, or a stand-in that refuses them where PDFium is missing.
-if(TARGET peerchalk_pdfium)
-    add_library(peerchalk_pdf STATIC pdf/pdf_document.cpp pdf/pdf_compose.cpp pdf/pdf_outline.cpp)
-    target_link_libraries(peerchalk_pdf PRIVATE peerchalk_pdfium)
-else()
-    add_library(peerchalk_pdf STATIC pdf/pdf_document_none.cpp pdf/pdf_compose_none.cpp
-        pdf/pdf_outline.cpp)
-endif()
+# PDFs through PDFium; browsers reach it through a bridge to its module.
+add_library(peerchalk_pdf STATIC pdf/pdf_document.cpp pdf/pdf_compose.cpp pdf/pdf_outline.cpp
+    $<$<BOOL:${EMSCRIPTEN}>:pdf/pdfium_web_bridge.cpp>)
+target_link_libraries(peerchalk_pdf PRIVATE peerchalk_pdfium)
 target_include_directories(peerchalk_pdf PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(peerchalk_pdf PUBLIC peerchalk_board)
 target_compile_options(peerchalk_pdf PRIVATE
@@ -65,15 +61,27 @@ if(EMSCRIPTEN)
     set(peerchalk_web_storage "${CMAKE_CURRENT_SOURCE_DIR}/app/web_storage.js")
     set(peerchalk_web_files "${CMAKE_CURRENT_SOURCE_DIR}/app/web_files.js")
     set(peerchalk_web_math "${CMAKE_CURRENT_SOURCE_DIR}/app/web_math.js")
+    set(peerchalk_web_pdf "${CMAKE_CURRENT_SOURCE_DIR}/app/web_pdf.js")
     target_link_options(peerchalk PRIVATE -lidbfs.js "SHELL:--pre-js \"${peerchalk_web_storage}\""
-        "SHELL:--pre-js \"${peerchalk_web_files}\"" "SHELL:--pre-js \"${peerchalk_web_math}\"")
+        "SHELL:--pre-js \"${peerchalk_web_files}\"" "SHELL:--pre-js \"${peerchalk_web_math}\""
+        "SHELL:--pre-js \"${peerchalk_web_pdf}\"")
     set_property(TARGET peerchalk APPEND PROPERTY LINK_DEPENDS "${peerchalk_web_storage}"
-        "${peerchalk_web_files}" "${peerchalk_web_math}")
+        "${peerchalk_web_files}" "${peerchalk_web_math}" "${peerchalk_web_pdf}")
 endif()
 
 if(NOT EMSCRIPTEN)
     include(GNUInstallDirs)
     install(TARGETS peerchalk BUNDLE DESTINATION . RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+    # PDFium's licenses, and those of the libraries inside it, go with the app.
+    if(APPLE)
+        set(peerchalk_licenses_destination PeerChalk.app/Contents/Resources/licenses)
+    elseif(WIN32)
+        set(peerchalk_licenses_destination licenses)
+    else()
+        set(peerchalk_licenses_destination ${CMAKE_INSTALL_DATADIR}/doc/peerchalk/licenses)
+    endif()
+    install(DIRECTORY "${PEERCHALK_PDFIUM_INCLUDE_DIR}/../../share/licenses/pdfium/"
+        DESTINATION ${peerchalk_licenses_destination}/pdfium)
     if(UNIX AND NOT APPLE)
         set(peerchalk_linux "${CMAKE_CURRENT_SOURCE_DIR}/../deploy/linux")
         install(FILES "${peerchalk_linux}/io.github.brunoloff.PeerChalk.desktop"

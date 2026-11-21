@@ -104,7 +104,8 @@
         "SODIUM_INCLUDE_DIR": "${fileDir}/build/prefix-web/include",
         "SODIUM_LIBRARY": "${fileDir}/build/prefix-web/lib/libsodium.a",
         "PEERCHALK_YRS_INCLUDE_DIR": "${fileDir}/build/prefix-web/include",
-        "PEERCHALK_YRS_LIBRARY": "${fileDir}/build/prefix-web/lib/libyrs.a"
+        "PEERCHALK_YRS_LIBRARY": "${fileDir}/build/prefix-web/lib/libyrs.a",
+        "PEERCHALK_PDFIUM_INCLUDE_DIR": "${fileDir}/build/prefix-web/include/pdfium"
       }
     }
   ],

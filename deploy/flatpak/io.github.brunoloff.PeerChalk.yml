@@ -112,6 +112,26 @@ modules:
         commit: 23b7f5693bbf9e7d26340c521ee8647f79bdfba2 # v0.28.0
       - yrs-cargo-sources.json
 
+  # PDFium comes prebuilt, as everywhere else: building it needs Chromium's toolchain.
+  - name: pdfium
+    buildsystem: simple
+    build-commands:
+      - mkdir -p /app/include/pdfium /app/share/licenses/pdfium
+      - cp -r include/. /app/include/pdfium/
+      - install -Dm755 lib/libpdfium.so /app/lib/libpdfium.so
+      - cp -r licenses/. /app/share/licenses/pdfium/
+    sources:
+      - type: archive
+        only-arches: [x86_64]
+        url: https://github.com/bblanchon/pdfium-binaries/releases/download/chromium%2F8125/pdfium-linux-x64.tgz
+        sha256: e1c3ce6e270cb5e0c20816b379ad9f2c1309972697c505f508de92bf5e7d6659
+        strip-components: 0
+      - type: archive
+        only-arches: [aarch64]
+        url: https://github.com/bblanchon/pdfium-binaries/releases/download/chromium%2F8125/pdfium-linux-arm64.tgz
+        sha256: 8b8818f2ec57d1b213d952ca6d7f0ffeca9d0110487d0e20ad83ba918bc92efa
+        strip-components: 0
+
   - name: peerchalk
     buildsystem: simple
     build-commands:

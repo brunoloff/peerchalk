@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Regenerates deploy/web/site/licenses from the components the browser build links.
 
-Run it after changing the Qt kit, Emscripten, libsodium, Yrs or math engine versions.
+Run it after changing the Qt kit, Emscripten, libsodium, Yrs, PDFium or math engine versions.
 """
 from pathlib import Path
 import json
@@ -15,6 +15,7 @@ DEPS = P2PDC / ".deps"
 QT = Path.home() / "Qt/6.11.2/wasm_singlethread"
 QT_TEXTS = Path("/usr/share/licenses/qt6-base")
 OUT = ROOT / "deploy/web/site/licenses"
+PDFIUM_LICENSES = ROOT / "build/prefix-web/share/licenses/pdfium"
 EMSCRIPTEN = DEPS / "emsdk-qt/upstream/emscripten"
 COPIES = {
     "PeerChalk-MIT.txt": ROOT / "LICENSE",
@@ -83,6 +84,15 @@ def rust_notices(manifest: Path, package: str) -> str:
     return "\n".join(parts)
 
 
+def pdfium_notices() -> str:
+    """The licenses of the libraries inside PDFium, one after another."""
+    parts = []
+    for path in sorted(PDFIUM_LICENSES.iterdir()):
+        if path.name != "pdfium.txt":
+            parts.append(f"==== {path.stem} ====\n\n{path.read_text(errors='replace').strip()}\n")
+    return "\n".join(parts)
+
+
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     for name, source in COPIES.items():
@@ -93,6 +103,8 @@ def main() -> None:
     (OUT / "Rust-crates.txt").write_text(rust_notices(DEPS / "y-crdt-qt/Cargo.toml", "yffi"))
     (OUT / "Math-Rust-crates.txt").write_text(
         rust_notices(ROOT / "src/math/engine/Cargo.toml", "peerchalk-math"))
+    shutil.copyfile(PDFIUM_LICENSES / "pdfium.txt", OUT / "PDFium-BSD-3-Clause.txt")
+    (OUT / "PDFium-third-party.txt").write_text(pdfium_notices())
 
 
 if __name__ == "__main__":

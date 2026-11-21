@@ -173,6 +173,29 @@
     });
   }
 
+  // PDFium's own module, which the app reaches for PDFs (src/app/web_pdf.js). It loads beside
+  // the app; without it the app still starts, and only PDFs are unavailable.
+  function loadPdfium() {
+    const limitMs = 60000;
+    return new Promise((resolve) => {
+      const give = (text) => {
+        if (text) note(text);
+        resolve();
+      };
+      setTimeout(() => give(window.peerchalkPdfium ? "" : "the PDF engine took too long"), limitMs);
+      window.Module = { // pdfium.js is a plain script: it takes its settings from this global
+        locateFile: (path) => path,
+        print: () => {},
+        printErr: (text) => note(`pdf: ${text}`),
+        onRuntimeInitialized() {
+          window.peerchalkPdfium = window.Module;
+          give("PDF engine ready");
+        },
+      };
+      loadScript("pdfium.js").catch(() => give("the PDF engine could not be loaded"));
+    });
+  }
+
   // Downloads the app with progress, so a stopped download is noticed.
   async function download(url) {
     const response = await fetch(url);
@@ -232,6 +255,7 @@
     watch();
     if (!checkBrowser()) return;
     phase("script");
+    const pdfium = loadPdfium();
     try {
       await loadScript("peerchalk.js");
     } catch (error) {
@@ -248,6 +272,7 @@
         onAbort: (reason) => fail(`the app stopped (${reason})`, ["Reload the page."]),
         onRuntimeInitialized: () => note("runtime ready"),
       });
+      await pdfium;
       phase("start");
       app.callMain([]);
     } catch (error) {

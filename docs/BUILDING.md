@@ -38,7 +38,13 @@ bin/peerchalk
 - `tools/setup.sh` installs Rust 1.96.1 and, using aqtinstall, Qt 6.11.2 into `~/Qt`.
 - The `deps` preset downloads p2p-discovery-connect at the commit in
   `cmake/P2pdcSource.cmake`, then builds its dependencies, Yrs and the math engine into
-  `build/prefix-linux`. Run it again when `deps/`, `src/math/engine/` or that commit changes.
+  `build/prefix-linux`, and adds PDFium, prebuilt by
+  [pdfium-binaries](https://github.com/bblanchon/pdfium-binaries) at one pinned release for
+  every platform. Run it again when `deps/`, `src/math/engine/` or that commit changes.
+- Browsers use the same PDFium: the page loads its WebAssembly module beside the app, and
+  `src/pdf/pdfium_web_bridge.cpp` forwards the PDFium calls to it. After building for
+  browsers, `node tests/web/pdf_bridge_test.mjs` and `node tests/web/run_pdf_web_check.mjs`
+  (with Emscripten's environment loaded) check that bridge.
 - The `linux` preset builds the app and runs its tests.
 
 To keep the computer responsive during builds, limit the work done at once:

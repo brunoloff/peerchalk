@@ -10,6 +10,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <set>
 #include <string>
 #include <thread>
@@ -88,6 +89,7 @@ class PdfRenderer : public QObject {
     };
 
     void run();
+    void renderNext(); // browsers: one request per turn of the event loop
     void renderOne(const Request &request);
     std::shared_ptr<PdfDocument> document(const std::string &blob);
     void store(const Key &key, QImage image);

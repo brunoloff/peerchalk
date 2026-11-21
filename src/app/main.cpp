@@ -18,6 +18,13 @@ int main(int argc, char **argv) {
     // Warnings from anywhere also go to Settings → Troubleshooting.
     peerchalk::sync::ConnectionLog::captureQtMessages();
     peerchalk::sync::ConnectionLog::quietDesktopPortalInAppImages();
+#if defined(Q_OS_LINUX) && !defined(Q_OS_ANDROID)
+    // File dialogs come from the desktop (KDE's, GNOME's...) through its portal; without a
+    // platform theme that offers them, Qt shows its own, which looks out of place. A theme
+    // chosen in the environment still wins.
+    if (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORMTHEME"))
+        qputenv("QT_QPA_PLATFORMTHEME", "xdgdesktopportal");
+#endif
 #ifdef __EMSCRIPTEN__
     // web_storage.js keeps this folder in the browser's IndexedDB.
     qputenv("PEERCHALK_DATA_DIR", "/peerchalk");

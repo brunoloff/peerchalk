@@ -5,6 +5,7 @@
 #include "library/files.hpp"
 #include "pdf/pdf_document.hpp"
 #include "ui/pdf_renderer.hpp"
+#include "ui/web_files.hpp"
 
 #include <QDateTime>
 #include <QFileInfo>
@@ -22,7 +23,7 @@ std::string refusal(PdfError error) {
     case PdfError::Password:
         return "This PDF is protected by a password, which PeerChalk cannot open";
     case PdfError::Unsupported:
-        return "This version of PeerChalk cannot show PDFs";
+        return "PDFs cannot be opened here: reload the page to try again";
     case PdfError::Unreadable:
         break;
     }
@@ -135,16 +136,20 @@ bool Library::addPdf(const QString &boardId, const QByteArray &pdf, const QStrin
 
 QString Library::createPageBoardFromPdf(const QString &name, const QUrl &file) {
     QByteArray contents;
-    std::optional<PdfColumn> column;
     const QString path = localPath(file);
-    if (!attempt([&] {
-            contents = readPdfFile(path);
-            column = inspect(contents, QFileInfo(path).completeBaseName());
-        }))
+    if (!attempt([&] { contents = readPdfFile(path); }))
+        return {};
+    return createPageBoardFromPdfContents(name, contents, QFileInfo(path).completeBaseName());
+}
+
+QString Library::createPageBoardFromPdfContents(const QString &name, const QByteArray &pdf,
+                                                const QString &fileName) {
+    std::optional<PdfColumn> column;
+    if (!attempt([&] { column = inspect(pdf, fileName); }))
         return {};
     const QString id = createBoard(name);
     if (id.isEmpty() || !attempt([&] {
-            const QString hash = blobs_.put(contents);
+            const QString hash = blobs_.put(pdf);
             document(QUuid::fromString(id))
                 .board()
                 .pages()
@@ -152,6 +157,35 @@ QString Library::createPageBoardFromPdf(const QString &name, const QUrl &file) {
         }))
         return {};
     return id;
+}
+
+void Library::pickPdf(const QString &boardId, const QString &before) {
+#ifdef __EMSCRIPTEN__
+    pickFile(QStringLiteral(".pdf,application/pdf"),
+             [this, boardId, before](QByteArray contents, QString fileName) {
+                 if (addPdf(boardId, contents, QFileInfo(fileName).completeBaseName(), before))
+                     emit pdfAdded(boardId);
+             });
+#else
+    Q_UNUSED(boardId)
+    Q_UNUSED(before)
+    emit errorOccurred(tr("This file picker is only available in a browser"));
+#endif
+}
+
+void Library::pickPdfForNewBoard(const QString &name) {
+#ifdef __EMSCRIPTEN__
+    pickFile(QStringLiteral(".pdf,application/pdf"), [this, name](QByteArray contents,
+                                                                  QString fileName) {
+        const QString id =
+            createPageBoardFromPdfContents(name, contents, QFileInfo(fileName).completeBaseName());
+        if (!id.isEmpty())
+            emit pageBoardCreated(id);
+    });
+#else
+    Q_UNUSED(name)
+    emit errorOccurred(tr("This file picker is only available in a browser"));
+#endif
 }
 
 } // namespace peerchalk

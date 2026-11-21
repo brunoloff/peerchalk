@@ -73,6 +73,11 @@ jobs:
           key: deps-web-${{ hashFiles('deps/**', 'cmake/P2pdcSource.cmake', 'src/math/engine/**', 'tools/setup.sh') }}
       - name: Build the site
         run: deploy/web/build.sh /peerchalk/
+      - name: Check PDFs in the browser build
+        run: |
+          source .emsdk/emsdk_env.sh
+          node tests/web/pdf_bridge_test.mjs build/prefix-web/pdfium
+          node tests/web/run_pdf_web_check.mjs
       - name: Keep the site for publishing
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:

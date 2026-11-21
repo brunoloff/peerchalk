@@ -14,6 +14,7 @@ out=${2:?usage: prepare-site.sh BASE_PATH OUTPUT_FOLDER}
 build=$root/build/web/src
 pages=$root/deploy/web/site
 math=$root/build/prefix-web/math-worker
+pdfium=$root/build/prefix-web/pdfium
 
 case $base in
     /*/ | /) ;;
@@ -21,6 +22,11 @@ case $base in
 esac
 if [ ! -f "$build/peerchalk.wasm" ]; then
     printf 'prepare-site.sh: build first with deploy/web/build.sh\n' >&2
+    exit 1
+fi
+
+if [ ! -f "$pdfium/pdfium.wasm" ]; then
+    printf 'prepare-site.sh: get PDFium with cmake --workflow --preset deps-web\n' >&2
     exit 1
 fi
 
@@ -33,6 +39,7 @@ mkdir -p "$out"
 cp "$build/peerchalk.js" "$build/peerchalk.wasm" "$out/"
 cp "$math/peerchalk_math_worker.js" "$math/peerchalk_math_worker.wasm" \
     "$root/src/math/engine/web/math-worker.js" "$out/"
+cp "$pdfium/pdfium.js" "$pdfium/pdfium.wasm" "$out/"
 cp -r "$pages/page.css" "$pages/loading.css" "$pages/privacy.html" "$pages/licenses" \
     "$pages/loader.js" "$out/"
 cp "$root/deploy/icons/peerchalk-256.png" "$out/icon.png"

@@ -11,15 +11,18 @@ function peerchalkDownloadFile(name, nameSize, data, size) {
   setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
-function peerchalkPickFile() {
+function peerchalkPickFile(accept) {
   const input = document.createElement("input");
   input.type = "file";
-  input.accept = ".peerchalk";
+  input.accept = accept;
   input.onchange = async () => {
     if (input.files.length === 0) return;
-    const bytes = new Uint8Array(await input.files[0].arrayBuffer());
+    const file = input.files[0];
+    const bytes = new Uint8Array(await file.arrayBuffer());
     const target = _peerchalk_file_buffer(bytes.length);
     HEAPU8.set(bytes, target);
+    const name = new TextEncoder().encode(file.name);
+    HEAPU8.set(name, _peerchalk_file_name_buffer(name.length));
     _peerchalk_file_ready();
   };
   input.click();

@@ -23,7 +23,7 @@ struct PdfImage {
 enum class PdfError : std::uint8_t {
     Unreadable,  // not a PDF, or damaged beyond repair
     Password,    // encrypted with a password
-    Unsupported, // this build has no PDF engine
+    Unsupported, // PDFium is not there: in a browser, its module did not load
 };
 
 // A PDF read with PDFium. PDFium is not thread-safe, so every call takes one lock shared by
@@ -37,7 +37,7 @@ class PdfDocument {
 
     // Opens the PDF in data, which the document keeps.
     [[nodiscard]] static Opened open(std::shared_ptr<const Bytes> data);
-    // Whether this build can open PDFs at all.
+    // Whether PDFs can be opened: always on desktops, once PDFium has loaded in browsers.
     [[nodiscard]] static bool available();
 
     ~PdfDocument();

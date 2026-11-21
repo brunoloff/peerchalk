@@ -3,6 +3,7 @@
 #include "library/blob_store.hpp"
 #include "pdf/pdf_document.hpp"
 
+#include <QTimer>
 #include <QtLogging>
 
 #include <algorithm>
@@ -18,8 +19,14 @@ constexpr std::size_t openDocuments = 4;
 
 } // namespace
 
+// Desktops render on a thread of their own. Browsers have one thread: they render one page
+// per turn of the event loop, so the board stays responsive between pages.
 PdfRenderer::PdfRenderer(const BlobStore &blobs, std::size_t budgetBytes, QObject *parent)
-    : QObject(parent), blobs_(blobs), budget_(budgetBytes), worker_([this] { run(); }) {}
+    : QObject(parent), blobs_(blobs), budget_(budgetBytes) {
+#ifndef __EMSCRIPTEN__
+    worker_ = std::thread([this] { run(); });
+#endif
+}
 
 PdfRenderer::~PdfRenderer() {
     {
@@ -27,7 +34,21 @@ PdfRenderer::~PdfRenderer() {
         stopping_ = true;
     }
     wake_.notify_all();
-    worker_.join();
+    if (worker_.joinable())
+        worker_.join();
+}
+
+void PdfRenderer::renderNext() {
+    std::optional<Request> next;
+    {
+        const std::lock_guard lock(lock_);
+        if (stopping_ || queue_.empty())
+            return;
+        next = queue_.front();
+        queue_.erase(queue_.begin());
+    }
+    renderOne(*next);
+    QTimer::singleShot(0, this, &PdfRenderer::renderNext);
 }
 
 namespace {
@@ -86,6 +107,9 @@ void PdfRenderer::want(std::vector<Request> requests) {
         queue_ = std::move(requests);
     }
     wake_.notify_all();
+#ifdef __EMSCRIPTEN__
+    QTimer::singleShot(0, this, &PdfRenderer::renderNext);
+#endif
 }
 
 QImage PdfRenderer::best(const PdfSource &source, int height) const {
