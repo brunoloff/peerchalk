@@ -59,20 +59,41 @@ Item {
                 DelegateChoice {
                     roleValue: "page"
 
-                    Text {
+                    Item {
+                        id: pageLabels
+
                         required property int number
+                        required property bool waiting
                         required property real itemX
                         required property real itemY
                         required property real itemWidth
                         required property real itemHeight
 
                         x: itemX
-                        y: itemY + itemHeight + 6
+                        y: itemY
                         width: itemWidth
-                        text: number
-                        font.pixelSize: 14
-                        color: Theme.muted
-                        horizontalAlignment: Text.AlignRight
+                        height: itemHeight
+
+                        Text {
+                            anchors.top: parent.bottom
+                            anchors.topMargin: 6
+                            width: parent.width
+                            text: pageLabels.number
+                            font.pixelSize: 14
+                            color: Theme.muted
+                            horizontalAlignment: Text.AlignRight
+                        }
+
+                        Text {
+                            anchors.centerIn: parent
+                            width: parent.width * 0.8
+                            visible: pageLabels.waiting
+                            text: qsTr("This page shows a PDF that has not reached this device yet. It comes from the others on this board.")
+                            wrapMode: Text.WordWrap
+                            horizontalAlignment: Text.AlignHCenter
+                            font.pixelSize: 22
+                            color: Theme.muted
+                        }
                     }
                 }
 

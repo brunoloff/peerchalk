@@ -55,7 +55,7 @@ void BoardCanvas::setDocument(BoardDocument *document) {
     if (PdfRenderer *pdfs = document_->pdfRenderer()) {
         // Documents share one renderer, so the canvas connects to it once.
         connect(pdfs, &PdfRenderer::rendered, this, &QQuickItem::update, Qt::UniqueConnection);
-        connect(pdfs, &PdfRenderer::retryWanted, this, &BoardCanvas::requestPdfPages,
+        connect(pdfs, &PdfRenderer::retryWanted, this, &BoardCanvas::pdfsArrived,
                 Qt::UniqueConnection);
     }
     if (document_ != &ownDocument_) // that one goes away together with the canvas
@@ -232,6 +232,11 @@ void BoardCanvas::geometryChange(const QRectF &newGeometry, const QRectF &oldGeo
     penLayer_->setSize(newGeometry.size());
     viewUpdated();
     showStartOfPages();
+}
+
+void BoardCanvas::pdfsArrived() {
+    syncPageOverlay();
+    requestPdfPages();
 }
 
 void BoardCanvas::viewUpdated() {

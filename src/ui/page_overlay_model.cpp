@@ -30,7 +30,7 @@ using Kind = PageOverlayModel::Kind;
 
 // One column's rows in area.
 void addColumn(std::vector<Row> &rows, const PlacedColumn &placed, const ColumnSpec &spec,
-               const Bounds &area) {
+               const Bounds &area, const std::function<bool(const std::string &)> &missing) {
     if (overlaps(placed.heading, area))
         rows.push_back({"h" + spec.id, Kind::Heading, spec.id, {}, spec.title, 0, placed.heading});
     int number = 0;
@@ -40,8 +40,14 @@ void addColumn(std::vector<Row> &rows, const PlacedColumn &placed, const ColumnS
         if (!overlaps(item.bounds, area))
             continue;
         if (item.kind == ColumnItemKind::Page)
-            rows.push_back(
-                {"p" + item.id, Kind::PageNumber, spec.id, item.id, {}, number, item.bounds});
+            rows.push_back({"p" + item.id,
+                            Kind::PageNumber,
+                            spec.id,
+                            item.id,
+                            {},
+                            number,
+                            item.bounds,
+                            item.pdf && missing && missing(item.pdf->blob)});
         else
             rows.push_back({"s" + item.id, Kind::Subheading, spec.id, item.id,
                             i < spec.items.size() ? spec.items[i].text : std::string(), 0,
@@ -60,12 +66,13 @@ void addColumn(std::vector<Row> &rows, const PlacedColumn &placed, const ColumnS
 } // namespace
 
 std::vector<Row> pageOverlayRows(const PageMap &map, const std::vector<ColumnSpec> &columns,
-                                 const Bounds &area) {
+                                 const Bounds &area,
+                                 const std::function<bool(const std::string &)> &missing) {
     std::vector<Row> rows;
     const PageLayout &layout = map.layout();
     for (std::size_t c = 0; c < layout.columns.size() && c < columns.size(); ++c) {
         if (overlaps(layout.columns[c].bounds, area))
-            addColumn(rows, layout.columns[c], columns[c], area);
+            addColumn(rows, layout.columns[c], columns[c], area, missing);
     }
     std::ranges::sort(rows, {}, &Row::key);
     return rows;
@@ -98,15 +105,17 @@ QVariant PageOverlayModel::data(const QModelIndex &index, int role) const {
         return row.bounds.width();
     case Height:
         return row.bounds.height();
+    case Waiting:
+        return row.waiting;
     default:
         return {};
     }
 }
 
 QHash<int, QByteArray> PageOverlayModel::roleNames() const {
-    return {{KindRole, "kind"}, {Column, "columnId"}, {Item, "itemId"},
-            {Text, "label"},     {Number, "number"},   {X, "itemX"},
-            {Y, "itemY"},       {Width, "itemWidth"}, {Height, "itemHeight"}};
+    return {{KindRole, "kind"},     {Column, "columnId"}, {Item, "itemId"}, {Text, "label"},
+            {Number, "number"},     {X, "itemX"},         {Y, "itemY"},     {Width, "itemWidth"},
+            {Height, "itemHeight"}, {Waiting, "waiting"}};
 }
 
 void PageOverlayModel::sync(const std::vector<Row> &rows) {

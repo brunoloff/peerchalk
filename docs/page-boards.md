@@ -286,7 +286,8 @@ Work happens on the `page-boards` branch, one commit per finished piece.
       `BlobWant` / `BlobChunk` in 256 KiB pieces, one request at a time from one peer,
       answered only for blobs on boards shared with the asker, stored only when the SHA-256
       matches; an end-to-end test sends a 700 KB PDF between two devices
-- [ ] M5 · still to do: "Fetching PDF · 34 %" on pages, a second peer when the first leaves
+- [ ] M5 · still to do: a progress percentage on pages waiting for a PDF (they say they are
+      waiting now), a second peer when the first leaves
       mid-download (it retries on the next connection now), forgetting unused blobs
 - [x] M6 · export: one PDF page per board page, column by column, at its exact size (QPdfWriter
       rounds to whole points, so PDFium sets each page's box); ink and text boxes clipped to

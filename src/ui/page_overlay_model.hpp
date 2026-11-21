@@ -4,6 +4,7 @@
 
 #include <QAbstractListModel>
 
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -25,10 +26,11 @@ class PageOverlayModel : public QAbstractListModel {
         std::string key;
         Kind kind;
         std::string column;
-        std::string item; // the subheading or page; for gaps, the item after it ("" at the end)
-        std::string text; // headings and subheadings
-        int number;       // page numbers, from 1 in each column
-        Bounds bounds;    // board coordinates
+        std::string item;    // the subheading or page; for gaps, the item after it ("" at the end)
+        std::string text;    // headings and subheadings
+        int number;          // page numbers, from 1 in each column
+        Bounds bounds;       // board coordinates
+        bool waiting{false}; // page numbers: the PDF the page shows is not on this device
         bool operator==(const Row &) const = default;
     };
 
@@ -42,13 +44,26 @@ class PageOverlayModel : public QAbstractListModel {
     void sync(const std::vector<Row> &rows);
 
   private:
-    enum Role { KindRole = Qt::UserRole + 1, Column, Item, Text, Number, X, Y, Width, Height };
+    enum Role {
+        KindRole = Qt::UserRole + 1,
+        Column,
+        Item,
+        Text,
+        Number,
+        X,
+        Y,
+        Width,
+        Height,
+        Waiting
+    };
 
     std::vector<Row> rows_;
 };
 
 // The rows for the part of the board in area; columns are the board's, in layout order.
+// missing tells whether a PDF, by blob, is not on this device.
 [[nodiscard]] std::vector<PageOverlayModel::Row>
-pageOverlayRows(const PageMap &map, const std::vector<ColumnSpec> &columns, const Bounds &area);
+pageOverlayRows(const PageMap &map, const std::vector<ColumnSpec> &columns, const Bounds &area,
+                const std::function<bool(const std::string &)> &missing = {});
 
 } // namespace peerchalk

@@ -198,6 +198,13 @@ TEST(PageOverlayRows, ListHeadingsSubheadingsGapsAndNumbersInTheArea) {
     EXPECT_TRUE(std::ranges::is_sorted(all, {}, &PageOverlayModel::Row::key));
     const Bounds far{-9000.0F, -9000.0F, -8000.0F, -8000.0F};
     EXPECT_TRUE(pageOverlayRows(map, board.pages().columns(), far).empty());
+    board.pages().addPdfColumn({}, "Paper", "absent", {paperA4});
+    map.refresh(board.pages());
+    const auto rows = pageOverlayRows(map, board.pages().columns(), *map.bounds(),
+                                      [](const std::string &blob) { return blob == "absent"; });
+    const std::string pdfPage = board.pages().columns()[1].items[0].id;
+    EXPECT_TRUE(std::ranges::find(rows, "p" + pdfPage, &PageOverlayModel::Row::key)->waiting);
+    EXPECT_FALSE(std::ranges::find(rows, "p" + second, &PageOverlayModel::Row::key)->waiting);
 
     PageOverlayModel model;
     model.sync(all);

@@ -2,6 +2,8 @@
 #include "ui/board_canvas.hpp"
 
 #include "board/board_pages.hpp"
+#include "library/blob_store.hpp"
+#include "ui/pdf_renderer.hpp"
 
 #include <QVariantMap>
 
@@ -137,9 +139,14 @@ void BoardCanvas::syncPageOverlay() {
     const Bounds visible =
         viewport_.visibleWorld(static_cast<float>(width()), static_cast<float>(height()));
     const float margin = visible.height() / 4.0F;
+    const PdfRenderer *pdfs = document_ ? document_->pdfRenderer() : nullptr;
+    const auto missing = [pdfs](const std::string &blob) {
+        return pdfs != nullptr && !pdfs->blobs().has(QString::fromStdString(blob));
+    };
     overlay_.sync(pageOverlayRows(pageMap_, board().pages().columns(),
                                   {visible.left - margin, visible.top - margin,
-                                   visible.right + margin, visible.bottom + margin}));
+                                   visible.right + margin, visible.bottom + margin},
+                                  missing));
 }
 
 } // namespace peerchalk

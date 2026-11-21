@@ -222,6 +222,8 @@ class BoardCanvas : public QQuickItem {
     void appendPageSheets(PdfTextureNode *parent) const;
     // Asks the document's PDF renderer for the PDF pages in and near the view.
     void requestPdfPages();
+    // PDFs may have reached this device: pages waiting for them are shown again.
+    void pdfsArrived();
     [[nodiscard]] int pdfHeightFor(const Bounds &page) const;
     void appendPdfImages(QSGNode *parent, PdfTextureNode &textures,
                          const std::vector<PlacedPage> &pages) const;
