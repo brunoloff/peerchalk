@@ -1,6 +1,18 @@
 A whiteboard that people share directly, computer to computer, with no account and no server
 holding the boards. You can also [try it in the browser](https://brunoloff.github.io/peerchalk/).
 
+## New in 0.2
+
+- **Page boards**, a second kind of board: columns of real-size pages (A4, Letter, A5, Legal,
+  blank, ruled, squared or dotted), each column with its heading and subheadings, and
+  "+ Page" and "+ Subheading" wherever you want them.
+- **PDFs**: import a PDF as a column of its pages, or start a board from one, then write on
+  them. They stay sharp at any zoom and travel to the others on the board.
+- **Export** page by page at each page's exact size, a whole board, one column or a range of
+  pages, with headings as bookmarks; PDF pages keep their original text.
+- A layout for phones, Paper-style menus and dialogs, and the system's own file dialogs.
+- Devices on 0.1 cannot connect to 0.2: update every device.
+
 ## Which file to download
 
 | System | File |
