@@ -1,4 +1,5 @@
 #include "board/board_native.hpp"
+#include "board/board_pages.hpp"
 
 #include <algorithm>
 #include <climits>
@@ -23,11 +24,15 @@ YDoc *newDocument() {
     return ydoc_new_with_options(options);
 }
 
+} // namespace
+
 std::uint32_t checkedLength(ByteView bytes) {
     if (bytes.size() > std::numeric_limits<std::uint32_t>::max())
         throw std::length_error("Yrs payload is too large");
     return static_cast<std::uint32_t>(bytes.size());
 }
+
+namespace {
 
 Bytes takeBinary(char *data, std::uint32_t length) {
     if (data == nullptr)
@@ -48,9 +53,9 @@ float distanceToSegment(Point p, const StrokePoint &a, const StrokePoint &b) {
     return std::hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
 }
 
-// A peer's entry that is not a valid stroke is kept as an empty stroke, so the mirror
-// stays index-aligned with the Yrs array.
-Stroke decodeEntry(const YOutput &value) {
+} // namespace
+
+Stroke decodeStrokeEntry(const YOutput &value) {
     if (value.tag == Y_JSON_BUF) {
         const auto *data = reinterpret_cast<const std::byte *>(youtput_read_binary(&value));
         if (std::optional<Stroke> stroke = decodeStroke(ByteView(data, value.len)))
@@ -58,8 +63,6 @@ Stroke decodeEntry(const YOutput &value) {
     }
     return Stroke(0U, 1.0F);
 }
-
-} // namespace
 
 bool strokeNear(const Stroke &stroke, Point point, float radius) {
     const std::optional<Bounds> bounds = stroke.bounds();
@@ -105,9 +108,14 @@ Board::Board() : native_(std::make_unique<Native>()) {
                           std::terminate();
                       }
                   });
+    pages_ = std::make_unique<BoardPages>(*native_, [this] {
+        if (listener_)
+            listener_();
+    });
 }
 
 Board::~Board() {
+    pages_.reset();
     yunobserve(native_->strokes, sizeof(observerKey) - 1, observerKey);
     yunobserve_deep(native_->textBoxes, sizeof(observerKey) - 1, observerKey);
     native_->undo.reset();
@@ -128,7 +136,7 @@ void Board::applyArrayDelta(const void *event) {
             strokes_.erase(strokes_.begin() + index, strokes_.begin() + index + count);
         } else if (change.tag == Y_EVENT_CHANGE_ADD) {
             for (std::uint32_t k = 0; k < change.len; ++k)
-                strokes_.insert(strokes_.begin() + index++, decodeEntry(change.values[k]));
+                strokes_.insert(strokes_.begin() + index++, decodeStrokeEntry(change.values[k]));
         }
     }
     if (listener_)

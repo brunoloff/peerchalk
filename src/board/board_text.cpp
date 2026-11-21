@@ -13,29 +13,11 @@ namespace {
 constexpr char bodyKey[] = "body";
 constexpr float unmeasuredLineFactor = 1.4F;
 
-using Output = std::unique_ptr<YOutput, decltype(&youtput_destroy)>;
-
 struct Chunks {
     YChunk *data;
     std::uint32_t length;
     ~Chunks() { ychunks_destroy(data, length); }
 };
-
-std::optional<double> readNumber(const YOutput *value) {
-    if (value == nullptr)
-        return std::nullopt;
-    if (value->tag == Y_JSON_NUM)
-        return *youtput_read_float(value);
-    if (value->tag == Y_JSON_INT)
-        return static_cast<double>(*youtput_read_long(value));
-    return std::nullopt;
-}
-
-std::optional<double> mapNumber(const Branch *map, const YTransaction *txn, const char *key) {
-    const Output value(ymap_get(map, txn, key), youtput_destroy);
-    const std::optional<double> number = readNumber(value.get());
-    return number && std::isfinite(*number) ? number : std::nullopt;
-}
 
 bool isTrue(const YOutput *value) {
     return value != nullptr && value->tag == Y_JSON_BOOL && *youtput_read_bool(value) != 0;
@@ -227,16 +209,16 @@ const std::vector<TextBox> &Board::textBoxes() const {
 
 const TextBox *Board::textBox(const std::string &id) const {
     const std::vector<TextBox> &boxes = textBoxes();
-    const auto found = std::lower_bound(boxes.begin(), boxes.end(), id,
-                                        [](const TextBox &a, const std::string &b) { return a.id < b; });
+    const auto found =
+        std::lower_bound(boxes.begin(), boxes.end(), id,
+                         [](const TextBox &a, const std::string &b) { return a.id < b; });
     return found != boxes.end() && found->id == id ? &*found : nullptr;
 }
 
 Bounds Board::textBoxBounds(const TextBox &box) const {
     const auto measured = textBoxHeights_.find(box.id);
-    const float height = measured != textBoxHeights_.end()
-                             ? measured->second
-                             : box.fontSize * unmeasuredLineFactor;
+    const float height =
+        measured != textBoxHeights_.end() ? measured->second : box.fontSize * unmeasuredLineFactor;
     return {box.x, box.y, box.x + box.width, box.y + height};
 }
 

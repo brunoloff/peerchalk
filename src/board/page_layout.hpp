@@ -31,6 +31,7 @@ struct ColumnItem {
     std::string id;
     ColumnItemKind kind{ColumnItemKind::Page};
     std::optional<PaperSize> size; // pages only; none: the column's paper
+    std::string text{};            // subheadings only
 };
 
 // A column of a page board: its paper sets its width and the size of its pages.
@@ -38,6 +39,7 @@ struct ColumnSpec {
     std::string id;
     PaperSize paper{paperA4};
     std::vector<ColumnItem> items;
+    std::string title{}; // the column's heading (h1)
 };
 
 // Spacing of a page board, in board units.

@@ -14,6 +14,8 @@
 
 namespace peerchalk {
 
+class BoardPages;
+
 // True when any part of the stroke, including its width, lies within radius of point.
 [[nodiscard]] bool strokeNear(const Stroke &stroke, Point point, float radius);
 
@@ -76,9 +78,14 @@ class Board {
     // document through Yrs (stateVector, encodeState, textBoxes...); strokes() is up to date.
     void setChangeListener(std::function<void()> listener) { listener_ = std::move(listener); }
 
-  private:
+    // The page-board side of the document (board_pages.hpp); undo and endGesture cover it.
+    [[nodiscard]] BoardPages &pages() { return *pages_; }
+    [[nodiscard]] const BoardPages &pages() const { return *pages_; }
+
+    // The Yrs side, defined in board_native.hpp for the board's own source files.
     struct Native;
 
+  private:
     void applyArrayDelta(const void *event);
     void textChanged();
     std::size_t eraseTextBoxesNear(Point point, float radius);
@@ -89,6 +96,7 @@ class Board {
     mutable bool textBoxesStale_{true};
     std::map<std::string, float> textBoxHeights_;
     std::function<void()> listener_;
+    std::unique_ptr<BoardPages> pages_; // after native_, so it goes first
 };
 
 } // namespace peerchalk

@@ -242,9 +242,11 @@ Work happens on the `page-boards` branch, one commit per finished piece.
 
 - [x] Plan and interface designs
 - [x] M1 · `layoutPages`, paper sizes, `itemsIn` and `pageAt` (`src/board/page_layout.*`, 7 tests)
-- [ ] M1 · `PageBoard`: the Yrs branches above (columns with nested item arrays,
-      `pageStrokes`, `pageText`), add/remove/move items and columns, undo, merges between
+- [x] M1 · `BoardPages` (`board.pages()`, `src/board/board_pages*`, 9 tests): kind and
+      `start`, columns and items by id, strokes per page decoded lazily, undo, merges between
       two replicas, saving and loading
+- [ ] M1 · still to do in the model: moving items and columns, text boxes on pages
+      (`pageText`), per-page size changes ("Apply to all pages")
       Notes from libyrs (`libyrs.h`): nested types go in with `yinput_yarray` / `yinput_ymap`
       and come out with `youtput_read_yarray` / `youtput_read_ymap`; `ybranch_id` and
       `ybranch_get` keep a handle on a nested branch across transactions; `yobserve_deep`
