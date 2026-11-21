@@ -17,6 +17,8 @@ Item {
     required property real itemWidth
     required property real itemHeight
     property string paper // "A4 · ruled", for the end of a column
+    property bool alwaysShown: false // for touch screens, which cannot hover
+    readonly property bool shown: hover.hovered || alwaysShown
     readonly property bool atEnd: itemId.length === 0
 
     signal subheadingRequested()
@@ -38,7 +40,7 @@ Item {
         anchors.centerIn: parent
         width: pill.implicitWidth
         height: 28
-        visible: hover.hovered && !gap.atEnd
+        visible: gap.shown && !gap.atEnd
 
         SoftShadow {
             anchors.fill: parent

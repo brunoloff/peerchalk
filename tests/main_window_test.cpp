@@ -149,6 +149,23 @@ void openEveryDialog(QQuickWindow *window) {
     }
 }
 
+TEST_F(MainWindowTest, PhonesGetABarOnTopAndToolsAlongTheBottom) {
+    QQuickItem *page = openNewBoard(true);
+    ASSERT_NE(page, nullptr);
+    window_->resize(390, 844);
+    ASSERT_TRUE(QTest::qWaitFor([&] { return page->property("phone").toBool(); }));
+    EXPECT_TRUE(item("phoneChrome")->isVisible());
+    EXPECT_FALSE(item("columnRuler")->isVisible());
+    auto *canvas = page->findChild<QQuickItem *>(QStringLiteral("boardCanvas"));
+    EXPECT_GT(canvas->property("topInset").toReal(), 80.0); // below the bar and its tabs
+    window_->resize(1280, 800);
+    ASSERT_TRUE(QTest::qWaitFor([&] { return !page->property("phone").toBool(); }));
+    EXPECT_FALSE(item("phoneChrome")->isVisible());
+    EXPECT_TRUE(item("columnRuler")->isVisible());
+    for (const QQmlError &warning : warnings_)
+        ADD_FAILURE() << warning.toString().toStdString();
+}
+
 TEST_F(MainWindowTest, PageBoardsShowTheirColumnsAndChangeThroughTheCanvas) {
     QQuickItem *page = openNewBoard(true);
     ASSERT_NE(page, nullptr);

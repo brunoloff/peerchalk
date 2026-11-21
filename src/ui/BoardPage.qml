@@ -44,6 +44,14 @@ Item {
 
     signal back()
 
+    // Phones get a bar on top and the tools along the bottom (PhoneBoardChrome).
+    readonly property bool phone: width < 600
+
+    function leave() {
+        Library.saveBoards();
+        page.back();
+    }
+
     // The side panel is docked (beside the board) unless auto-hide is on or the window
     // is narrow; then it slides over the board when revealed by hovering the right edge
     // or tapping the edge tab, and hides again after the pointer leaves it.
@@ -106,7 +114,7 @@ Item {
             penColor: Theme.penColors[0]
             penWidth: Theme.penWidths[1]
             gridColor: pageBoard ? Theme.deskDot : Theme.gridDot
-            topInset: pageBoard ? pageChrome.rulerBottom : 0
+            topInset: page.phone ? phoneChrome.headerBottom : pageBoard ? pageChrome.rulerBottom : 0
             showCurrentPage: inspector.showsPage && page.inspectorShown
             pageColor: Theme.surface
             document: Library.openBoard(page.boardId)
@@ -121,6 +129,7 @@ Item {
             anchors.fill: parent
             canvas: canvas
             visible: canvas.pageBoard
+            touch: page.phone
             onRenameSubheading: (columnId, itemId, text) =>
                                 pageChrome.renameSubheading(columnId, itemId, text)
             onAddSubheadingRequested: (columnId, before) => pageChrome.addSubheading(columnId, before)
@@ -137,57 +146,39 @@ Item {
             anchors.fill: parent
             canvas: canvas
             boardId: page.boardId
+            phone: page.phone
             onReported: message => exportToast.show(message)
             visible: canvas.pageBoard
         }
 
-        Panel {
+        BoardTitlePanel {
             anchors.left: parent.left
             anchors.top: parent.top
             anchors.margins: Theme.gap
-            implicitWidth: titleColumn.implicitWidth + 20
-            implicitHeight: titleColumn.implicitHeight + 12
+            visible: !page.phone
+            canvas: canvas
+            boardName: page.boardName
+            others: page.people.length
+            onBack: page.leave()
+            onReported: message => exportToast.show(message)
+        }
 
-            RowLayout {
-                id: titleColumn
+        PhoneBoardChrome {
+            id: phoneChrome
 
-                anchors.centerIn: parent
-                spacing: 8
-
-                RailButton {
-                    implicitWidth: 36
-                    implicitHeight: 36
-                    text: qsTr("Back to %1").arg(Library.currentProjectName)
-                    iconPath: Icons.chevronLeft
-                    onClicked: {
-                        Library.saveBoards();
-                        page.back();
-                    }
-                }
-
-                ColumnLayout {
-                    spacing: 0
-
-                    Label {
-                        text: page.boardName
-                        font.weight: Font.DemiBold
-                        color: Theme.ink
-                    }
-
-                    Label {
-                        text: page.people.length === 0 ? qsTr("%1 · only you here").arg(Library.currentProjectName)
-                            : page.people.length === 1 ? qsTr("%1 · 1 other person here").arg(Library.currentProjectName)
-                            : qsTr("%1 · %2 others here").arg(Library.currentProjectName).arg(page.people.length)
-                        font.pixelSize: 12
-                        color: Theme.muted
-                    }
-                }
-
-                PdfExportButton {
-                    canvas: canvas
-                    title: page.boardName
-                    onReported: message => exportToast.show(message)
-                }
+            objectName: "phoneChrome"
+            anchors.fill: parent
+            visible: page.phone
+            canvas: canvas
+            boardName: page.boardName
+            live: page.access === "edit"
+            onBack: page.leave()
+            onReported: message => exportToast.show(message)
+            onImportRequested: pageChrome.importPdf("")
+            onExportColumnRequested: (columnId, title) => pageChrome.exportColumn(columnId, title)
+            onToolOptionsRequested: {
+                inspector.pageTab = false;
+                page.revealInspector(true);
             }
         }
 
@@ -269,6 +260,7 @@ Item {
         }
 
         ToolRail {
+            visible: !page.phone
             canvas: canvas
             anchors.left: parent.left
             anchors.leftMargin: Theme.gap
@@ -276,6 +268,7 @@ Item {
         }
 
         Panel {
+            visible: !page.phone
             anchors.left: parent.left
             anchors.bottom: parent.bottom
             anchors.margins: Theme.gap
@@ -301,14 +294,14 @@ Item {
         NavigatorPanel {
             objectName: "floatingNavigator"
             canvas: canvas
-            visible: !page.inspectorShown
+            visible: !page.inspectorShown && !page.phone
             anchors.right: parent.right
             anchors.bottom: parent.bottom
             anchors.margins: Theme.gap
         }
 
         Panel {
-            visible: !page.inspectorShown
+            visible: !page.inspectorShown && !page.phone
             anchors.right: parent.right
             anchors.rightMargin: -Theme.panelRadius
             anchors.verticalCenter: parent.verticalCenter

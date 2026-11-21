@@ -286,9 +286,10 @@ Work happens on the `page-boards` branch, one commit per finished piece.
       `BlobWant` / `BlobChunk` in 256 KiB pieces, one request at a time from one peer,
       answered only for blobs on boards shared with the asker, stored only when the SHA-256
       matches; an end-to-end test sends a 700 KB PDF between two devices
-- [ ] M5 · still to do: a progress percentage on pages waiting for a PDF (they say they are
-      waiting now), a second peer when the first leaves
-      mid-download (it retries on the next connection now), forgetting unused blobs
+- [x] M5 · pages waiting for a PDF say who it comes from and how far it has got; a
+      download whose sender leaves, or goes quiet for 15 s, goes on from another owner who
+      has it (boards travel only to and from owners); PDFs no board has shown for 30 days
+      are deleted
 - [x] M6 · export: one PDF page per board page, column by column, at its exact size (QPdfWriter
       rounds to whole points, so PDFium sets each page's box); ink and text boxes clipped to
       their page; PDF pages keep the original page as it is (`composePdf`: imported page with
@@ -297,6 +298,18 @@ Work happens on the `page-boards` branch, one commit per finished piece.
 - [x] M6 · headings and subheadings as bookmarks (`addPdfOutline`, an incremental update,
       since PDFium cannot write outlines); ruled, squared and dotted backgrounds printed;
       checked with qpdf and poppler as well as PDFium
-- [ ] M6 · still to do: exporting one column or a page range, printing the h1
-- [ ] M4 · still to do: tiles above 4096 px, progressive rendering in the browser, the
-      "Fetching PDF" placeholder, the 300-page timing
+- [x] M6 · exporting one column, or a range of its pages, with bookmarks to match. Column
+      headings become bookmarks and the PDF's title rather than printed text, which would
+      cover the pages' own content
+- [x] M4 · pages taller than 4096 px on screen also render their visible part in 1024 px
+      tiles (up to 32768 px); page boards hand QML only the text boxes near the view; a
+      300-page PDF reads its page sizes in 5 ms and shows its first page in about 13 ms
+- [x] M3 · the interface after the designs: Paper menus and dialogs everywhere, the
+      new-board dialog with pictured kinds, the dotted desk and shadowed sheets, printed
+      headings with pages and paper, the pinned ruler marking the column in view, one
+      "+ Page | + Subheading" pill, the dashed "+ Add page", Pen | Page tabs with the page in
+      view outlined in blue, Map | Outline tabs, "Start from a PDF…"
+- [x] M7 · phone layout: a bar with the board's name and a tab per column, the page counter,
+      the tools along the bottom, always-visible gap pills, page settings in a bottom sheet
+- [ ] M4 · in the browser: no PDF engine yet (pdfium-binaries' wasm build, or pdf.js in a
+      worker), so PDF pages show their "waiting" state there

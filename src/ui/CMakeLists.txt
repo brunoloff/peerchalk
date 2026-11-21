@@ -61,6 +61,7 @@ qt_add_qml_module(peerchalk_ui URI PeerChalk VERSION 1.0
         PaperField.qml PaperSegments.qml PageSwatch.qml BackgroundTiles.qml DashedFrame.qml
         PdfExportFlow.qml PageInspector.qml PaperDialog.qml PaperButtonBox.qml
         PdfWaitingPill.qml ExportPagesDialog.qml
+        PhoneBoardChrome.qml PageSheet.qml BoardTitlePanel.qml
         AccountsWindow.qml AccountRow.qml AccountMenu.qml AccountChooser.qml ContinueButton.qml
         WelcomeLogo.qml WelcomeAbout.qml WelcomeFact.qml ReadyMark.qml UpdateStatus.qml UpdateBadge.qml
         AccountPane.qml BackupFlow.qml PassphraseDialog.qml

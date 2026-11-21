@@ -11,6 +11,7 @@ Item {
     id: overlay
 
     required property BoardCanvas canvas
+    property bool touch: false // no hover: the gaps show their controls all the time
     // Asks for a subheading's new text; the board page shows the dialog.
     signal renameSubheading(string columnId, string itemId, string text)
     // Asks for a new subheading's text, to add it before the item `before` ("" at the end).
@@ -184,6 +185,7 @@ Item {
                 PageGapControls {
                     canvas: overlay.canvas
                     editable: overlay.editable
+                    alwaysShown: overlay.touch
                     paper: atEnd ? overlay.paperOf(columnId) : ""
                     x: itemX * overlay.canvas.zoom + overlay.offsetX
                     y: itemY * overlay.canvas.zoom + overlay.offsetY

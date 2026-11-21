@@ -8,6 +8,7 @@ Item {
     // Where the ruler ends: the board opens below it.
     readonly property real rulerBottom: ruler.y + ruler.height
     required property string boardId
+    property bool phone: false // the phone layout has its own column tabs instead of the ruler
     // Where an imported PDF goes: before this column, or "" for the end.
     property string importBefore
     property bool inBrowser: Qt.platform.os === "wasm"
@@ -53,6 +54,7 @@ Item {
 
     // The desk fades out under the ruler, so pages slide under it rather than meeting an edge.
     Rectangle {
+        visible: !chrome.phone
         width: parent.width
         height: chrome.rulerBottom + 40
         gradient: Gradient {
@@ -76,6 +78,7 @@ Item {
         id: ruler
 
         objectName: "columnRuler"
+        visible: !chrome.phone
         anchors.left: parent.left
         anchors.right: parent.right
         y: Theme.gap + 60

@@ -22,6 +22,7 @@ QtObject {
     readonly property string close: "M6 6l12 12M18 6L6 18"
     readonly property string chevronLeft: "M14.5 5.5L8 12l6.5 6.5"
     readonly property string more: "M5 12h.01M12 12h.01M19 12h.01"
+    readonly property string pages: "M7 3h7l4 4v14H7zM14 3v4h4M10 12h5M10 16h5"
     readonly property string share: "M12 15V4M8 7.5l4-4 4 4M5 12.5V18a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5.5"
     readonly property string check: "M5 12.5l5 5L19.5 7"
     readonly property string arrowRight: "M5 12h14M13 6l6 6-6 6"
