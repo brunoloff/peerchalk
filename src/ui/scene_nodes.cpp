@@ -70,7 +70,7 @@ QSGGeometryNode *createStrokeNode(const Stroke &stroke, const QColor &color) {
 }
 
 QSGGeometryNode *createMergedStrokesNode(const std::vector<Stroke> &strokes,
-                                         StrokeSelection selection) {
+                                         StrokeSelection selection, float minSpacing) {
     std::vector<QSGGeometry::ColoredPoint2D> vertices;
     for (const Stroke &stroke : strokes) {
         if (!selects(selection, stroke) || stroke.points().empty())
@@ -81,7 +81,9 @@ QSGGeometryNode *createMergedStrokesNode(const std::vector<Stroke> &strokes,
             return static_cast<unsigned char>(std::lround(static_cast<float>(value) * alpha));
         };
         QSGGeometry::ColoredPoint2D vertex{};
-        for (const MeshVertex &point : buildStrokeMesh(stroke)) {
+        const std::vector<MeshVertex> mesh =
+            buildStrokeMesh(minSpacing > 0.0F ? simplifiedStroke(stroke, minSpacing) : stroke);
+        for (const MeshVertex &point : mesh) {
             // The vertex colour material expects premultiplied colours.
             vertex.set(point.x, point.y, channel(color.red()), channel(color.green()),
                        channel(color.blue()), static_cast<unsigned char>(color.alpha()));

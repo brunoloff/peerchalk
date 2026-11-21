@@ -23,4 +23,9 @@ struct MeshVertex {
 // The pieces overlap, so the mesh suits opaque colours or drawing into an opaque layer.
 [[nodiscard]] std::vector<MeshVertex> buildStrokeMesh(const Stroke &stroke);
 
+// The stroke with fewer points, for drawing it small: it keeps its ends and every point at
+// least minSpacing from the previous one kept. Throws std::invalid_argument unless
+// minSpacing is finite and non-negative.
+[[nodiscard]] Stroke simplifiedStroke(const Stroke &stroke, float minSpacing);
+
 } // namespace peerchalk

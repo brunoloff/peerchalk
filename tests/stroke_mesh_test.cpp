@@ -78,5 +78,20 @@ TEST(StrokeMesh, JointDiscUsesTheWiderNeighbour) {
     EXPECT_NEAR(reachAtJoint, 5.0F, 1e-3);
 }
 
+TEST(StrokeMesh, SimplifiedStrokesKeepTheirEndsAndSpacedPoints) {
+    Stroke stroke(0xFF000000U, 3.0F, StrokeKind::Highlighter);
+    for (int i = 0; i <= 10; ++i)
+        stroke.addPoint({static_cast<float>(i), 0.0F, 1.0F});
+    const Stroke simple = simplifiedStroke(stroke, 4.0F);
+    ASSERT_EQ(simple.points().size(), 4U); // 0, 4, 8 and the end
+    EXPECT_FLOAT_EQ(simple.points()[1].x, 4.0F);
+    EXPECT_FLOAT_EQ(simple.points().back().x, 10.0F);
+    EXPECT_EQ(simple.kind(), StrokeKind::Highlighter);
+    EXPECT_FLOAT_EQ(simple.width(), 3.0F);
+    EXPECT_EQ(simplifiedStroke(stroke, 0.0F).points().size(), 11U);
+    EXPECT_TRUE(simplifiedStroke(Stroke(0U, 1.0F), 4.0F).points().empty());
+    EXPECT_THROW((void)simplifiedStroke(stroke, -1.0F), std::invalid_argument);
+}
+
 } // namespace
 } // namespace peerchalk

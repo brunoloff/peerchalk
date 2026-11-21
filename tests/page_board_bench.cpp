@@ -1,0 +1,109 @@
+// Measures a large page board: 500 pages of 200 strokes each. Not a test: it prints timings
+// for docs/page-boards.md and never fails. Run it from the build directory:
+//   QT_QPA_PLATFORM=offscreen tests/peerchalk_page_bench
+#include "board/board_pages.hpp"
+#include "board/page_map.hpp"
+#include "ui/page_scene.hpp"
+
+#include <QGuiApplication>
+#include <QSGNode>
+
+#include <algorithm>
+#include <chrono>
+#include <cmath>
+#include <cstdio>
+#include <functional>
+#include <random>
+#include <vector>
+
+namespace {
+
+using namespace peerchalk;
+using Clock = std::chrono::steady_clock;
+
+constexpr int pageCount = 500;
+constexpr int strokesPerPage = 200;
+constexpr int pointsPerStroke = 30;
+
+double millisecondsOf(const std::function<void()> &work) {
+    const auto start = Clock::now();
+    work();
+    return std::chrono::duration<double, std::milli>(Clock::now() - start).count();
+}
+
+Stroke scribble(std::mt19937 &random) {
+    std::uniform_real_distribution<float> place(20.0F, 760.0F);
+    std::uniform_real_distribution<float> step(-6.0F, 6.0F);
+    Stroke stroke(0xFF1A1A1AU, 2.0F);
+    float x = place(random);
+    float y = place(random) * 1.4F;
+    for (int i = 0; i < pointsPerStroke; ++i) {
+        stroke.addPoint({x, y, 1.0F});
+        x += 4.0F + step(random);
+        y += step(random);
+    }
+    return stroke;
+}
+
+void fill(Board &board) {
+    board.pages().start(paperA4, "Bench");
+    const std::string column = board.pages().columns()[0].id;
+    for (int i = 1; i < pageCount; ++i)
+        board.pages().insertItem(column, {}, ColumnItemKind::Page);
+    std::mt19937 random(7);
+    for (const ColumnItem &page : board.pages().columns()[0].items) {
+        for (int s = 0; s < strokesPerPage; ++s)
+            board.pages().addStroke(page.id, scribble(random));
+    }
+}
+
+// Pans down the whole column at the given zoom, one frame per step, and prints frame times.
+void pan(const Board &board, const PageMap &map, float scale, const char *label) {
+    const float viewWidth = 1920.0F / scale;
+    const float viewHeight = 1080.0F / scale;
+    const Bounds all = *map.bounds();
+    QSGNode pens;
+    QSGNode highlighters;
+    PageStrokeNodes penNodes;
+    PageStrokeNodes highlighterNodes;
+    std::vector<double> frames;
+    for (float top = all.top; top < all.bottom; top += 160.0F / scale) {
+        const Bounds visible{0.0F, top, viewWidth, top + viewHeight};
+        const PageView view{{visible.left - viewWidth, visible.top - viewHeight,
+                             visible.right + viewWidth, visible.bottom + viewHeight},
+                            {visible.left - 2 * viewWidth, visible.top - 2 * viewHeight,
+                             visible.right + 2 * viewWidth, visible.bottom + 2 * viewHeight},
+                            scale};
+        frames.push_back(millisecondsOf([&] {
+            penNodes.update(&pens, board, map, view, StrokeSelection::Pens);
+            highlighterNodes.update(&highlighters, board, map, view,
+                                    StrokeSelection::HighlightersOpaque);
+        }));
+    }
+    std::ranges::sort(frames);
+    const auto at = [&](double share) {
+        return frames[std::min(frames.size() - 1, std::size_t(share * double(frames.size())))];
+    };
+    std::printf("%-22s %5zu frames  p50 %7.2f ms  p95 %7.2f ms  max %7.2f ms  nodes %zu\n", label,
+                frames.size(), at(0.5), at(0.95), frames.back(), penNodes.size());
+}
+
+} // namespace
+
+int main(int argc, char **argv) {
+    QGuiApplication app(argc, argv);
+    Board board;
+    std::printf("build %d pages x %d strokes: %.0f ms\n", pageCount, strokesPerPage,
+                millisecondsOf([&] { fill(board); }));
+    const Bytes saved = board.encodeState();
+    std::printf("saved size: %.1f MB\n", double(saved.size()) / 1e6);
+    Board loaded;
+    std::printf("load: %.0f ms\n", millisecondsOf([&] { (void)loaded.apply(saved); }));
+    PageMap map;
+    std::printf("layout: %.2f ms\n", millisecondsOf([&] { map.refresh(loaded.pages()); }));
+    pan(loaded, map, 1.0F, "pan at 100% (cold)");
+    pan(loaded, map, 1.0F, "pan at 100% (decoded)");
+    pan(loaded, map, 0.25F, "pan at 25%");
+    pan(loaded, map, 0.02F, "pan at 2%");
+    return 0;
+}

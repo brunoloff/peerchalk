@@ -22,7 +22,8 @@ struct PageView {
 
 // A page board's strokes as scene nodes: per page in view, a node moved to the page and
 // clipped to it, holding the page's strokes merged into one mesh. Nodes stay between frames
-// and are rebuilt only when their page's strokes change or the page moves.
+// and are rebuilt only when their page's strokes change, the page moves, or the view zooms
+// out or in past a power of two below 50 %, where strokes are drawn with fewer points.
 class PageStrokeNodes {
   public:
     // Pages shorter than this on screen show no strokes.
@@ -40,9 +41,11 @@ class PageStrokeNodes {
         QSGNode *node;
         std::uint64_t version;
         Bounds bounds;
+        int detail;
     };
 
-    void release(QSGNode *root, const Board &board, const PageMap &map, const PageView &view);
+    void release(QSGNode *root, const Board &board, const PageMap &map, const PageView &view,
+                 int detail);
 
     std::unordered_map<std::string, Entry> entries_;
 };

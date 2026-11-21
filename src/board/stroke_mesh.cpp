@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <numbers>
+#include <stdexcept>
 
 namespace peerchalk {
 namespace {
@@ -61,6 +62,20 @@ std::vector<MeshVertex> buildStrokeMesh(const Stroke &stroke) {
             appendBand(mesh, points[i], points[i + 1], own / 2.0F);
     }
     return mesh;
+}
+
+Stroke simplifiedStroke(const Stroke &stroke, float minSpacing) {
+    if (!std::isfinite(minSpacing) || minSpacing < 0.0F)
+        throw std::invalid_argument("Stroke spacing must be finite and non-negative");
+    Stroke result(stroke.argb(), stroke.width(), stroke.kind());
+    const std::vector<StrokePoint> &points = stroke.points();
+    for (std::size_t i = 0; i < points.size(); ++i) {
+        const bool end = i == 0 || i + 1 == points.size();
+        const StrokePoint *last = result.points().empty() ? nullptr : &result.points().back();
+        if (end || std::hypot(points[i].x - last->x, points[i].y - last->y) >= minSpacing)
+            result.addPoint(points[i]);
+    }
+    return result;
 }
 
 } // namespace peerchalk

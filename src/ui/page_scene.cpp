@@ -6,22 +6,34 @@
 #include <QSGGeometryNode>
 #include <QSGTransformNode>
 
-#include <iterator>
+#include <cmath>
 
 namespace peerchalk {
 namespace {
+
+// 0 at 50 % and above; n where n halvings of 50 % reach the scale.
+int detailLevel(float scale) {
+    return scale >= 0.5F ? 0 : static_cast<int>(std::ceil(-std::log2(scale)));
+}
+
+// Points closer than about 1.5 pixels on screen add nothing.
+float pointSpacing(int detail) {
+    return detail == 0 ? 0.0F : 1.5F * std::exp2(static_cast<float>(detail));
+}
 
 bool sameBounds(const Bounds &a, const Bounds &b) {
     return a.left == b.left && a.top == b.top && a.right == b.right && a.bottom == b.bottom;
 }
 
 // The page's strokes in page coordinates, moved onto the page and clipped to it.
-QSGNode *createPageNode(const Board &board, const PlacedPage &page, StrokeSelection selection) {
+QSGNode *createPageNode(const Board &board, const PlacedPage &page, StrokeSelection selection,
+                        int detail) {
     auto *move = new QSGTransformNode;
     QMatrix4x4 offset;
     offset.translate(page.bounds.left, page.bounds.top);
     move->setMatrix(offset);
-    QSGGeometryNode *mesh = createMergedStrokesNode(board.pages().strokes(page.id), selection);
+    QSGGeometryNode *mesh =
+        createMergedStrokesNode(board.pages().strokes(page.id), selection, pointSpacing(detail));
     if (mesh == nullptr)
         return move;
     auto *clip = new QSGClipNode;
@@ -40,10 +52,11 @@ void drop(QSGNode *root, QSGNode *node) {
 } // namespace
 
 void PageStrokeNodes::release(QSGNode *root, const Board &board, const PageMap &map,
-                              const PageView &view) {
+                              const PageView &view, int detail) {
     for (auto it = entries_.begin(); it != entries_.end();) {
         const std::optional<PlacedPage> page = map.page(it->first);
         const bool stale = !page || !sameBounds(page->bounds, it->second.bounds) ||
+                           it->second.detail != detail ||
                            board.pages().strokesVersion(it->first) != it->second.version;
         const bool far = !page || page->bounds.right < view.keep.left ||
                          page->bounds.left > view.keep.right ||
@@ -59,14 +72,15 @@ void PageStrokeNodes::release(QSGNode *root, const Board &board, const PageMap &
 
 void PageStrokeNodes::update(QSGNode *root, const Board &board, const PageMap &map,
                              const PageView &view, StrokeSelection selection) {
-    release(root, board, map, view);
+    const int detail = detailLevel(view.scale);
+    release(root, board, map, view, detail);
     for (const PlacedPage &page : map.pagesIn(view.show)) {
         if (entries_.contains(page.id) || page.bounds.height() * view.scale < minPagePixels)
             continue;
         const std::uint64_t version = board.pages().strokesVersion(page.id);
-        QSGNode *node = createPageNode(board, page, selection);
+        QSGNode *node = createPageNode(board, page, selection, detail);
         root->appendChildNode(node);
-        entries_.emplace(page.id, Entry{node, version, page.bounds});
+        entries_.emplace(page.id, Entry{node, version, page.bounds, detail});
     }
 }
 

@@ -255,5 +255,14 @@ Work happens on the `page-boards` branch, one commit per finished piece.
       is no array move, so moving a page is a delete plus an insert, which is why strokes and
       text boxes are keyed by page id outside the item.
 - [x] M1 · `Board` knows its kind (`layout` map); the library shows "Pages · N columns"
+- [x] M2 · page canvas: `BoardCanvas` shows sheets for page boards; drawing, erasing and
+      text go to the page under the pointer in page coordinates; `PageStrokeNodes` keeps one
+      merged, clipped mesh per page in view and layer, rebuilt only on change; strokes drawn
+      with fewer points below 50 % (`simplifiedStroke`); `PageMap` lookups
+- [x] M2 · benchmark `tests/page_board_bench.cpp` (`peerchalk_page_bench`, not in ctest).
+      First run, scene-node work only (not GPU time), 500 pages × 200 strokes of 30 points:
+      build 0.5 s, save 37.8 MB, layout 1.1 ms; panning a 1920 × 1080 view p95 per frame:
+      5.2 ms at 100 %, 2.9 ms at 25 %, 3.9 ms at 2 %; the worst single frame (first decode)
+      15 ms at 100 % and 46 ms at 2 %
 - [ ] M0 · PDFium trial on Linux first (pdfium-binaries), then CI for the other targets
       (needs a push, so ask first)
