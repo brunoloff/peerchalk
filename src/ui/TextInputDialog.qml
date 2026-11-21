@@ -3,7 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 // Asks for one line of text, such as a name or a pasted code.
-Dialog {
+PaperDialog {
     id: dialog
 
     property alias text: field.text
@@ -20,10 +20,7 @@ Dialog {
         field.forceActiveFocus();
     }
 
-    parent: Overlay.overlay
-    anchors.centerIn: parent
     width: Math.min(440, parent.width - 32)
-    modal: true
     focus: true
 
     onAccepted: {
@@ -43,7 +40,7 @@ Dialog {
             color: Theme.muted
         }
 
-        TextField {
+        PaperField {
             id: field
 
             Layout.fillWidth: true
@@ -52,7 +49,7 @@ Dialog {
         }
     }
 
-    footer: DialogButtonBox {
+    footer: PaperButtonBox {
         PaperButton {
             text: qsTr("Cancel")
             DialogButtonBox.buttonRole: DialogButtonBox.RejectRole

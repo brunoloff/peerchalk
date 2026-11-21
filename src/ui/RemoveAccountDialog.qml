@@ -3,7 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 // Confirms deleting an account from this device by having its name typed.
-Dialog {
+PaperDialog {
     id: dialog
 
     property var account: ({ name: "" })
@@ -17,10 +17,7 @@ Dialog {
         field.forceActiveFocus();
     }
 
-    parent: Overlay.overlay
-    anchors.centerIn: parent
     width: Math.min(460, parent.width - 32)
-    modal: true
     title: qsTr("Remove “%1” from this device?").arg(account.name)
     onAccepted: dialog.confirmed(account.id)
 
@@ -35,7 +32,7 @@ Dialog {
             text: qsTr("This deletes the account and its boards here. Without a backup or another linked device, it is lost for good. Type the account's name to confirm.")
         }
 
-        TextField {
+        PaperField {
             id: field
 
             Layout.fillWidth: true
@@ -44,7 +41,7 @@ Dialog {
         }
     }
 
-    footer: DialogButtonBox {
+    footer: PaperButtonBox {
         PaperButton {
             text: qsTr("Cancel")
             DialogButtonBox.buttonRole: DialogButtonBox.RejectRole

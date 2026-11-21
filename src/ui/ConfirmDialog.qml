@@ -3,7 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 // Asks the user to confirm something that cannot be undone.
-Dialog {
+PaperDialog {
     id: dialog
 
     property string message
@@ -11,10 +11,7 @@ Dialog {
 
     signal confirmed()
 
-    parent: Overlay.overlay
-    anchors.centerIn: parent
     width: Math.min(440, parent.width - 32)
-    modal: true
     onAccepted: dialog.confirmed()
 
     // A layout filling the dialog sizes the wrapped text from the dialog's width; binding
@@ -30,7 +27,7 @@ Dialog {
         }
     }
 
-    footer: DialogButtonBox {
+    footer: PaperButtonBox {
         PaperButton {
             text: qsTr("Cancel")
             DialogButtonBox.buttonRole: DialogButtonBox.RejectRole

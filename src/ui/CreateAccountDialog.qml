@@ -3,7 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 // Creates a local account, making clear that nobody else keeps a copy.
-Dialog {
+PaperDialog {
     id: dialog
 
     signal submitted(string name)
@@ -15,10 +15,7 @@ Dialog {
         nameField.forceActiveFocus();
     }
 
-    parent: Overlay.overlay
-    anchors.centerIn: parent
     width: Math.min(500, parent.width - 32)
-    modal: true
     title: qsTr("Create an account")
     onAccepted: dialog.submitted(nameField.text.trim())
 
@@ -26,7 +23,7 @@ Dialog {
         anchors.fill: parent
         spacing: 12
 
-        TextField {
+        PaperField {
             id: nameField
 
             Layout.fillWidth: true
@@ -60,7 +57,7 @@ Dialog {
         }
     }
 
-    footer: DialogButtonBox {
+    footer: PaperButtonBox {
         PaperButton {
             text: qsTr("Cancel")
             DialogButtonBox.buttonRole: DialogButtonBox.RejectRole

@@ -5,7 +5,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 // Everyone asking to join a project or board you own, with an Approve button each.
-Dialog {
+PaperDialog {
     id: dialog
 
     property var requests: []
@@ -15,10 +15,7 @@ Dialog {
     }
 
     title: qsTr("Requests to join")
-    parent: Overlay.overlay
-    anchors.centerIn: parent
     width: Math.min(560, parent.width - 32)
-    modal: true
     onAboutToShow: refresh()
 
     Connections {
@@ -99,7 +96,7 @@ Dialog {
         }
     }
 
-    footer: DialogButtonBox {
+    footer: PaperButtonBox {
         PaperButton {
             text: qsTr("Close")
             DialogButtonBox.buttonRole: DialogButtonBox.RejectRole

@@ -6,7 +6,7 @@ import QtQuick.Layouts
 
 // Asks for a new board's name and kind: infinite, or pages with their paper and background,
 // or pages that start from a PDF.
-Dialog {
+PaperDialog {
     id: dialog
 
     property bool pages: pagesCard.checked
@@ -28,10 +28,7 @@ Dialog {
 
     readonly property string name: nameField.text.trim()
 
-    parent: Overlay.overlay
-    anchors.centerIn: parent
     width: Math.min(640, parent.width - 32)
-    modal: true
     focus: true
     padding: 28
     topPadding: 24
@@ -39,21 +36,6 @@ Dialog {
         if (dialog.name.length > 0)
             dialog.submitted(dialog.name, dialog.pages, dialog.paper, dialog.landscape,
                              dialog.pageBackground);
-    }
-
-    background: Item {
-        SoftShadow {
-            anchors.fill: parent
-            radius: 18
-            spread: 36
-            strength: 0.22
-        }
-
-        Rectangle {
-            anchors.fill: parent
-            radius: 18
-            color: Theme.surface
-        }
     }
 
     header: Item {}

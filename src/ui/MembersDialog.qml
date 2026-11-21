@@ -7,7 +7,7 @@ import QtQuick.Layouts
 // Who has which role on a project or a board, and the controls your own role allows:
 // the admin changes anyone's role and can hand the admin role over; owners add and
 // remove members. For a board, owners also choose which of their projects it is in.
-Dialog {
+PaperDialog {
     id: dialog
 
     property string itemId
@@ -48,11 +48,8 @@ Dialog {
     }
 
     title: board ? qsTr("Share “%1”").arg(Library.boardName(itemId)) : qsTr("People in “%1”").arg(Library.currentProjectName)
-    parent: Overlay.overlay
-    anchors.centerIn: parent
     width: Math.min(600, parent.width - 32)
     height: Math.min(implicitHeight, parent.height - 32)
-    modal: true
 
     Connections {
         target: Library
@@ -143,7 +140,7 @@ Dialog {
         }
     }
 
-    footer: DialogButtonBox {
+    footer: PaperButtonBox {
         PaperButton {
             text: qsTr("Close")
             DialogButtonBox.buttonRole: DialogButtonBox.RejectRole

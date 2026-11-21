@@ -3,7 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 // Asks for a backup's passphrase, twice when one is being chosen.
-Dialog {
+PaperDialog {
     id: dialog
 
     property bool choosing: false
@@ -20,10 +20,7 @@ Dialog {
         first.forceActiveFocus();
     }
 
-    parent: Overlay.overlay
-    anchors.centerIn: parent
     width: Math.min(460, parent.width - 32)
-    modal: true
     onAccepted: {
         const passphrase = first.text;
         first.clear();
@@ -42,7 +39,7 @@ Dialog {
             color: Theme.muted
         }
 
-        TextField {
+        PaperField {
             id: first
 
             Layout.fillWidth: true
@@ -54,7 +51,7 @@ Dialog {
             onAccepted: if (dialog.valid && !dialog.choosing) dialog.accept()
         }
 
-        TextField {
+        PaperField {
             id: second
 
             Layout.fillWidth: true
@@ -66,7 +63,7 @@ Dialog {
         }
     }
 
-    footer: DialogButtonBox {
+    footer: PaperButtonBox {
         PaperButton {
             text: qsTr("Cancel")
             DialogButtonBox.buttonRole: DialogButtonBox.RejectRole

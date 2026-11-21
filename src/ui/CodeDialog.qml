@@ -3,16 +3,13 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 // Shows a code (an invite or a contact code) for the user to copy and send.
-Dialog {
+PaperDialog {
     id: dialog
 
     property string code
     property string explanation
 
-    parent: Overlay.overlay
-    anchors.centerIn: parent
     width: Math.min(520, parent.width - 32)
-    modal: true
 
     ColumnLayout {
         anchors.fill: parent
@@ -41,7 +38,7 @@ Dialog {
         }
     }
 
-    footer: DialogButtonBox {
+    footer: PaperButtonBox {
         PaperButton {
             text: qsTr("Close")
             DialogButtonBox.buttonRole: DialogButtonBox.RejectRole
