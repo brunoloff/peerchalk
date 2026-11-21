@@ -9,6 +9,8 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
+
 namespace peerchalk {
 namespace {
 
@@ -116,6 +118,76 @@ TEST_F(BoardCanvasPagesTest, FitsThePagesAndReportsTheirBounds) {
     canvas_.fitContent();
     EXPECT_LT(canvas_.zoom(), 1.0);
     EXPECT_TRUE(canvas_.visibleArea().contains(bounds.center()));
+}
+
+TEST_F(BoardCanvasPagesTest, EditsColumnsAndItemsUnlessReadOnly) {
+    const std::string column = document_.board().pages().columns().at(0).id;
+    const QString columnId = QString::fromStdString(column);
+    canvas_.addPage(columnId, QString::fromStdString(page_));
+    canvas_.addSubheading(columnId, {}, "End");
+    canvas_.setColumnPaper(columnId, "Letter", true, true);
+    canvas_.setColumnBackground(columnId, "dotted");
+    canvas_.setColumnTitle(columnId, "Renamed");
+    canvas_.addColumn({});
+    const std::vector<ColumnSpec> &columns = document_.board().pages().columns();
+    ASSERT_EQ(columns.size(), 2U);
+    ASSERT_EQ(columns[0].items.size(), 3U);
+    EXPECT_EQ(columns[0].items[1].id, page_); // the new page went before it
+    EXPECT_EQ(columns[0].items[2].text, "End");
+    EXPECT_EQ(columns[0].title, "Renamed");
+    EXPECT_EQ(columns[0].background, PageBackground::Dotted);
+    EXPECT_FLOAT_EQ(columns[1].paper.width, paperLetter.height); // copied from its left
+    EXPECT_EQ(columns[1].background, PageBackground::Dotted);
+    const QVariantMap first = canvas_.pageColumns().at(0).toMap();
+    EXPECT_EQ(first["paper"].toString(), "Letter");
+    EXPECT_TRUE(first["landscape"].toBool());
+    EXPECT_EQ(first["pages"].toInt(), 2);
+    canvas_.setColumnPaper(columnId, "B5", false, false); // ignored
+    canvas_.setReadOnly(true);
+    canvas_.removeColumn(columnId);
+    EXPECT_EQ(document_.board().pages().columns().size(), 2U);
+    canvas_.setReadOnly(false);
+    canvas_.moveColumn(columnId, {});
+    EXPECT_EQ(document_.board().pages().columns()[1].id, column);
+    canvas_.removeColumn(columnId);
+    EXPECT_EQ(document_.board().pages().columns().size(), 1U);
+}
+
+TEST(PageOverlayRows, ListHeadingsSubheadingsGapsAndNumbersInTheArea) {
+    Board board;
+    board.pages().start(paperA4, "Notes");
+    const ColumnSpec spec = board.pages().columns()[0];
+    const std::string first = spec.items[0].id;
+    const std::string heading =
+        board.pages().insertItem(spec.id, {}, ColumnItemKind::Subheading, "Part 2");
+    const std::string second = board.pages().insertItem(spec.id, {}, ColumnItemKind::Page);
+    PageMap map;
+    map.refresh(board.pages());
+    const std::vector<PageOverlayModel::Row> all =
+        pageOverlayRows(map, board.pages().columns(), *map.bounds());
+    const auto find = [&](const std::string &key) {
+        return std::ranges::find(all, key, &PageOverlayModel::Row::key);
+    };
+    ASSERT_NE(find("h" + spec.id), all.end());
+    EXPECT_EQ(find("h" + spec.id)->text, "Notes");
+    ASSERT_NE(find("s" + heading), all.end());
+    EXPECT_EQ(find("s" + heading)->text, "Part 2");
+    EXPECT_EQ(find("p" + second)->number, 2);        // subheadings are not counted
+    EXPECT_NE(find("g" + spec.id + ":"), all.end()); // the end of the column
+    EXPECT_EQ(find("g" + spec.id + ":" + heading)->item, heading);
+    EXPECT_EQ(all.size(), 1U + 1U + 2U + 4U); // heading, subheading, page numbers, gaps
+    EXPECT_TRUE(std::ranges::is_sorted(all, {}, &PageOverlayModel::Row::key));
+    const Bounds far{-9000.0F, -9000.0F, -8000.0F, -8000.0F};
+    EXPECT_TRUE(pageOverlayRows(map, board.pages().columns(), far).empty());
+
+    PageOverlayModel model;
+    model.sync(all);
+    EXPECT_EQ(model.rowCount(), static_cast<int>(all.size()));
+    std::vector<PageOverlayModel::Row> fewer(all.begin(), all.begin() + 3);
+    model.sync(fewer);
+    EXPECT_EQ(model.rowCount(), 3);
+    const int kind = model.roleNames().key("kind");
+    EXPECT_FALSE(model.index(0).data(kind).toString().isEmpty());
 }
 
 TEST(PageStrokeNodes, KeepsNodesForPagesInViewAndRebuildsChangedOnes) {
