@@ -245,6 +245,12 @@ Work happens on the `page-boards` branch, one commit per finished piece.
 - [ ] M1 · `PageBoard`: the Yrs branches above (columns with nested item arrays,
       `pageStrokes`, `pageText`), add/remove/move items and columns, undo, merges between
       two replicas, saving and loading
+      Notes from libyrs (`libyrs.h`): nested types go in with `yinput_yarray` / `yinput_ymap`
+      and come out with `youtput_read_yarray` / `youtput_read_ymap`; `ybranch_id` and
+      `ybranch_get` keep a handle on a nested branch across transactions; `yobserve_deep`
+      reports nested changes (board_text.cpp already uses it); an undo scope on a root branch
+      covers what is nested inside it. There is no array move, so moving a page is a delete
+      plus an insert, which is why strokes are keyed by page id outside the item.
 - [ ] M1 · `Board` knows its kind (`layout` map); the library shows "Pages · N columns"
 - [ ] M0 · PDFium trial on Linux first (pdfium-binaries), then CI for the other targets
       (needs a push, so ask first)
