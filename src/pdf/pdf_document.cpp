@@ -111,6 +111,40 @@ std::string PdfDocument::title() const {
     return toUtf8(text);
 }
 
+namespace {
+
+std::string bookmarkTitle(FPDF_BOOKMARK bookmark) {
+    const unsigned long bytes = FPDFBookmark_GetTitle(bookmark, nullptr, 0);
+    std::vector<unsigned short> buffer(bytes / 2 + 1);
+    FPDFBookmark_GetTitle(bookmark, buffer.data(), bytes);
+    std::u16string text;
+    for (std::size_t i = 0; i + 1 < bytes / 2 + 1 && buffer[i] != 0; ++i)
+        text += static_cast<char16_t>(buffer[i]);
+    return toUtf8(text);
+}
+
+void readBookmarks(FPDF_DOCUMENT document, FPDF_BOOKMARK parent, int level,
+                   std::vector<PdfOutlineEntry> &out) {
+    for (FPDF_BOOKMARK item = FPDFBookmark_GetFirstChild(document, parent); item != nullptr;
+         item = FPDFBookmark_GetNextSibling(document, item)) {
+        const FPDF_DEST dest = FPDFBookmark_GetDest(document, item);
+        const int page = dest != nullptr ? FPDFDest_GetDestPageIndex(document, dest) : -1;
+        if (page >= 0)
+            out.push_back({bookmarkTitle(item), level, page});
+        if (level < 2)
+            readBookmarks(document, item, level + 1, out);
+    }
+}
+
+} // namespace
+
+std::vector<PdfOutlineEntry> PdfDocument::outline() const {
+    const std::lock_guard lock(engineLock());
+    std::vector<PdfOutlineEntry> entries;
+    readBookmarks(native_->document, nullptr, 1, entries);
+    return entries;
+}
+
 PdfImage PdfDocument::render(int index, int width, int height) const {
     native_->checkPage(index);
     if (width < 1 || height < 1 || width > maxRenderSide || height > maxRenderSide)

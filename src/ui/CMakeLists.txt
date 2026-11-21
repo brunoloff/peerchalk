@@ -22,6 +22,7 @@ qt_add_qml_module(peerchalk_ui URI PeerChalk VERSION 1.0
         page_scene.cpp page_scene.hpp pdf_renderer.cpp pdf_renderer.hpp library_pdfs.cpp
         pdf_textures.cpp pdf_textures.hpp
         board_preview.cpp board_preview.hpp library.cpp library.hpp library_people.cpp
+        board_pdf_pages.cpp board_pdf_drawing.hpp
         desktop_launcher.cpp desktop_launcher.hpp app_updater.cpp app_updater.hpp
         library_boards.cpp library_links.cpp board_document.cpp board_document.hpp
         ../sync/messages.cpp ../sync/messages.hpp ../sync/network.cpp ../sync/network.hpp ../sync/network_blobs.cpp

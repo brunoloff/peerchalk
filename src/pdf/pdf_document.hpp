@@ -2,6 +2,7 @@
 
 #include "board/page_layout.hpp"
 #include "board/stroke_codec.hpp"
+#include "pdf/pdf_outline.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -49,6 +50,8 @@ class PdfDocument {
     [[nodiscard]] PaperSize pageSize(int index) const;
     // The title in the PDF's information, or "".
     [[nodiscard]] std::string title() const;
+    // Its bookmarks two levels deep, in order; those leading nowhere are left out.
+    [[nodiscard]] std::vector<PdfOutlineEntry> outline() const;
     // The page at width × height pixels on white. Throws std::out_of_range for a page that
     // does not exist and std::invalid_argument for sizes outside 1 to 16384 pixels.
     [[nodiscard]] PdfImage render(int index, int width, int height) const;

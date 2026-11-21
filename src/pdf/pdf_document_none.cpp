@@ -22,6 +22,8 @@ PaperSize PdfDocument::pageSize(int) const { throw std::out_of_range("No PDF eng
 
 std::string PdfDocument::title() const { return {}; }
 
+std::vector<PdfOutlineEntry> PdfDocument::outline() const { return {}; }
+
 PdfImage PdfDocument::render(int, int, int) const { throw std::out_of_range("No PDF engine"); }
 
 } // namespace peerchalk

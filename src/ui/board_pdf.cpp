@@ -2,7 +2,7 @@
 
 #include "board/board_pages.hpp"
 #include "board/stroke_mesh.hpp"
-#include "pdf/pdf_compose.hpp"
+#include "ui/board_pdf_drawing.hpp"
 #include "ui/equation_geometry.hpp"
 #include "ui/rich_text_document.hpp"
 #include "ui/scene_nodes.hpp"
@@ -27,8 +27,8 @@
 namespace peerchalk {
 namespace {
 
-constexpr qreal pixelsPerInch = 96.0;
-constexpr qreal pointsPerPixel = 72.0 / pixelsPerInch;
+using pdf_drawing::pixelsPerInch;
+using pdf_drawing::pointsPerPixel;
 constexpr qreal maxPagePoints = 14400.0; // 200 inches, PDF's usual page limit
 const QColor failedFormulaColor(0xB4, 0x23, 0x18);
 
@@ -109,14 +109,13 @@ class PdfEquations : public QObject, public QTextObjectInterface {
     const TextBox &box_;
 };
 
-namespace {
+namespace pdf_drawing {
 
-// A text box laid out as TextEdit lays it out on screen.
-struct LaidOutBox {
-    const TextBox *box;
-    std::unique_ptr<PdfEquations> equations;
-    std::unique_ptr<QTextDocument> document;
-};
+LaidOutBox::LaidOutBox(const TextBox *laid, std::unique_ptr<PdfEquations> equationHandler,
+                       std::unique_ptr<QTextDocument> laidDocument)
+    : box(laid), equations(std::move(equationHandler)), document(std::move(laidDocument)) {}
+LaidOutBox::LaidOutBox(LaidOutBox &&) noexcept = default;
+LaidOutBox::~LaidOutBox() = default;
 
 LaidOutBox layOut(const BoardPdfInput &input, const TextBox &box) {
     LaidOutBox out{&box, std::make_unique<PdfEquations>(input, box),
@@ -134,6 +133,8 @@ LaidOutBox layOut(const BoardPdfInput &input, const TextBox &box) {
     return out;
 }
 
+namespace {
+
 std::optional<QRectF> contentBounds(const Board &board, const std::vector<LaidOutBox> &boxes) {
     std::optional<QRectF> bounds;
     const auto add = [&](const QRectF &rect) { bounds = bounds ? bounds->united(rect) : rect; };
@@ -147,6 +148,8 @@ std::optional<QRectF> contentBounds(const Board &board, const std::vector<LaidOu
     }
     return bounds;
 }
+
+} // namespace
 
 // Highlighters of one colour are filled together, so that overlaps do not darken, as on screen.
 void drawHighlighters(QPainter &painter, const std::vector<Stroke> &strokes) {
@@ -203,89 +206,9 @@ void drawTextBoxes(QPainter &painter, const std::vector<LaidOutBox> &boxes) {
     }
 }
 
-struct ExportPage {
-    std::string id;
-    PaperSize size;
-    std::optional<PdfSource> pdf;
-};
+} // namespace pdf_drawing
 
-std::vector<ExportPage> exportPages(const BoardPages &pages) {
-    std::vector<ExportPage> list;
-    for (const ColumnSpec &column : pages.columns()) {
-        for (const ColumnItem &item : column.items) {
-            if (item.kind == ColumnItemKind::Page)
-                list.push_back({item.id, item.size.value_or(column.paper), item.pdf});
-        }
-    }
-    return list;
-}
-
-QPageSize exactSize(PaperSize size) {
-    return QPageSize(QSizeF(size.width * pointsPerPixel, size.height * pointsPerPixel),
-                     QPageSize::Point, QString(), QPageSize::ExactMatch);
-}
-
-// Every page's ink, each page at its size; the PDFs under them are added afterwards.
-QByteArray drawPages(const BoardPdfInput &input, const std::vector<ExportPage> &pages) {
-    std::map<std::string, std::vector<LaidOutBox>> boxes;
-    for (const TextBox &box : input.board->textBoxes()) {
-        if (!box.page.empty())
-            boxes[box.page].push_back(layOut(input, box));
-    }
-    QByteArray bytes;
-    QBuffer buffer(&bytes);
-    buffer.open(QIODevice::WriteOnly);
-    QPdfWriter writer(&buffer);
-    writer.setResolution(int(pixelsPerInch));
-    writer.setPageSize(exactSize(pages.front().size));
-    writer.setPageMargins(QMarginsF(0, 0, 0, 0));
-    writer.setTitle(input.title);
-    writer.setCreator(QStringLiteral("PeerChalk"));
-    QPainter painter;
-    if (!painter.begin(&writer))
-        throw std::runtime_error("The PDF could not be written");
-    painter.setRenderHint(QPainter::Antialiasing);
-    for (std::size_t i = 0; i < pages.size(); ++i) {
-        if (i > 0) {
-            writer.setPageSize(exactSize(pages[i].size));
-            writer.newPage();
-        }
-        const std::vector<Stroke> &strokes = input.board->pages().strokes(pages[i].id);
-        painter.save();
-        painter.setClipRect(QRectF(0.0, 0.0, pages[i].size.width, pages[i].size.height));
-        drawHighlighters(painter, strokes);
-        drawPens(painter, strokes);
-        drawTextBoxes(painter, boxes[pages[i].id]);
-        painter.restore();
-    }
-    painter.end();
-    return bytes;
-}
-
-QByteArray renderPagesPdf(const BoardPdfInput &input) {
-    const std::vector<ExportPage> pages = exportPages(input.board->pages());
-    if (pages.empty())
-        throw std::invalid_argument("The board has no pages");
-    const QByteArray ink = drawPages(input, pages);
-    // The PDF writer rounds page sizes to whole points; PDFium sets them exactly.
-    std::vector<PdfComposedPage> composed;
-    for (const ExportPage &page : pages) {
-        PdfComposedPage &out = composed.emplace_back();
-        out.widthPoints = static_cast<float>(page.size.width * pointsPerPixel);
-        out.heightPoints = static_cast<float>(page.size.height * pointsPerPixel);
-        if (!page.pdf)
-            continue;
-        std::shared_ptr<const Bytes> pdf = input.pdfBlob ? input.pdfBlob(page.pdf->blob) : nullptr;
-        if (!pdf)
-            throw std::runtime_error("A PDF on this board has not reached this device yet");
-        out.under = PdfUnderlay{std::move(pdf), page.pdf->page};
-    }
-    const auto *begin = reinterpret_cast<const std::byte *>(ink.constData());
-    const Bytes combined = composePdf(Bytes(begin, begin + ink.size()), composed);
-    return {reinterpret_cast<const char *>(combined.data()), qsizetype(combined.size())};
-}
-
-} // namespace
+using namespace pdf_drawing;
 
 QString pdfFormulaKey(const RichUnit &equation, std::uint32_t argb) {
     return QStringLiteral("%1|%2|%3")

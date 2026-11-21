@@ -293,7 +293,9 @@ Work happens on the `page-boards` branch, one commit per finished piece.
       their page; PDF pages keep the original page as it is (`composePdf`: imported page with
       the ink as a form object over it, rotation and offsets handled); a missing PDF refuses
       the export with a clear message
-- [ ] M6 · still to do: headings as bookmarks (PDFium cannot write outlines; needs a small
-      writer of our own), exporting one column or a page range, printing the h1
+- [x] M6 · headings and subheadings as bookmarks (`addPdfOutline`, an incremental update,
+      since PDFium cannot write outlines); ruled, squared and dotted backgrounds printed;
+      checked with qpdf and poppler as well as PDFium
+- [ ] M6 · still to do: exporting one column or a page range, printing the h1
 - [ ] M4 · still to do: tiles above 4096 px, progressive rendering in the browser, the
       "Fetching PDF" placeholder, the 300-page timing

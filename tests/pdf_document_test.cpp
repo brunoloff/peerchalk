@@ -59,6 +59,21 @@ TEST(PdfCompose, PutsPagesOfOtherPdfsUnderTheOverlay) {
     EXPECT_FLOAT_EQ(exact.document->pageSize(0).width, 500.5F * 4.0F / 3.0F);
 }
 
+TEST(PdfOutline, AddsHeadingsAndSubheadingsAsBookmarks) {
+    const std::vector<PdfOutlineEntry> entries = {
+        {"Lecture notes", 1, 0}, {"1 · The model", 2, 0}, {"Ωmega", 2, 1}, {"Paper", 1, 1}};
+    const Bytes marked = addPdfOutline(test::samplePdf(), entries);
+    const PdfDocument::Opened opened = PdfDocument::open(shared(marked));
+    ASSERT_TRUE(opened.document);
+    EXPECT_EQ(opened.document->pageCount(), 2);
+    EXPECT_EQ(opened.document->outline(), entries);
+    EXPECT_EQ(addPdfOutline(test::samplePdf(), {}), test::samplePdf());
+    EXPECT_THROW((void)addPdfOutline(test::samplePdf(), {{"Nowhere", 1, 5}}),
+                 std::invalid_argument);
+    const Bytes notPdf{std::byte{'x'}};
+    EXPECT_THROW((void)addPdfOutline(notPdf, entries), std::invalid_argument);
+}
+
 TEST(PdfDocument, RefusesWhatIsNotAPdf) {
     const auto bytes = [](const char *text) {
         const auto *begin = reinterpret_cast<const std::byte *>(text);

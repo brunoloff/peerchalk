@@ -10,10 +10,11 @@ target_compile_options(peerchalk_board PRIVATE
 
 # PDFs through PDFium, or a stand-in that refuses them where PDFium is missing.
 if(TARGET peerchalk_pdfium)
-    add_library(peerchalk_pdf STATIC pdf/pdf_document.cpp pdf/pdf_compose.cpp)
+    add_library(peerchalk_pdf STATIC pdf/pdf_document.cpp pdf/pdf_compose.cpp pdf/pdf_outline.cpp)
     target_link_libraries(peerchalk_pdf PRIVATE peerchalk_pdfium)
 else()
-    add_library(peerchalk_pdf STATIC pdf/pdf_document_none.cpp pdf/pdf_compose_none.cpp)
+    add_library(peerchalk_pdf STATIC pdf/pdf_document_none.cpp pdf/pdf_compose_none.cpp
+        pdf/pdf_outline.cpp)
 endif()
 target_include_directories(peerchalk_pdf PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(peerchalk_pdf PUBLIC peerchalk_board)
