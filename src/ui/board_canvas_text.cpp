@@ -15,8 +15,7 @@ namespace {
 constexpr float newBoxWidthPx = 320.0F;
 constexpr float newBoxFontPx = 20.0F;
 
-template <typename Change>
-void changeBox(Board &board, const QString &id, Change change) {
+template <typename Change> void changeBox(Board &board, const QString &id, Change change) {
     const TextBox *found = board.textBox(id.toStdString());
     if (found == nullptr)
         return;
@@ -30,7 +29,8 @@ void changeBox(Board &board, const QString &id, Change change) {
 QMatrix4x4 BoardCanvas::viewMatrix() const { return peerchalk::viewMatrix(viewport_); }
 
 void BoardCanvas::textBoxesUpdated() {
-    textBoxModel_.sync(board().textBoxes());
+    placedBoxes_ = placedTextBoxes();
+    textBoxModel_.sync(placedBoxes_);
     if (!editingTextBox_.isEmpty() && board().textBox(editingTextBox_.toStdString()) == nullptr)
         setEditingTextBox({});
     emit textBoxesChanged();
@@ -61,7 +61,7 @@ void BoardCanvas::finishTextEditing() {
 }
 
 const TextBox *BoardCanvas::textBoxAt(Point world) const {
-    const std::vector<TextBox> &boxes = board().textBoxes();
+    const std::vector<TextBox> &boxes = placedBoxes_;
     const auto hit = std::find_if(boxes.rbegin(), boxes.rend(), [&](const TextBox &box) {
         return board().textBoxBounds(box).contains(world);
     });
@@ -74,13 +74,15 @@ void BoardCanvas::textToolPressed(QPointF position) {
         setEditingTextBox(QString::fromStdString(existing->id));
         return;
     }
-    TextBox box;
+    std::optional<TextBox> placed = newTextBoxAt(world);
+    if (!placed)
+        return;
+    TextBox &box = *placed;
     box.id = QUuid::createUuid().toString(QUuid::WithoutBraces).toStdString();
     box.width = std::clamp(newBoxWidthPx / viewport_.scale(), TextBox::minWidth, TextBox::maxWidth);
     box.fontSize =
         std::clamp(newBoxFontPx / viewport_.scale(), TextBox::minFontSize, TextBox::maxFontSize);
-    box.x = world.x;
-    box.y = world.y - box.fontSize * 0.7F;
+    box.y -= box.fontSize * 0.7F;
     box.argb = penColor_.rgba();
     editableBoard().addTextBox(box);
     textBoxesUpdated();
@@ -102,8 +104,9 @@ void BoardCanvas::moveTextBox(const QString &id, QPointF position) {
     if (readOnly_ || !std::isfinite(position.x()) || !std::isfinite(position.y()))
         return;
     changeBox(editableBoard(), id, [&](TextBox &box) {
-        box.x = float(position.x());
-        box.y = float(position.y());
+        const Point origin = boxOrigin(box);
+        box.x = float(position.x()) - origin.x;
+        box.y = float(position.y()) - origin.y;
     });
     textBoxesUpdated();
 }

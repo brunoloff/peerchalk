@@ -1,9 +1,11 @@
 #pragma once
 
 #include "board/board.hpp"
+#include "board/page_map.hpp"
 #include "board/stroke_builder.hpp"
 #include "board/viewport.hpp"
 #include "ui/board_document.hpp"
+#include "ui/page_scene.hpp"
 #include "ui/text_box_model.hpp"
 
 #include <QColor>
@@ -28,6 +30,8 @@ class StrokeLayer;
 // Middle- and right-button drags always pan. Text boxes are shown by QML (TextBoxLayer)
 // from the textBoxes model; the Text tool creates them and picks one to edit.
 // Positions exposed to QML (viewCenter, visibleArea, contentBounds) are world coordinates.
+// On a page board (board_canvas_pages.cpp) the canvas shows pages in place of the grid;
+// strokes and text boxes go on the page under them, in that page's coordinates.
 class BoardCanvas : public QQuickItem {
     Q_OBJECT
     QML_ELEMENT
@@ -38,6 +42,8 @@ class BoardCanvas : public QQuickItem {
     Q_PROPERTY(QColor penColor READ penColor WRITE setPenColor NOTIFY penColorChanged)
     Q_PROPERTY(qreal penWidth READ penWidth WRITE setPenWidth NOTIFY penWidthChanged)
     Q_PROPERTY(QColor gridColor READ gridColor WRITE setGridColor NOTIFY gridColorChanged)
+    Q_PROPERTY(QColor pageColor READ pageColor WRITE setPageColor NOTIFY pageColorChanged)
+    Q_PROPERTY(bool pageBoard READ pageBoard NOTIFY strokesChanged)
     Q_PROPERTY(int strokeCount READ strokeCount NOTIFY strokesChanged)
     Q_PROPERTY(bool canUndo READ canUndo NOTIFY strokesChanged)
     // Panning and zooming only; a stroke already being drawn may finish.
@@ -64,6 +70,12 @@ class BoardCanvas : public QQuickItem {
     void setPenWidth(qreal width);
     [[nodiscard]] QColor gridColor() const { return gridColor_; }
     void setGridColor(const QColor &color);
+    [[nodiscard]] QColor pageColor() const { return pageColor_; }
+    void setPageColor(const QColor &color);
+    [[nodiscard]] bool pageBoard() const { return pageBoard_; }
+    [[nodiscard]] const PageMap &pageMap() const { return pageMap_; }
+    // What of a page board is in view and around it, for drawing.
+    [[nodiscard]] PageView pageView() const;
     [[nodiscard]] int strokeCount() const;
     [[nodiscard]] bool canUndo() const { return board().canUndo(); }
     [[nodiscard]] bool readOnly() const { return readOnly_; }
@@ -116,6 +128,7 @@ class BoardCanvas : public QQuickItem {
     void penColorChanged();
     void penWidthChanged();
     void gridColorChanged();
+    void pageColorChanged();
     void strokesChanged();
     void viewChanged();
     void textBoxesChanged();
@@ -157,12 +170,28 @@ class BoardCanvas : public QQuickItem {
     void textToolPressed(QPointF position);
     [[nodiscard]] const TextBox *textBoxAt(Point world) const;
     [[nodiscard]] Board &editableBoard() { return document_->board(); }
+    // Page boards (board_canvas_pages.cpp).
+    void refreshPages();
+    [[nodiscard]] std::optional<Bounds> shownBounds() const;
+    void commitStroke(const Stroke &stroke);
+    std::size_t eraseAt(Point world, float radius);
+    // Text boxes with their positions on the board, for boxes on pages too.
+    [[nodiscard]] std::vector<TextBox> placedTextBoxes() const;
+    // Where the coordinates of a box start on the board: its page's corner, or the origin.
+    [[nodiscard]] Point boxOrigin(const TextBox &box) const;
+    // A box at a board position, on the page there; none between pages.
+    [[nodiscard]] std::optional<TextBox> newTextBoxAt(Point world) const;
+    void appendPageSheets(QSGNode *parent) const;
 
     Tool tool_{Tool::Pen};
     bool readOnly_{false};
     QColor penColor_{Qt::black};
     qreal penWidth_{3.0};
     QColor gridColor_{Qt::lightGray};
+    QColor pageColor_{Qt::white};
+    bool pageBoard_{false};
+    PageMap pageMap_;
+    std::vector<TextBox> placedBoxes_;
     BoardDocument ownDocument_;
     QPointer<BoardDocument> document_;
     Viewport viewport_;

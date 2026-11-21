@@ -30,6 +30,10 @@ enum class StrokeSelection {
 [[nodiscard]] QColor strokeColor(const Stroke &stroke, StrokeSelection selection);
 [[nodiscard]] bool selects(StrokeSelection selection, const Stroke &stroke);
 [[nodiscard]] QSGGeometryNode *createStrokeNode(const Stroke &stroke, const QColor &color);
+// The selected strokes merged into one node with a colour per vertex, so that a whole page
+// is one draw call; null when nothing is selected.
+[[nodiscard]] QSGGeometryNode *createMergedStrokesNode(const std::vector<Stroke> &strokes,
+                                                       StrokeSelection selection);
 // Square dots of the given size centred on each point.
 [[nodiscard]] QSGGeometryNode *createDotsNode(const std::vector<Point> &centres, float size,
                                               const QColor &color);

@@ -15,8 +15,10 @@ qt_add_qml_module(peerchalk_ui URI PeerChalk VERSION 1.0
     OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/qml/PeerChalk"
     SOURCES
         board_canvas.cpp board_canvas.hpp board_canvas_input.cpp board_canvas_text.cpp
+        board_canvas_pages.cpp
         board_minimap.cpp board_minimap.hpp
         conversions.hpp scene_nodes.cpp scene_nodes.hpp stroke_layer.cpp stroke_layer.hpp
+        page_scene.cpp page_scene.hpp
         board_preview.cpp board_preview.hpp library.cpp library.hpp library_people.cpp
         desktop_launcher.cpp desktop_launcher.hpp app_updater.cpp app_updater.hpp
         library_boards.cpp library_links.cpp board_document.cpp board_document.hpp

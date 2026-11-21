@@ -4,7 +4,7 @@ include(GoogleTest)
 
 add_executable(peerchalk_board_tests stroke_test.cpp stroke_mesh_test.cpp viewport_test.cpp
     board_test.cpp board_text_test.cpp stroke_codec_test.cpp stroke_builder_test.cpp
-    page_layout_test.cpp board_pages_test.cpp)
+    page_layout_test.cpp page_map_test.cpp board_pages_test.cpp)
 target_link_libraries(peerchalk_board_tests PRIVATE peerchalk_board GTest::gtest_main)
 target_compile_options(peerchalk_board_tests PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:${peerchalk_warning_flags}>)
@@ -18,7 +18,7 @@ target_compile_options(peerchalk_library_tests PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:${peerchalk_warning_flags}>)
 gtest_discover_tests(peerchalk_library_tests)
 
-add_executable(peerchalk_ui_tests qt_test_main.cpp board_canvas_test.cpp board_minimap_test.cpp
+add_executable(peerchalk_ui_tests qt_test_main.cpp board_canvas_test.cpp board_canvas_pages_test.cpp board_minimap_test.cpp
     main_window_test.cpp library_test.cpp account_manager_test.cpp math_engine_test.cpp rich_text_test.cpp board_pdf_test.cpp
     accounts_window_test.cpp desktop_launcher_test.cpp app_updater_test.cpp board_preview_test.cpp)
 target_link_libraries(peerchalk_ui_tests PRIVATE peerchalk_uiplugin peerchalk_ui Qt6::QuickControls2 Qt6::Test Qt6::GuiPrivate

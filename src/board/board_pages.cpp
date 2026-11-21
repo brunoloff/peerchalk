@@ -53,6 +53,7 @@ BoardPages::~BoardPages() {
 
 void BoardPages::columnsChanged() {
     columnsStale_ = true;
+    ++columnsVersion_;
     if (changed_)
         changed_();
 }

@@ -192,6 +192,21 @@ TEST_F(BoardPagesTest, TellsTheBoardsListenerAboutPageChanges) {
     EXPECT_GE(changes, 2);
 }
 
+TEST_F(BoardPagesTest, CountsChangesPerPageAndToTheColumns) {
+    const std::string page = firstPage();
+    const std::string other = pages().insertItem(column().id, {}, ColumnItemKind::Page);
+    const std::uint64_t columns = pages().columnsVersion();
+    const std::uint64_t otherStrokes = pages().strokesVersion(other);
+    EXPECT_EQ(pages().strokesVersion("no such page"), 0U);
+    const std::uint64_t before = pages().strokesVersion(page);
+    pages().addStroke(page, strokeAt(1.0F, 1.0F));
+    EXPECT_GT(pages().strokesVersion(page), before);
+    EXPECT_EQ(pages().strokesVersion(other), otherStrokes);
+    EXPECT_EQ(pages().columnsVersion(), columns);
+    pages().setColumnTitle(column().id, "Changed");
+    EXPECT_GT(pages().columnsVersion(), columns);
+}
+
 TEST_F(BoardPagesTest, KeepsTextBoxesWithTheirPageAndRemovesThemWithIt) {
     const std::string page = firstPage();
     TextBox box;

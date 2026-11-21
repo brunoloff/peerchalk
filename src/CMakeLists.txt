@@ -1,7 +1,7 @@
 # Board model: plain C++ with no Qt dependency, so it can be shared with sync code.
 add_library(peerchalk_board STATIC board/stroke.cpp board/stroke_mesh.cpp board/viewport.cpp
     board/board.cpp board/board_text.cpp board/rich_text.cpp board/stroke_codec.cpp board/stroke_builder.cpp
-    board/page_layout.cpp board/board_pages.cpp board/board_page_strokes.cpp
+    board/page_layout.cpp board/page_map.cpp board/board_pages.cpp board/board_page_strokes.cpp
     board/board_pages_native.cpp board/board_page_moves.cpp)
 target_include_directories(peerchalk_board PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(peerchalk_board PRIVATE peerchalk_yrs)

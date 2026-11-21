@@ -46,6 +46,7 @@ void BoardCanvas::setDocument(BoardDocument *document) {
     if (document_)
         disconnect(document_, nullptr, this, nullptr);
     document_ = next;
+    pageMap_.clear();
     // Remote changes (and saved state loading) arrive through the document.
     connect(document_, &BoardDocument::changed, this, &BoardCanvas::strokesUpdated);
     connect(document_, &BoardDocument::remoteDraftsChanged, this, &BoardCanvas::updateDrafts);
@@ -108,8 +109,20 @@ void BoardCanvas::setGridColor(const QColor &color) {
 
 int BoardCanvas::strokeCount() const { return static_cast<int>(board().strokes().size()); }
 
+void BoardCanvas::setPageColor(const QColor &color) {
+    if (!color.isValid()) {
+        qWarning("BoardCanvas: ignoring invalid page colour");
+        return;
+    }
+    if (color == pageColor_)
+        return;
+    pageColor_ = color;
+    emit pageColorChanged();
+    update();
+}
+
 QRectF BoardCanvas::contentBounds() const {
-    const std::optional<Bounds> bounds = board().contentBounds();
+    const std::optional<Bounds> bounds = shownBounds();
     return bounds ? toRect(*bounds) : QRectF();
 }
 
@@ -158,7 +171,7 @@ void BoardCanvas::resetView() {
 }
 
 void BoardCanvas::fitContent() {
-    const std::optional<Bounds> content = board().contentBounds();
+    const std::optional<Bounds> content = shownBounds();
     if (!content || width() <= 2.0 * fitMarginPx || height() <= 2.0 * fitMarginPx)
         return;
     viewport_.fit(*content, static_cast<float>(width()), static_cast<float>(height()), fitMarginPx,
@@ -194,6 +207,10 @@ QPointF BoardCanvas::toScreen(QPointF worldPoint) const {
 QSGNode *BoardCanvas::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *) {
     QSGNode *grid = oldNode != nullptr ? oldNode : new QSGNode;
     deleteChildren(grid);
+    if (pageBoard_) {
+        appendPageSheets(grid);
+        return grid;
+    }
     grid->appendChildNode(createDotsNode(
         gridDots(viewport_, static_cast<float>(width()), static_cast<float>(height())),
         gridDotSizePx, gridColor_));
@@ -215,6 +232,8 @@ void BoardCanvas::viewUpdated() {
 }
 
 void BoardCanvas::strokesUpdated() {
+    refreshPages();
+    update();
     emit strokesChanged();
     textBoxesUpdated();
     redrawStrokes();

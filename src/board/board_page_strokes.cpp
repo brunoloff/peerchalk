@@ -16,20 +16,20 @@ bool hasPage(const std::vector<ColumnSpec> &columns, const std::string &pageId) 
     });
 }
 
-void markKeys(std::set<std::string> &stale, const YMapEvent *event) {
+void markKeys(std::vector<std::string> &changed, const YMapEvent *event) {
     std::uint32_t length = 0;
     YEventKeyChange *keys = ymap_event_keys(event, &length);
     for (std::uint32_t i = 0; i < length; ++i)
-        stale.insert(keys[i].key);
+        changed.emplace_back(keys[i].key);
     yevent_keys_destroy(keys, length);
 }
 
 // A change inside a page's array: its path from "pageStrokes" starts with the page id.
-void markPath(std::set<std::string> &stale, const YArrayEvent *event) {
+void markPath(std::vector<std::string> &changed, const YArrayEvent *event) {
     std::uint32_t length = 0;
     YPathSegment *path = yarray_event_path(event, &length);
     if (length > 0 && path[0].tag == Y_EVENT_PATH_KEY)
-        stale.insert(path[0].value.key);
+        changed.emplace_back(path[0].value.key);
     ypath_destroy(path, length);
 }
 
@@ -49,14 +49,24 @@ const Branch *pageStrokeArray(const Board::Native &native, YTransaction *txn,
 
 void BoardPages::strokesChanged(std::uint32_t count, const void *events) {
     const auto *list = static_cast<const YEvent *>(events);
+    std::vector<std::string> changed;
     for (std::uint32_t i = 0; i < count; ++i) {
         if (list[i].tag == Y_MAP)
-            markKeys(staleStrokes_, &list[i].content.map);
+            markKeys(changed, &list[i].content.map);
         else if (list[i].tag == Y_ARRAY)
-            markPath(staleStrokes_, &list[i].content.array);
+            markPath(changed, &list[i].content.array);
+    }
+    for (std::string &pageId : changed) {
+        ++strokeVersions_[pageId];
+        staleStrokes_.insert(std::move(pageId));
     }
     if (changed_)
         changed_();
+}
+
+std::uint64_t BoardPages::strokesVersion(const std::string &pageId) const {
+    const auto found = strokeVersions_.find(pageId);
+    return found != strokeVersions_.end() ? found->second : 0U;
 }
 
 const std::vector<Stroke> &BoardPages::strokes(const std::string &pageId) const {

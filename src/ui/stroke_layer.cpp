@@ -16,6 +16,23 @@ void StrokeLayer::markStrokesDirty() {
     update();
 }
 
+void StrokeLayer::updateCommitted(QSGNode *committed) {
+    if (canvas_.pageBoard() != showingPages_) {
+        deleteChildren(committed);
+        pages_.reset();
+        showingPages_ = canvas_.pageBoard();
+        strokesDirty_ = true;
+    }
+    if (showingPages_) {
+        // Which pages have nodes follows the view, so this runs on every frame.
+        pages_.update(committed, canvas_.board(), canvas_.pageMap(), canvas_.pageView(),
+                      selection_);
+    } else if (strokesDirty_) {
+        setStrokeNodes(committed, canvas_.board().strokes(), selection_);
+    }
+    strokesDirty_ = false;
+}
+
 QSGNode *StrokeLayer::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *) {
     auto *transform = static_cast<QSGTransformNode *>(oldNode);
     if (transform == nullptr) {
@@ -23,12 +40,11 @@ QSGNode *StrokeLayer::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *) {
         transform->appendChildNode(new QSGNode); // committed strokes
         transform->appendChildNode(new QSGNode); // strokes being drawn, here and elsewhere
         strokesDirty_ = true;
+        showingPages_ = false;
+        pages_.reset();
     }
     transform->setMatrix(viewMatrix(canvas_.viewport()));
-    if (strokesDirty_) {
-        setStrokeNodes(transform->firstChild(), canvas_.board().strokes(), selection_);
-        strokesDirty_ = false;
-    }
+    updateCommitted(transform->firstChild());
     QSGNode *active = transform->lastChild();
     deleteChildren(active);
     const Stroke *drawing = canvas_.activeStroke();

@@ -4,6 +4,10 @@
 
 #include <QSGFlatColorMaterial>
 #include <QSGGeometryNode>
+#include <QSGVertexColorMaterial>
+
+#include <algorithm>
+#include <cmath>
 
 namespace peerchalk {
 namespace {
@@ -63,6 +67,38 @@ QSGGeometryNode *createStrokeNode(const Stroke &stroke, const QColor &color) {
     for (std::size_t i = 0; i < mesh.size(); ++i)
         vertices[i].set(mesh[i].x, mesh[i].y);
     return createNode(geometry, color);
+}
+
+QSGGeometryNode *createMergedStrokesNode(const std::vector<Stroke> &strokes,
+                                         StrokeSelection selection) {
+    std::vector<QSGGeometry::ColoredPoint2D> vertices;
+    for (const Stroke &stroke : strokes) {
+        if (!selects(selection, stroke) || stroke.points().empty())
+            continue;
+        const QColor color = strokeColor(stroke, selection);
+        const float alpha = static_cast<float>(color.alphaF());
+        const auto channel = [alpha](int value) {
+            return static_cast<unsigned char>(std::lround(static_cast<float>(value) * alpha));
+        };
+        QSGGeometry::ColoredPoint2D vertex{};
+        for (const MeshVertex &point : buildStrokeMesh(stroke)) {
+            // The vertex colour material expects premultiplied colours.
+            vertex.set(point.x, point.y, channel(color.red()), channel(color.green()),
+                       channel(color.blue()), static_cast<unsigned char>(color.alpha()));
+            vertices.push_back(vertex);
+        }
+    }
+    if (vertices.empty())
+        return nullptr;
+    auto *geometry = new QSGGeometry(QSGGeometry::defaultAttributes_ColoredPoint2D(),
+                                     static_cast<int>(vertices.size()));
+    geometry->setDrawingMode(QSGGeometry::DrawTriangles);
+    std::ranges::copy(vertices, geometry->vertexDataAsColoredPoint2D());
+    auto *node = new QSGGeometryNode;
+    node->setGeometry(geometry);
+    node->setMaterial(new QSGVertexColorMaterial);
+    node->setFlags(QSGNode::OwnsGeometry | QSGNode::OwnsMaterial);
+    return node;
 }
 
 QSGGeometryNode *createDotsNode(const std::vector<Point> &centres, float size,

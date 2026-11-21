@@ -4,6 +4,7 @@
 #include "board/page_layout.hpp"
 
 #include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <map>
 #include <optional>
@@ -65,6 +66,11 @@ class BoardPages {
     // Moves a column before the column `before` (or last), the same way.
     void moveColumn(const std::string &columnId, const std::string &before);
 
+    // Counters that grow with every change to the columns, or to one page's strokes, so
+    // that views can tell what to redraw.
+    [[nodiscard]] std::uint64_t columnsVersion() const { return columnsVersion_; }
+    [[nodiscard]] std::uint64_t strokesVersion(const std::string &pageId) const;
+
     // A page's strokes, decoded the first time they are asked for after a change.
     [[nodiscard]] const std::vector<Stroke> &strokes(const std::string &pageId) const;
     void addStroke(const std::string &pageId, const Stroke &stroke);
@@ -80,6 +86,8 @@ class BoardPages {
     std::function<void()> changed_;
     mutable std::vector<ColumnSpec> columns_;
     mutable bool columnsStale_{true};
+    std::uint64_t columnsVersion_{0};
+    std::map<std::string, std::uint64_t> strokeVersions_;
     mutable std::map<std::string, std::vector<Stroke>> strokes_;
     mutable std::set<std::string> staleStrokes_;
 };
