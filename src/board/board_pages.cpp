@@ -1,161 +1,19 @@
 // The structure of a page board: its kind, its columns and their items (see board_pages.hpp).
 #include "board/board_pages.hpp"
 
-#include "board/board_native.hpp"
+#include "board/board_pages_native.hpp"
 
-#include <cinttypes>
-#include <cstdio>
-#include <deque>
 #include <exception>
-#include <random>
 
 namespace peerchalk {
 namespace {
+
+using namespace page_yrs;
 
 constexpr char layoutName[] = "layout";
 constexpr char columnsName[] = "columns";
 constexpr char pageStrokesName[] = "pageStrokes";
 constexpr char observerKey[] = "peerchalk-pages";
-constexpr char pagesKind[] = "pages";
-constexpr double maxPageSide = 100000.0; // about 26 m; anything larger is not paper
-
-std::string newId() {
-    thread_local std::mt19937_64 generator{std::random_device{}()};
-    char text[17];
-    std::snprintf(text, sizeof text, "%016" PRIx64, generator());
-    return text;
-}
-
-void checkPaper(PaperSize paper) {
-    if (!std::isfinite(paper.width) || !std::isfinite(paper.height) || paper.width <= 0.0F ||
-        paper.height <= 0.0F || paper.width > maxPageSide || paper.height > maxPageSide)
-        throw std::invalid_argument("paper sizes must be finite, positive and below 26 m");
-}
-
-// A Yrs map to insert; the keys and strings it points to live as long as it does.
-class MapInput {
-  public:
-    void add(const char *key, YInput value) {
-        keys_.push_back(const_cast<char *>(key)); // Yrs only reads the keys
-        values_.push_back(value);
-    }
-    void addString(const char *key, const std::string &value) {
-        add(key, yinput_string(strings_.emplace_back(value).c_str()));
-    }
-    [[nodiscard]] YInput build() {
-        return yinput_ymap(keys_.data(), values_.data(), static_cast<std::uint32_t>(keys_.size()));
-    }
-
-  private:
-    std::vector<char *> keys_;
-    std::vector<YInput> values_;
-    std::deque<std::string> strings_;
-};
-
-void describeItem(MapInput &map, const std::string &id, ColumnItemKind kind,
-                  const std::string &text) {
-    map.addString("id", id);
-    map.addString("kind", kind == ColumnItemKind::Page ? "page" : "subheading");
-    if (kind == ColumnItemKind::Subheading)
-        map.addString("text", text);
-}
-
-const Branch *mapAt(const Branch *array, const YTransaction *txn, std::uint32_t index) {
-    const Output value(yarray_get(array, txn, index), youtput_destroy);
-    return value && value->tag == Y_MAP ? youtput_read_ymap(value.get()) : nullptr;
-}
-
-std::optional<std::uint32_t> indexOf(const Branch *array, const YTransaction *txn,
-                                     const std::string &id) {
-    for (std::uint32_t i = 0, length = yarray_len(array); i < length; ++i) {
-        const Branch *map = mapAt(array, txn, i);
-        if (map != nullptr && mapString(map, txn, "id") == id)
-            return i;
-    }
-    return std::nullopt;
-}
-
-const Branch *itemsOf(const Branch *column, const YTransaction *txn) {
-    const Output value(ymap_get(column, txn, "items"), youtput_destroy);
-    return value && value->tag == Y_ARRAY ? youtput_read_yarray(value.get()) : nullptr;
-}
-
-std::optional<PaperSize> readSize(const Branch *map, const YTransaction *txn, const char *width,
-                                  const char *height) {
-    const auto w = mapNumber(map, txn, width);
-    const auto h = mapNumber(map, txn, height);
-    if (!w || !h || *w <= 0.0 || *h <= 0.0 || *w > maxPageSide || *h > maxPageSide)
-        return std::nullopt;
-    return PaperSize{static_cast<float>(*w), static_cast<float>(*h)};
-}
-
-std::optional<ColumnItem> readItem(const Branch *map, const YTransaction *txn) {
-    ColumnItem item{mapString(map, txn, "id"), ColumnItemKind::Page, std::nullopt, {}};
-    const std::string kind = mapString(map, txn, "kind");
-    if (item.id.empty())
-        return std::nullopt;
-    if (kind == "page") {
-        item.size = readSize(map, txn, "width", "height");
-    } else if (kind == "subheading") {
-        item.kind = ColumnItemKind::Subheading;
-        item.text = mapString(map, txn, "text");
-    } else {
-        return std::nullopt; // a kind of item from a newer version
-    }
-    return item;
-}
-
-std::optional<ColumnSpec> readColumn(const Branch *map, const YTransaction *txn) {
-    const std::optional<PaperSize> paper = readSize(map, txn, "paperWidth", "paperHeight");
-    ColumnSpec column{
-        mapString(map, txn, "id"), paper.value_or(paperA4), {}, mapString(map, txn, "title")};
-    const Branch *items = itemsOf(map, txn);
-    if (column.id.empty() || !paper || items == nullptr)
-        return std::nullopt;
-    for (std::uint32_t i = 0, length = yarray_len(items); i < length; ++i) {
-        const Branch *item = mapAt(items, txn, i);
-        if (std::optional<ColumnItem> read = item ? readItem(item, txn) : std::nullopt)
-            column.items.push_back(*std::move(read));
-    }
-    return column;
-}
-
-void createStrokeArray(const Board::Native &native, YTransaction *txn, const std::string &page) {
-    const YInput empty = yinput_yarray(nullptr, 0);
-    ymap_insert(native.pageStrokes, txn, page.c_str(), &empty);
-}
-
-std::string insertColumn(const Board::Native &native, YTransaction *txn, std::uint32_t index,
-                         PaperSize paper, const std::string &title) {
-    const std::string columnId = newId();
-    const std::string pageId = newId();
-    MapInput page;
-    describeItem(page, pageId, ColumnItemKind::Page, {});
-    YInput pageInput = page.build();
-    MapInput column;
-    column.addString("id", columnId);
-    column.addString("title", title);
-    column.add("paperWidth", yinput_float(paper.width));
-    column.add("paperHeight", yinput_float(paper.height));
-    column.add("items", yinput_yarray(&pageInput, 1));
-    const YInput input = column.build();
-    yarray_insert_range(native.columns, txn, index, &input, 1);
-    createStrokeArray(native, txn, pageId);
-    return columnId;
-}
-
-const Branch *columnItems(const Board::Native &native, const YTransaction *txn,
-                          const std::string &columnId) {
-    const std::optional<std::uint32_t> index = indexOf(native.columns, txn, columnId);
-    return index ? itemsOf(mapAt(native.columns, txn, *index), txn) : nullptr;
-}
-
-void removePageStrokes(const Board::Native &native, YTransaction *txn, const Branch *items) {
-    for (std::uint32_t i = 0, length = yarray_len(items); i < length; ++i) {
-        if (const Branch *item = mapAt(items, txn, i))
-            ymap_remove(native.pageStrokes, txn, mapString(item, txn, "id").c_str());
-    }
-}
 
 template <typename Callback> void guarded(Callback callback) {
     // Exceptions must not unwind through the Rust library.
@@ -304,7 +162,7 @@ std::string BoardPages::insertItem(const std::string &columnId, const std::strin
                 indexOf(items, txn.get(), before).value_or(yarray_len(items));
             id = newId();
             MapInput map;
-            describeItem(map, id, kind, text);
+            writeItem(map, {id, kind, std::nullopt, text});
             const YInput input = map.build();
             yarray_insert_range(items, txn.get(), index, &input, 1);
             if (kind == ColumnItemKind::Page)

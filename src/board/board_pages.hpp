@@ -51,6 +51,13 @@ class BoardPages {
     void removeItem(const std::string &columnId, const std::string &itemId);
     void setSubheadingText(const std::string &columnId, const std::string &itemId,
                            const std::string &text);
+    // Moves an item before the item `before` of column `toColumn` (or last); a page keeps its
+    // strokes. Yrs has no move, so the item is removed and inserted again: a peer's change
+    // to that same item at the same moment is lost.
+    void moveItem(const std::string &fromColumn, const std::string &itemId,
+                  const std::string &toColumn, const std::string &before);
+    // Moves a column before the column `before` (or last), the same way.
+    void moveColumn(const std::string &columnId, const std::string &before);
 
     // A page's strokes, decoded the first time they are asked for after a change.
     [[nodiscard]] const std::vector<Stroke> &strokes(const std::string &pageId) const;

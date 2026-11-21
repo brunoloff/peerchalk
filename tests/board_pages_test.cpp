@@ -91,6 +91,38 @@ TEST_F(BoardPagesTest, InsertsPagesAndSubheadingsWhereAsked) {
     EXPECT_TRUE(pages().insertItem("no such column", {}, ColumnItemKind::Page).empty());
 }
 
+TEST_F(BoardPagesTest, MovesPagesWithinAndAcrossColumnsKeepingTheirStrokes) {
+    const std::string columnId = column().id;
+    const std::string first = firstPage();
+    const std::string second = pages().insertItem(columnId, {}, ColumnItemKind::Page);
+    pages().addStroke(second, strokeAt(3.0F, 3.0F));
+    pages().moveItem(columnId, second, columnId, first);
+    EXPECT_EQ(itemIds(column()), (std::vector<std::string>{second, first}));
+    const std::string other = pages().addColumn({}, paperLetter, "Other");
+    pages().moveItem(columnId, second, other, {});
+    EXPECT_EQ(itemIds(column()), (std::vector<std::string>{first}));
+    EXPECT_EQ(column(1).items.back().id, second);
+    EXPECT_EQ(pages().strokes(second).size(), 1U);
+    ASSERT_TRUE(board_.undo()); // one step back to the first column
+    EXPECT_EQ(itemIds(column()), (std::vector<std::string>{second, first}));
+}
+
+TEST_F(BoardPagesTest, MovesColumnsWithTheirItems) {
+    const std::string first = column().id;
+    const std::string page = firstPage();
+    pages().insertItem(first, {}, ColumnItemKind::Subheading, "End");
+    const std::string second = pages().addColumn({}, paperLetter, "Second");
+    pages().moveColumn(first, {});
+    EXPECT_EQ(column(0).id, second);
+    EXPECT_EQ(column(1).id, first);
+    EXPECT_EQ(column(1).title, "Notes");
+    ASSERT_EQ(column(1).items.size(), 2U);
+    EXPECT_EQ(column(1).items[0].id, page);
+    EXPECT_EQ(column(1).items[1].text, "End");
+    pages().moveColumn(first, second);
+    EXPECT_EQ(column(0).id, first);
+}
+
 TEST_F(BoardPagesTest, KeepsStrokesPerPageAndErasesThem) {
     const std::string page = firstPage();
     const std::string other = pages().insertItem(column().id, {}, ColumnItemKind::Page);
