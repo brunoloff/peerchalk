@@ -55,6 +55,11 @@ class PdfDocument {
     // The page at width × height pixels on white. Throws std::out_of_range for a page that
     // does not exist and std::invalid_argument for sizes outside 1 to 16384 pixels.
     [[nodiscard]] PdfImage render(int index, int width, int height) const;
+    // The part (x, y, width × height) of the page drawn at pageWidth × pageHeight pixels, so
+    // that a page too large to render whole renders in tiles. The same exceptions as render,
+    // with pageWidth and pageHeight up to 65536.
+    [[nodiscard]] PdfImage renderTile(int index, int pageWidth, int pageHeight, int x, int y,
+                                      int width, int height) const;
 
   private:
     struct Native;

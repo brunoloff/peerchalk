@@ -1,11 +1,16 @@
-// Measures a large page board: 500 pages of 200 strokes each. Not a test: it prints timings
-// for docs/page-boards.md and never fails. Run it from the build directory:
+// Measures a large page board, 500 pages of 200 strokes each, and a 300-page PDF. Not a
+// test: it prints timings for docs/page-boards.md and never fails. Run it from the build
+// directory:
 //   QT_QPA_PLATFORM=offscreen tests/peerchalk_page_bench
 #include "board/board_pages.hpp"
 #include "board/page_map.hpp"
+#include "pdf/pdf_document.hpp"
 #include "ui/page_scene.hpp"
 
+#include <QBuffer>
 #include <QGuiApplication>
+#include <QPainter>
+#include <QPdfWriter>
 #include <QSGNode>
 
 #include <algorithm>
@@ -88,6 +93,51 @@ void pan(const Board &board, const PageMap &map, float scale, const char *label)
                 frames.size(), at(0.5), at(0.95), frames.back(), penNodes.size());
 }
 
+// A 300-page A4 PDF of text and figures, like a long paper.
+Bytes longPdf() {
+    QByteArray bytes;
+    QBuffer buffer(&bytes);
+    buffer.open(QIODevice::WriteOnly);
+    QPdfWriter writer(&buffer);
+    writer.setPageSize(QPageSize(QPageSize::A4));
+    writer.setResolution(72);
+    QPainter painter(&writer);
+    painter.setFont(QFont(QStringLiteral("Serif"), 10));
+    for (int page = 0; page < 300; ++page) {
+        if (page > 0)
+            writer.newPage();
+        for (int line = 0; line < 55; ++line)
+            painter.drawText(60, 70 + line * 13,
+                             QStringLiteral("%1.%2 Lorem ipsum dolor sit amet, the sparse Fourier "
+                                            "transform of a signal with k large coefficients")
+                                 .arg(page + 1)
+                                 .arg(line));
+        painter.drawEllipse(QPointF(400, 650), 60.0 + page % 7, 40.0);
+    }
+    painter.end();
+    const auto *begin = reinterpret_cast<const std::byte *>(bytes.constData());
+    return {begin, begin + bytes.size()};
+}
+
+void pdfTimings() {
+    const auto pdf = std::make_shared<const Bytes>(longPdf());
+    std::printf("300-page PDF: %.1f MB\n", double(pdf->size()) / 1e6);
+    std::unique_ptr<PdfDocument> document;
+    std::printf("open and read 300 page sizes (import): %.0f ms\n", millisecondsOf([&] {
+                    document = PdfDocument::open(pdf).document;
+                    for (int i = 0; i < document->pageCount(); ++i)
+                        (void)document->pageSize(i);
+                }));
+    std::printf("first page at 1024 px (100 %% on screen): %.0f ms\n",
+                millisecondsOf([&] { (void)document->render(0, 724, 1024); }));
+    std::printf("a page at 4096 px (the sharpest whole page): %.0f ms\n",
+                millisecondsOf([&] { (void)document->render(150, 2896, 4096); }));
+    std::printf("six pages at 362 px (25 %%): %.0f ms\n", millisecondsOf([&] {
+                    for (int i = 0; i < 6; ++i)
+                        (void)document->render(200 + i, 256, 362);
+                }));
+}
+
 } // namespace
 
 int main(int argc, char **argv) {
@@ -105,5 +155,6 @@ int main(int argc, char **argv) {
     pan(loaded, map, 1.0F, "pan at 100% (decoded)");
     pan(loaded, map, 0.25F, "pan at 25%");
     pan(loaded, map, 0.02F, "pan at 2%");
+    pdfTimings();
     return 0;
 }

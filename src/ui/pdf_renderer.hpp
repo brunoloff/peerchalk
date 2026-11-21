@@ -30,8 +30,14 @@ class PdfRenderer : public QObject {
   public:
     struct Request {
         PdfSource source;
-        int height; // pixels, from bucketFor()
+        int height;   // pixels, from bucketFor() or, for tiles, tiledHeightFor()
+        int tile{-1}; // a tile of the page at that height (see tileOf), or -1 for all of it
     };
+
+    // Pages shown taller than the largest whole render come in square tiles of this size:
+    // tile i is in row i / columns and column i % columns, columns being the page's width at
+    // that height divided by tileSize, rounded up.
+    static constexpr int tileSize = 1024;
 
     PdfRenderer(const BlobStore &blobs, std::size_t budgetBytes, QObject *parent = nullptr);
     ~PdfRenderer() override;
@@ -41,11 +47,27 @@ class PdfRenderer : public QObject {
     // The height to render a page shown `pixels` tall at: the next power of √2, between 64
     // and 4096, so that zooming reuses images.
     [[nodiscard]] static int bucketFor(double pixels);
+    // The same steps without the 4096 cap, up to 32768, for pages rendered in tiles.
+    [[nodiscard]] static int tiledHeightFor(double pixels);
+    // A tile of a page and where it lies on the board.
+    struct Tile {
+        int index;
+        Bounds world;
+    };
+    // The tiles of a page (its board bounds) rendered `height` pixels tall that overlap
+    // `visible`.
+    [[nodiscard]] static std::vector<Tile> tilesIn(const Bounds &page, const Bounds &visible,
+                                                   int height);
+    // Whether a page shown `pixels` tall needs tiles to be sharp.
+    [[nodiscard]] static bool needsTiles(double pixels) { return pixels > maxWholeHeight; }
+    static constexpr int maxWholeHeight = 4096;
 
     void want(std::vector<Request> requests);
     // The cached image of the page with the height nearest to height, preferring larger;
     // null when there is none yet. Any thread.
     [[nodiscard]] QImage best(const PdfSource &source, int height) const;
+    // A tile, if it has been rendered; null otherwise. Any thread.
+    [[nodiscard]] QImage tile(const PdfSource &source, int height, int tile) const;
     // Pages whose PDF is missing or unreadable here, by blob; a blob that arrives later
     // is tried again after forgetFailures().
     [[nodiscard]] bool failed(const std::string &blob) const;
@@ -59,7 +81,7 @@ class PdfRenderer : public QObject {
     void retryWanted();
 
   private:
-    using Key = std::tuple<std::string, int, int>; // blob, page, height
+    using Key = std::tuple<std::string, int, int, int>; // blob, page, height, tile
     struct Entry {
         QImage image;
         std::uint64_t used;

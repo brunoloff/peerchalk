@@ -38,6 +38,11 @@ TEST(PdfDocument, RendersPagesOnWhite) {
     EXPECT_EQ(pixel(5, 278), 0);     // in the black square at the bottom left
     EXPECT_EQ(pixel(150, 20), 0xFF); // white paper
     EXPECT_THROW((void)opened.document->render(0, 0, 10), std::invalid_argument);
+    // The bottom left quarter of the page at twice the size holds the square, larger.
+    const PdfImage tile = opened.document->renderTile(0, 400, 566, 0, 283, 200, 283);
+    ASSERT_EQ(tile.width, 200);
+    EXPECT_EQ(tile.pixels[(std::size_t(270) * 200 + 10) * 4], 0);
+    EXPECT_EQ(tile.pixels[(std::size_t(100) * 200 + 10) * 4], 0xFF);
     EXPECT_THROW((void)opened.document->render(5, 10, 10), std::out_of_range);
 }
 

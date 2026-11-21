@@ -29,6 +29,7 @@ template <typename Change> void changeBox(Board &board, const QString &id, Chang
 QMatrix4x4 BoardCanvas::viewMatrix() const { return peerchalk::viewMatrix(viewport_); }
 
 void BoardCanvas::textBoxesUpdated() {
+    nearbyPages_ = pagesNearView();
     placedBoxes_ = placedTextBoxes();
     textBoxModel_.sync(placedBoxes_);
     if (!editingTextBox_.isEmpty() && board().textBox(editingTextBox_.toStdString()) == nullptr)

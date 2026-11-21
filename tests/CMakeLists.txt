@@ -53,6 +53,6 @@ gtest_discover_tests(peerchalk_network_tests
 
 # Timings for a large page board (docs/page-boards.md); built, never run by ctest.
 add_executable(peerchalk_page_bench page_board_bench.cpp)
-target_link_libraries(peerchalk_page_bench PRIVATE peerchalk_ui)
+target_link_libraries(peerchalk_page_bench PRIVATE peerchalk_ui peerchalk_pdf)
 target_compile_options(peerchalk_page_bench PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:${peerchalk_warning_flags}>)

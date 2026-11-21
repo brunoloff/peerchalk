@@ -27,6 +27,21 @@ TEST(PdfRenderer, RoundsHeightsUpToPowersOfTheSquareRootOfTwo) {
     EXPECT_EQ(PdfRenderer::bucketFor(1e6), 4096);
 }
 
+TEST(PdfRenderer, FindsTheTilesInView) {
+    EXPECT_FALSE(PdfRenderer::needsTiles(4096.0));
+    EXPECT_TRUE(PdfRenderer::needsTiles(5000.0));
+    EXPECT_EQ(PdfRenderer::tiledHeightFor(5000.0), 5793);
+    // A page 1000 × 2000 units drawn 4096 pixels tall: 2048 wide, so 2 × 4 tiles of 1024.
+    const Bounds page{0.0F, 0.0F, 1000.0F, 2000.0F};
+    const auto tiles = PdfRenderer::tilesIn(page, {10.0F, 600.0F, 20.0F, 700.0F}, 4096);
+    ASSERT_EQ(tiles.size(), 1U);
+    EXPECT_EQ(tiles[0].index, 2); // the second row's first tile
+    EXPECT_FLOAT_EQ(tiles[0].world.top, 500.0F);
+    EXPECT_FLOAT_EQ(tiles[0].world.right, 500.0F);
+    EXPECT_EQ(PdfRenderer::tilesIn(page, page, 4096).size(), 8U);
+    EXPECT_TRUE(PdfRenderer::tilesIn(page, {2000.0F, 0.0F, 2100.0F, 10.0F}, 4096).empty());
+}
+
 TEST(PdfRenderer, RendersWhatIsWantedAndOffersTheNearestSize) {
     QTemporaryDir dir;
     BlobStore blobs(dir.path());
@@ -41,6 +56,10 @@ TEST(PdfRenderer, RendersWhatIsWantedAndOffersTheNearestSize) {
     EXPECT_EQ(first.width(), 91);                            // A4's proportions
     EXPECT_EQ(renderer.best({hash, 0}, 1024).height(), 128); // the nearest there is
     EXPECT_GT(renderer.best({hash, 1}, 64).width(), 64);     // the page turned a quarter
+    renderer.want({{{hash, 0}, 8192, 0}}); // the top left tile of a very tall rendering
+    ASSERT_TRUE(QTest::qWaitFor([&] { return !renderer.tile({hash, 0}, 8192, 0).isNull(); }));
+    EXPECT_EQ(renderer.tile({hash, 0}, 8192, 0).size(), QSize(1024, 1024));
+    EXPECT_EQ(renderer.best({hash, 0}, 8192).height(), 128); // tiles are not whole pages
     renderer.want({{{"0000", 0}, 64}});                      // a PDF this device lacks
     ASSERT_TRUE(QTest::qWaitFor([&] { return renderer.failed("0000"); }));
     renderer.forgetFailures();

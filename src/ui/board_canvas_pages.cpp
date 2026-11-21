@@ -4,16 +4,14 @@
 
 #include "board/board_pages.hpp"
 #include "ui/conversions.hpp"
-#include "ui/pdf_renderer.hpp"
 #include "ui/pdf_textures.hpp"
 #include "ui/scene_nodes.hpp"
 
-#include <QQuickWindow>
-#include <QSGImageNode>
 #include <QSGTransformNode>
 
 #include <algorithm>
 #include <cmath>
+#include <set>
 
 namespace peerchalk {
 namespace {
@@ -161,12 +159,39 @@ std::size_t BoardCanvas::eraseAt(Point world, float radius) {
     return removed;
 }
 
+std::set<std::string> BoardCanvas::pagesNearView() const {
+    std::set<std::string> near;
+    if (!pageBoard_)
+        return near;
+    const Bounds visible =
+        viewport_.visibleWorld(static_cast<float>(width()), static_cast<float>(height()));
+    for (const PlacedPage &page :
+         pageMap_.pagesIn(grown(visible, visible.width(), visible.height())))
+        near.insert(page.id);
+    return near;
+}
+
+// Page boards hand QML only the boxes on pages near the view, so that a long board keeps few
+// text views alive; they change as the view moves.
+void BoardCanvas::cullTextBoxes() {
+    std::set<std::string> near = pagesNearView();
+    if (near == nearbyPages_)
+        return;
+    nearbyPages_ = std::move(near);
+    textBoxesUpdated();
+}
+
 std::vector<TextBox> BoardCanvas::placedTextBoxes() const {
     std::vector<TextBox> boxes;
+    const std::string editing = editingTextBox_.toStdString();
     for (const TextBox &box : board().textBoxes()) {
         if (box.page.empty()) {
             boxes.push_back(box);
-        } else if (const std::optional<PlacedPage> page = pageMap_.page(box.page)) {
+            continue;
+        }
+        if (!nearbyPages_.contains(box.page) && box.id != editing)
+            continue;
+        if (const std::optional<PlacedPage> page = pageMap_.page(box.page)) {
             TextBox &placed = boxes.emplace_back(box);
             placed.x += page->bounds.left;
             placed.y += page->bounds.top;
@@ -194,57 +219,6 @@ std::optional<TextBox> BoardCanvas::newTextBoxAt(Point world) const {
     box.x -= page->bounds.left;
     box.y -= page->bounds.top;
     return box;
-}
-
-// The pixel height to render a page at, for the screen it is shown on.
-int BoardCanvas::pdfHeightFor(const Bounds &page) const {
-    const qreal ratio = window() != nullptr ? window()->effectiveDevicePixelRatio() : 1.0;
-    return PdfRenderer::bucketFor(page.height() * viewport_.scale() * ratio);
-}
-
-void BoardCanvas::requestPdfPages() {
-    PdfRenderer *pdfs = document_ ? document_->pdfRenderer() : nullptr;
-    if (pdfs == nullptr || !pageBoard_)
-        return;
-    const Bounds visible =
-        viewport_.visibleWorld(static_cast<float>(width()), static_cast<float>(height()));
-    const Point centre{(visible.left + visible.right) / 2.0F,
-                       (visible.top + visible.bottom) / 2.0F};
-    std::vector<std::pair<float, PdfRenderer::Request>> wanted;
-    for (const PlacedPage &page :
-         pageMap_.pagesIn(grown(visible, visible.width() / 2.0F, visible.height() / 2.0F))) {
-        if (!page.pdf)
-            continue;
-        const float dx = (page.bounds.left + page.bounds.right) / 2.0F - centre.x;
-        const float dy = (page.bounds.top + page.bounds.bottom) / 2.0F - centre.y;
-        wanted.push_back({dx * dx + dy * dy, {*page.pdf, pdfHeightFor(page.bounds)}});
-    }
-    std::ranges::sort(wanted, {}, &std::pair<float, PdfRenderer::Request>::first);
-    std::vector<PdfRenderer::Request> requests;
-    for (auto &[distance, request] : wanted)
-        requests.push_back(std::move(request));
-    pdfs->want(std::move(requests));
-}
-
-void BoardCanvas::appendPdfImages(QSGNode *parent, PdfTextureNode &textures,
-                                  const std::vector<PlacedPage> &pages) const {
-    PdfRenderer *pdfs = document_ ? document_->pdfRenderer() : nullptr;
-    if (pdfs == nullptr || window() == nullptr)
-        return;
-    for (const PlacedPage &page : pages) {
-        if (!page.pdf)
-            continue;
-        const QImage image = pdfs->best(*page.pdf, pdfHeightFor(page.bounds));
-        QSGTexture *texture = image.isNull() ? nullptr : textures.texture(*window(), image);
-        if (texture == nullptr)
-            continue;
-        QSGImageNode *node = window()->createImageNode();
-        node->setTexture(texture);
-        node->setOwnsTexture(false);
-        node->setFiltering(QSGTexture::Linear);
-        node->setRect(toRect(page.bounds));
-        parent->appendChildNode(node);
-    }
 }
 
 void BoardCanvas::appendPageSheets(PdfTextureNode *parent) const {

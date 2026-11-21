@@ -240,6 +240,7 @@ void BoardCanvas::pdfsArrived() {
 
 void BoardCanvas::viewUpdated() {
     syncPageOverlay();
+    cullTextBoxes();
     updateCurrentPage();
     requestPdfPages();
     emit viewChanged();

@@ -192,6 +192,25 @@ TEST_F(BoardCanvasPagesTest, KnowsThePageInTheMiddleOfTheView) {
     EXPECT_TRUE(canvas_.showCurrentPage());
 }
 
+TEST_F(BoardCanvasPagesTest, GivesQmlOnlyTheTextBoxesNearTheView) {
+    const QString column = canvas_.currentPage()["columnId"].toString();
+    for (int i = 0; i < 12; ++i)
+        canvas_.addPage(column, {});
+    const std::string far = document_.board().pages().columns()[0].items.back().id;
+    for (const std::string &onPage : {page_, far}) {
+        TextBox box;
+        box.id = "box-" + onPage;
+        box.page = onPage;
+        box.body = plainRichText(u"Note");
+        document_.board().addTextBox(box);
+    }
+    ASSERT_TRUE(QTest::qWaitFor([&] { return canvas_.textBoxes()->rowCount() == 1; }));
+    canvas_.showItem(column, QString::fromStdString(far));
+    EXPECT_EQ(canvas_.textBoxes()->rowCount(), 1); // now the far page's box
+    const int idRole = canvas_.textBoxes()->roleNames().key("boxId");
+    EXPECT_EQ(canvas_.textBoxes()->index(0, 0).data(idRole).toString().toStdString(), "box-" + far);
+}
+
 TEST(PageOverlayRows, ListHeadingsSubheadingsGapsAndNumbersInTheArea) {
     Board board;
     board.pages().start(paperA4, "Notes");

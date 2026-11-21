@@ -30,12 +30,49 @@ PdfRenderer::~PdfRenderer() {
     worker_.join();
 }
 
-int PdfRenderer::bucketFor(double pixels) {
+namespace {
+
+int stepUp(double pixels, int highest) {
     if (!(pixels > minHeight))
         return minHeight;
     const double steps = std::ceil(std::log(pixels) / std::log(std::sqrt(2.0)) - 1e-9);
     return std::clamp(static_cast<int>(std::lround(std::pow(std::sqrt(2.0), steps))), minHeight,
-                      maxHeight);
+                      highest);
+}
+
+} // namespace
+
+int PdfRenderer::bucketFor(double pixels) { return stepUp(pixels, maxHeight); }
+
+int PdfRenderer::tiledHeightFor(double pixels) { return stepUp(pixels, 32768); }
+
+std::vector<PdfRenderer::Tile> PdfRenderer::tilesIn(const Bounds &page, const Bounds &visible,
+                                                    int height) {
+    constexpr int size = tileSize;
+    const double perUnit = height / double(page.height()); // pixels per board unit
+    const int width = static_cast<int>(std::lround(height * page.width() / page.height()));
+    const int columns = (width + size - 1) / size;
+    const int rows = (height + size - 1) / size;
+    const auto cell = [&](float units, int count) {
+        return std::clamp(static_cast<int>(std::floor(units * perUnit / size)), 0, count - 1);
+    };
+    std::vector<Tile> tiles;
+    if (visible.right < page.left || visible.left > page.right || visible.bottom < page.top ||
+        visible.top > page.bottom)
+        return tiles;
+    const float step = static_cast<float>(size / perUnit);
+    for (int row = cell(visible.top - page.top, rows); row <= cell(visible.bottom - page.top, rows);
+         ++row) {
+        for (int col = cell(visible.left - page.left, columns);
+             col <= cell(visible.right - page.left, columns); ++col) {
+            const float left = page.left + col * step;
+            const float top = page.top + row * step;
+            tiles.push_back({row * columns + col,
+                             {left, top, std::min(page.right, left + step),
+                              std::min(page.bottom, top + step)}});
+        }
+    }
+    return tiles;
 }
 
 void PdfRenderer::want(std::vector<Request> requests) {
@@ -43,7 +80,8 @@ void PdfRenderer::want(std::vector<Request> requests) {
         const std::lock_guard lock(lock_);
         std::erase_if(requests, [this](const Request &request) {
             return failed_.contains(request.source.blob) ||
-                   images_.contains({request.source.blob, request.source.page, request.height});
+                   images_.contains(
+                       {request.source.blob, request.source.page, request.height, request.tile});
         });
         queue_ = std::move(requests);
     }
@@ -52,12 +90,14 @@ void PdfRenderer::want(std::vector<Request> requests) {
 
 QImage PdfRenderer::best(const PdfSource &source, int height) const {
     const std::lock_guard lock(lock_);
-    const auto first = images_.lower_bound({source.blob, source.page, 0});
+    const auto first = images_.lower_bound({source.blob, source.page, 0, -1});
     Entry *found = nullptr;
     int foundHeight = 0;
     for (auto it = first; it != images_.end() && std::get<0>(it->first) == source.blob &&
                           std::get<1>(it->first) == source.page;
          ++it) {
+        if (std::get<3>(it->first) != -1)
+            continue; // a tile, not the whole page
         const int h = std::get<2>(it->first);
         // The smallest at least as tall, else the tallest.
         const bool better = found == nullptr || (foundHeight < height && h > foundHeight) ||
@@ -71,6 +111,15 @@ QImage PdfRenderer::best(const PdfSource &source, int height) const {
         return {};
     found->used = ++clock_;
     return found->image;
+}
+
+QImage PdfRenderer::tile(const PdfSource &source, int height, int tile) const {
+    const std::lock_guard lock(lock_);
+    const auto found = images_.find({source.blob, source.page, height, tile});
+    if (found == images_.end())
+        return {};
+    found->second.used = ++clock_;
+    return found->second.image;
 }
 
 bool PdfRenderer::failed(const std::string &blob) const {
@@ -123,13 +172,26 @@ void PdfRenderer::renderOne(const Request &request) {
     }
     const PaperSize size = pdf->pageSize(source.page);
     const int width = std::clamp(
-        static_cast<int>(std::lround(request.height * size.width / size.height)), 1, 16384);
-    const PdfImage rendered = pdf->render(source.page, width, request.height);
+        static_cast<int>(std::lround(request.height * size.width / size.height)), 1, 65536);
+    PdfImage rendered;
+    if (request.tile < 0) {
+        rendered = pdf->render(source.page, std::min(width, 16384), request.height);
+    } else {
+        const int columns = (width + tileSize - 1) / tileSize;
+        const int x = request.tile % columns * tileSize;
+        const int y = request.tile / columns * tileSize;
+        if (x >= width || y >= request.height)
+            return; // a tile beyond the page
+        rendered =
+            pdf->renderTile(source.page, width, request.height, x, y, std::min(tileSize, width - x),
+                            std::min(tileSize, request.height - y));
+    }
     QImage image(rendered.width, rendered.height, QImage::Format_RGB32);
     for (int row = 0; row < rendered.height; ++row)
-        std::memcpy(image.scanLine(row), rendered.pixels.data() + std::size_t(row) * width * 4,
-                    std::size_t(width) * 4);
-    store({source.blob, source.page, request.height}, std::move(image));
+        std::memcpy(image.scanLine(row),
+                    rendered.pixels.data() + std::size_t(row) * rendered.width * 4,
+                    std::size_t(rendered.width) * 4);
+    store({source.blob, source.page, request.height, request.tile}, std::move(image));
     QMetaObject::invokeMethod(this, &PdfRenderer::rendered, Qt::QueuedConnection);
 }
 

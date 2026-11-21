@@ -18,6 +18,7 @@
 #include <QtQml/qqmlregistration.h>
 
 #include <optional>
+#include <set>
 
 namespace peerchalk {
 
@@ -229,6 +230,8 @@ class BoardCanvas : public QQuickItem {
     std::size_t eraseAt(Point world, float radius);
     // Text boxes with their positions on the board, for boxes on pages too.
     [[nodiscard]] std::vector<TextBox> placedTextBoxes() const;
+    [[nodiscard]] std::set<std::string> pagesNearView() const;
+    void cullTextBoxes();
     // Where the coordinates of a box start on the board: its page's corner, or the origin.
     [[nodiscard]] Point boxOrigin(const TextBox &box) const;
     // A box at a board position, on the page there; none between pages.
@@ -240,7 +243,10 @@ class BoardCanvas : public QQuickItem {
     void requestPdfPages();
     // PDFs may have reached this device: pages waiting for them are shown again.
     void pdfsArrived();
+    [[nodiscard]] double pdfPixelsFor(const Bounds &page) const;
     [[nodiscard]] int pdfHeightFor(const Bounds &page) const;
+    void appendImage(QSGNode *parent, PdfTextureNode &textures, const QImage &image,
+                     const Bounds &world) const;
     void appendPdfImages(QSGNode *parent, PdfTextureNode &textures,
                          const std::vector<PlacedPage> &pages) const;
     void syncPageOverlay();
@@ -260,6 +266,7 @@ class BoardCanvas : public QQuickItem {
     bool showCurrentPage_{false};
     PageMap pageMap_;
     std::vector<TextBox> placedBoxes_;
+    std::set<std::string> nearbyPages_; // page boards: whose text boxes QML has
     PageOverlayModel overlay_;
     BoardDocument ownDocument_;
     QPointer<BoardDocument> document_;

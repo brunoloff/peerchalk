@@ -26,4 +26,8 @@ std::vector<PdfOutlineEntry> PdfDocument::outline() const { return {}; }
 
 PdfImage PdfDocument::render(int, int, int) const { throw std::out_of_range("No PDF engine"); }
 
+PdfImage PdfDocument::renderTile(int, int, int, int, int, int, int) const {
+    throw std::out_of_range("No PDF engine");
+}
+
 } // namespace peerchalk

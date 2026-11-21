@@ -146,8 +146,15 @@ std::vector<PdfOutlineEntry> PdfDocument::outline() const {
 }
 
 PdfImage PdfDocument::render(int index, int width, int height) const {
+    return renderTile(index, width, height, 0, 0, width, height);
+}
+
+PdfImage PdfDocument::renderTile(int index, int pageWidth, int pageHeight, int x, int y, int width,
+                                 int height) const {
     native_->checkPage(index);
-    if (width < 1 || height < 1 || width > maxRenderSide || height > maxRenderSide)
+    constexpr int maxPageSide = 65536;
+    if (width < 1 || height < 1 || width > maxRenderSide || height > maxRenderSide ||
+        pageWidth < 1 || pageHeight < 1 || pageWidth > maxPageSide || pageHeight > maxPageSide)
         throw std::invalid_argument("PDF pages render at 1 to 16384 pixels a side");
     const std::lock_guard lock(engineLock());
     const Page page(FPDF_LoadPage(native_->document, index));
@@ -155,7 +162,7 @@ PdfImage PdfDocument::render(int index, int width, int height) const {
     if (!page || !bitmap)
         throw std::runtime_error("PDFium could not prepare the page");
     FPDFBitmap_FillRect(bitmap.get(), 0, 0, width, height, 0xFFFFFFFF);
-    FPDF_RenderPageBitmap(bitmap.get(), page.get(), 0, 0, width, height, 0, FPDF_ANNOT);
+    FPDF_RenderPageBitmap(bitmap.get(), page.get(), -x, -y, pageWidth, pageHeight, 0, FPDF_ANNOT);
     PdfImage image{width, height, std::vector<std::uint8_t>(std::size_t(width) * height * 4)};
     const auto *source = static_cast<const std::uint8_t *>(FPDFBitmap_GetBuffer(bitmap.get()));
     const int stride = FPDFBitmap_GetStride(bitmap.get());
