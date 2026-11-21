@@ -1,6 +1,7 @@
 #include "pdf/pdf_document.hpp"
 
 #include "board/rich_text.hpp"
+#include "pdf/pdf_engine.hpp"
 
 #include <fpdf_doc.h>
 #include <fpdfview.h>
@@ -15,20 +16,9 @@ namespace {
 constexpr float unitsPerPoint = 96.0F / 72.0F;
 constexpr int maxRenderSide = 16384;
 
-// PDFium is not thread-safe: everything that calls it holds this.
-std::mutex &engineLock() {
-    static std::mutex lock;
-    return lock;
-}
+using pdf_engine::initialise;
 
-void initialise() {
-    static std::once_flag once;
-    std::call_once(once, [] {
-        FPDF_LIBRARY_CONFIG config{};
-        config.version = 2;
-        FPDF_InitLibraryWithConfig(&config);
-    });
-}
+std::mutex &engineLock() { return pdf_engine::lock(); }
 
 struct PageCloser {
     void operator()(fpdf_page_t__ *page) const { FPDF_ClosePage(page); }
@@ -41,6 +31,24 @@ struct BitmapCloser {
 using Bitmap = std::unique_ptr<fpdf_bitmap_t__, BitmapCloser>;
 
 } // namespace
+
+namespace pdf_engine {
+
+std::mutex &lock() {
+    static std::mutex engine;
+    return engine;
+}
+
+void initialise() {
+    static std::once_flag once;
+    std::call_once(once, [] {
+        FPDF_LIBRARY_CONFIG config{};
+        config.version = 2;
+        FPDF_InitLibraryWithConfig(&config);
+    });
+}
+
+} // namespace pdf_engine
 
 struct PdfDocument::Native {
     std::shared_ptr<const Bytes> data; // PDFium reads from it for as long as the document is open

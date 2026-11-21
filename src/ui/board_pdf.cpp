@@ -1,6 +1,8 @@
 #include "ui/board_pdf.hpp"
 
+#include "board/board_pages.hpp"
 #include "board/stroke_mesh.hpp"
+#include "pdf/pdf_compose.hpp"
 #include "ui/equation_geometry.hpp"
 #include "ui/rich_text_document.hpp"
 #include "ui/scene_nodes.hpp"
@@ -16,6 +18,7 @@
 #include <QTextDocument>
 #include <QTextObjectInterface>
 
+#include <algorithm>
 #include <map>
 #include <memory>
 #include <stdexcept>
@@ -96,8 +99,8 @@ class PdfEquations : public QObject, public QTextObjectInterface {
         return font;
     }
     [[nodiscard]] const MathFormula *find(const QTextFormat &format) const {
-        RichUnit unit = equationUnit(tex(format).toStdString(),
-                                     format.boolProperty(equationDisplayProperty));
+        RichUnit unit =
+            equationUnit(tex(format).toStdString(), format.boolProperty(equationDisplayProperty));
         const auto found = input_.formulas.constFind(pdfFormulaKey(unit, box_.argb));
         return found != input_.formulas.cend() && found->error.isEmpty() ? &*found : nullptr;
     }
@@ -200,6 +203,88 @@ void drawTextBoxes(QPainter &painter, const std::vector<LaidOutBox> &boxes) {
     }
 }
 
+struct ExportPage {
+    std::string id;
+    PaperSize size;
+    std::optional<PdfSource> pdf;
+};
+
+std::vector<ExportPage> exportPages(const BoardPages &pages) {
+    std::vector<ExportPage> list;
+    for (const ColumnSpec &column : pages.columns()) {
+        for (const ColumnItem &item : column.items) {
+            if (item.kind == ColumnItemKind::Page)
+                list.push_back({item.id, item.size.value_or(column.paper), item.pdf});
+        }
+    }
+    return list;
+}
+
+QPageSize exactSize(PaperSize size) {
+    return QPageSize(QSizeF(size.width * pointsPerPixel, size.height * pointsPerPixel),
+                     QPageSize::Point, QString(), QPageSize::ExactMatch);
+}
+
+// Every page's ink, each page at its size; the PDFs under them are added afterwards.
+QByteArray drawPages(const BoardPdfInput &input, const std::vector<ExportPage> &pages) {
+    std::map<std::string, std::vector<LaidOutBox>> boxes;
+    for (const TextBox &box : input.board->textBoxes()) {
+        if (!box.page.empty())
+            boxes[box.page].push_back(layOut(input, box));
+    }
+    QByteArray bytes;
+    QBuffer buffer(&bytes);
+    buffer.open(QIODevice::WriteOnly);
+    QPdfWriter writer(&buffer);
+    writer.setResolution(int(pixelsPerInch));
+    writer.setPageSize(exactSize(pages.front().size));
+    writer.setPageMargins(QMarginsF(0, 0, 0, 0));
+    writer.setTitle(input.title);
+    writer.setCreator(QStringLiteral("PeerChalk"));
+    QPainter painter;
+    if (!painter.begin(&writer))
+        throw std::runtime_error("The PDF could not be written");
+    painter.setRenderHint(QPainter::Antialiasing);
+    for (std::size_t i = 0; i < pages.size(); ++i) {
+        if (i > 0) {
+            writer.setPageSize(exactSize(pages[i].size));
+            writer.newPage();
+        }
+        const std::vector<Stroke> &strokes = input.board->pages().strokes(pages[i].id);
+        painter.save();
+        painter.setClipRect(QRectF(0.0, 0.0, pages[i].size.width, pages[i].size.height));
+        drawHighlighters(painter, strokes);
+        drawPens(painter, strokes);
+        drawTextBoxes(painter, boxes[pages[i].id]);
+        painter.restore();
+    }
+    painter.end();
+    return bytes;
+}
+
+QByteArray renderPagesPdf(const BoardPdfInput &input) {
+    const std::vector<ExportPage> pages = exportPages(input.board->pages());
+    if (pages.empty())
+        throw std::invalid_argument("The board has no pages");
+    const QByteArray ink = drawPages(input, pages);
+    // The PDF writer rounds page sizes to whole points; PDFium sets them exactly.
+    std::vector<PdfComposedPage> composed;
+    for (const ExportPage &page : pages) {
+        PdfComposedPage &out = composed.emplace_back();
+        out.widthPoints = static_cast<float>(page.size.width * pointsPerPixel);
+        out.heightPoints = static_cast<float>(page.size.height * pointsPerPixel);
+        if (!page.pdf)
+            continue;
+        std::shared_ptr<const Bytes> pdf = input.pdfBlob ? input.pdfBlob(page.pdf->blob) : nullptr;
+        if (!pdf)
+            throw std::runtime_error("A PDF on this board has not reached this device yet");
+        out.under = PdfUnderlay{std::move(pdf), page.pdf->page};
+    }
+    const auto *begin = reinterpret_cast<const std::byte *>(ink.constData());
+    const Bytes combined = composePdf(Bytes(begin, begin + ink.size()), composed);
+    return {reinterpret_cast<const char *>(combined.data()), qsizetype(combined.size())};
+}
+
 } // namespace
 
 QString pdfFormulaKey(const RichUnit &equation, std::uint32_t argb) {
@@ -224,6 +309,8 @@ QStringList pdfFormulaKeys(const Board &board) {
 QByteArray renderBoardPdf(const BoardPdfInput &input) {
     if (input.board == nullptr)
         throw std::invalid_argument("renderBoardPdf needs a board");
+    if (input.board->pages().kind() == BoardKind::Pages)
+        return renderPagesPdf(input);
     std::vector<LaidOutBox> boxes;
     for (const TextBox &box : input.board->textBoxes())
         boxes.push_back(layOut(input, box));

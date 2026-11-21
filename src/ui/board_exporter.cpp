@@ -1,8 +1,10 @@
 #include "ui/board_exporter.hpp"
 
+#include "library/blob_store.hpp"
 #include "library/files.hpp"
 #include "ui/board_canvas.hpp"
 #include "ui/board_pdf.hpp"
+#include "ui/pdf_renderer.hpp"
 #include "ui/web_files.hpp"
 
 #include <QRegularExpression>
@@ -32,8 +34,7 @@ QString BoardExporter::fileName(const QString &title) {
     QString name = title.trimmed();
     name.replace(QRegularExpression(QStringLiteral(R"([\\/:*?"<>|\x00-\x1f]+)")),
                  QStringLiteral(" "));
-    return (name.isEmpty() ? QStringLiteral("Board") : name.simplified()) +
-           QStringLiteral(".pdf");
+    return (name.isEmpty() ? QStringLiteral("Board") : name.simplified()) + QStringLiteral(".pdf");
 }
 
 void BoardExporter::exportToFile(const QUrl &file, const QString &title) {
@@ -83,6 +84,10 @@ void BoardExporter::finish() {
         if (!canvas_)
             throw std::invalid_argument("The board was closed");
         BoardPdfInput input{&canvas_->board(), std::move(formulas_), fontFamily_, title_};
+        if (const PdfRenderer *pdfs = canvas_->document()->pdfRenderer())
+            input.pdfBlob = [&blobs = pdfs->blobs()](const std::string &hash) {
+                return blobs.get(QString::fromStdString(hash));
+            };
         deliver_(renderBoardPdf(input));
         ok = true;
         message = tr("Exported %1").arg(fileName(title_));

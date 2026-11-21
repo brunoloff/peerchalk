@@ -288,5 +288,12 @@ Work happens on the `page-boards` branch, one commit per finished piece.
       matches; an end-to-end test sends a 700 KB PDF between two devices
 - [ ] M5 · still to do: "Fetching PDF · 34 %" on pages, a second peer when the first leaves
       mid-download (it retries on the next connection now), forgetting unused blobs
+- [x] M6 · export: one PDF page per board page, column by column, at its exact size (QPdfWriter
+      rounds to whole points, so PDFium sets each page's box); ink and text boxes clipped to
+      their page; PDF pages keep the original page as it is (`composePdf`: imported page with
+      the ink as a form object over it, rotation and offsets handled); a missing PDF refuses
+      the export with a clear message
+- [ ] M6 · still to do: headings as bookmarks (PDFium cannot write outlines; needs a small
+      writer of our own), exporting one column or a page range, printing the h1
 - [ ] M4 · still to do: tiles above 4096 px, progressive rendering in the browser, the
       "Fetching PDF" placeholder, the 300-page timing

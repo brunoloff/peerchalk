@@ -50,6 +50,7 @@ class PdfRenderer : public QObject {
     // is tried again after forgetFailures().
     [[nodiscard]] bool failed(const std::string &blob) const;
     void forgetFailures();
+    [[nodiscard]] const BlobStore &blobs() const { return blobs_; }
 
   signals:
     // An image was added; views should draw again.
