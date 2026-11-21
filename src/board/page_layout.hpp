@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace peerchalk {
@@ -24,6 +25,14 @@ inline constexpr PaperSize paperLegal{816.0F, 1344.0F};  // 8.5 × 14 in
 
 [[nodiscard]] inline PaperSize landscape(PaperSize paper) { return {paper.height, paper.width}; }
 
+// The paper sizes offered by name ("A4", "A5", "Letter", "Legal"), portrait.
+[[nodiscard]] std::optional<PaperSize> paperNamed(std::string_view name);
+// The name of a size that is one of those, either way up; "" for any other size.
+[[nodiscard]] std::string paperName(PaperSize size);
+
+// What is printed on a column's pages under the ink.
+enum class PageBackground : std::uint8_t { Blank, Ruled, Squared, Dotted };
+
 // What a column holds, top to bottom: pages and subheadings (h2).
 enum class ColumnItemKind : std::uint8_t { Page, Subheading };
 
@@ -40,6 +49,7 @@ struct ColumnSpec {
     PaperSize paper{paperA4};
     std::vector<ColumnItem> items;
     std::string title{}; // the column's heading (h1)
+    PageBackground background{PageBackground::Blank};
 };
 
 // Spacing of a page board, in board units.
@@ -69,6 +79,7 @@ struct PlacedColumn {
     Bounds heading; // the heading band
     std::vector<PlacedItem> items;
     std::vector<InsertSlot> insertSlots; // items.size() + 1, before each item and after the last
+    PageBackground background{PageBackground::Blank};
 };
 
 struct PageLayout {

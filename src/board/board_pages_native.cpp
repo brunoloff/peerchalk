@@ -3,6 +3,7 @@
 
 #include <cinttypes>
 #include <cstdio>
+#include <iterator>
 #include <random>
 
 namespace peerchalk::page_yrs {
@@ -17,7 +18,23 @@ std::optional<PaperSize> readSize(const Branch *map, const YTransaction *txn, co
     return PaperSize{static_cast<float>(*w), static_cast<float>(*h)};
 }
 
+constexpr const char *backgroundNames[] = {"blank", "ruled", "squared", "dotted"};
+
+// A background this version does not know is shown blank.
+PageBackground readBackground(const Branch *map, const YTransaction *txn) {
+    const std::string name = mapString(map, txn, "background");
+    for (std::size_t i = 0; i < std::size(backgroundNames); ++i) {
+        if (name == backgroundNames[i])
+            return static_cast<PageBackground>(i);
+    }
+    return PageBackground::Blank;
+}
+
 } // namespace
+
+const char *backgroundName(PageBackground background) {
+    return backgroundNames[static_cast<std::size_t>(background)];
+}
 
 std::string newId() {
     thread_local std::mt19937_64 generator{std::random_device{}()};
@@ -110,8 +127,11 @@ std::optional<ColumnItem> readItem(const Branch *map, const YTransaction *txn) {
 
 std::optional<ColumnSpec> readColumn(const Branch *map, const YTransaction *txn) {
     const std::optional<PaperSize> paper = readSize(map, txn, "paperWidth", "paperHeight");
-    ColumnSpec column{
-        mapString(map, txn, "id"), paper.value_or(paperA4), {}, mapString(map, txn, "title")};
+    ColumnSpec column{mapString(map, txn, "id"),
+                      paper.value_or(paperA4),
+                      {},
+                      mapString(map, txn, "title"),
+                      readBackground(map, txn)};
     const Branch *items = itemsOf(map, txn);
     if (column.id.empty() || !paper || items == nullptr)
         return std::nullopt;
@@ -141,15 +161,17 @@ void insertColumnSpec(const Board::Native &native, YTransaction *txn, std::uint3
     column.addString("title", spec.title);
     column.add("paperWidth", yinput_float(spec.paper.width));
     column.add("paperHeight", yinput_float(spec.paper.height));
+    column.add("background", yinput_string(backgroundName(spec.background)));
     column.add("items", yinput_yarray(items.data(), static_cast<std::uint32_t>(items.size())));
     const YInput input = column.build();
     yarray_insert_range(native.columns, txn, index, &input, 1);
 }
 
 std::string insertColumn(const Board::Native &native, YTransaction *txn, std::uint32_t index,
-                         PaperSize paper, const std::string &title) {
+                         const ColumnSpec &like) {
+    checkPaper(like.paper);
     const ColumnItem page{newId(), ColumnItemKind::Page, std::nullopt, {}};
-    const ColumnSpec spec{newId(), paper, {page}, title};
+    const ColumnSpec spec{newId(), like.paper, {page}, like.title, like.background};
     insertColumnSpec(native, txn, index, spec);
     createStrokeArray(native, txn, page.id);
     return spec.id;

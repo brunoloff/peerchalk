@@ -54,8 +54,8 @@ std::optional<Viewport> BoardMinimap::frame() const {
     if (!canvas_ || width() <= 2.0 * marginPx || height() <= 2.0 * marginPx)
         return std::nullopt;
     Bounds area = toBounds(canvas_->visibleArea());
-    if (const std::optional<Bounds> content = canvas_->board().contentBounds())
-        area = unite(area, *content);
+    if (const QRectF content = canvas_->contentBounds(); !content.isNull())
+        area = unite(area, toBounds(content));
     Viewport viewport;
     viewport.fit(area, static_cast<float>(width()), static_cast<float>(height()), marginPx,
                  Viewport::maxScale);
@@ -81,8 +81,13 @@ QSGNode *BoardMinimap::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *) 
     }
     strokes->setMatrix(viewMatrix(*mapping));
     if (strokesDirty_) {
-        setStrokeNodes(strokes, canvas_->board().strokes(), StrokeSelection::All);
-        appendTextBoxNodes(strokes, canvas_->board());
+        if (canvas_->pageBoard()) {
+            deleteChildren(strokes);
+            appendPageNodes(strokes);
+        } else {
+            setStrokeNodes(strokes, canvas_->board().strokes(), StrokeSelection::All);
+            appendTextBoxNodes(strokes, canvas_->board());
+        }
         strokesDirty_ = false;
     }
     const Bounds visible = toBounds(canvas_->visibleArea());
@@ -91,6 +96,20 @@ QSGNode *BoardMinimap::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *) 
     outline->appendChildNode(createOutlineNode({topLeft.x, topLeft.y, bottomRight.x, bottomRight.y},
                                                outlinePx, viewportColor_));
     return root;
+}
+
+// A page board is shown as its pages, without strokes, so that it stays cheap however many
+// pages it has.
+void BoardMinimap::appendPageNodes(QSGNode *parent) const {
+    std::vector<Bounds> pages;
+    for (const PlacedColumn &column : canvas_->pageMap().layout().columns) {
+        for (const PlacedItem &item : column.items) {
+            if (item.kind == ColumnItemKind::Page)
+                pages.push_back(item.bounds);
+        }
+    }
+    if (!pages.empty())
+        parent->appendChildNode(createRectsNode(pages, canvas_->gridColor()));
 }
 
 void BoardMinimap::geometryChange(const QRectF &newGeometry, const QRectF &oldGeometry) {

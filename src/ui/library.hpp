@@ -114,6 +114,10 @@ class Library : public QObject {
 
     // Boards are created in the current project (or on their own under "shared").
     Q_INVOKABLE QString createBoard(const QString &name);
+    // A page board with one column of one page. paper is "A4", "A5", "Letter" or "Legal";
+    // background is "blank", "ruled", "squared" or "dotted". Returns "" on failure.
+    Q_INVOKABLE QString createPageBoard(const QString &name, const QString &paper, bool landscape,
+                                        const QString &background);
     Q_INVOKABLE void renameBoard(const QString &boardId, const QString &name);
     Q_INVOKABLE void removeBoard(const QString &boardId);
     Q_INVOKABLE bool isBoardAdmin(const QString &boardId);

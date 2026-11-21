@@ -15,7 +15,8 @@ qt_add_qml_module(peerchalk_ui URI PeerChalk VERSION 1.0
     OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/qml/PeerChalk"
     SOURCES
         board_canvas.cpp board_canvas.hpp board_canvas_input.cpp board_canvas_text.cpp
-        board_canvas_pages.cpp
+        board_canvas_pages.cpp board_canvas_page_edits.cpp page_overlay_model.cpp
+        page_overlay_model.hpp
         board_minimap.cpp board_minimap.hpp
         conversions.hpp scene_nodes.cpp scene_nodes.hpp stroke_layer.cpp stroke_layer.hpp
         page_scene.cpp page_scene.hpp
@@ -50,6 +51,8 @@ qt_add_qml_module(peerchalk_ui URI PeerChalk VERSION 1.0
         ConfirmDialog.qml CodeDialog.qml Toast.qml MembersDialog.qml RemoteCursor.qml
         NetworkStatus.qml PersonRoleRow.qml RequestsDialog.qml SettingsPage.qml
         NetworkPane.qml SettingField.qml PaperTab.qml ColorPalette.qml
+        ChoiceChip.qml BoardKindCard.qml NewBoardDialog.qml PagePill.qml PageOverlay.qml
+        PageGapControls.qml ColumnMenu.qml ColumnRuler.qml PageBoardChrome.qml
         AccountsWindow.qml AccountRow.qml AccountMenu.qml AccountChooser.qml ContinueButton.qml
         WelcomeLogo.qml WelcomeAbout.qml WelcomeFact.qml ReadyMark.qml UpdateStatus.qml UpdateBadge.qml
         AccountPane.qml BackupFlow.qml PassphraseDialog.qml

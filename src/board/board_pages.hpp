@@ -19,8 +19,8 @@ enum class BoardKind : std::uint8_t { Infinite, Pages };
 // The page-board side of a Board's document: columns of pages and subheadings, and the
 // strokes on each page in page coordinates (see docs/page-boards.md).
 //
-// "columns" is an array of maps {id, title, paperWidth, paperHeight, items}, items an array
-// of maps {id, kind: "page" | "subheading", text, width?, height?}. "pageStrokes" maps a page
+// "columns" is an array of maps {id, title, paperWidth, paperHeight, background, items}, items an
+// array of maps {id, kind: "page" | "subheading", text, width?, height?}. "pageStrokes" maps a page
 // id to its array of encodeStroke() binaries, created with the page so that peers never
 // race to create it. Everything is found by id, so a peer's entries this version cannot
 // read are skipped without shifting anything.
@@ -39,13 +39,16 @@ class BoardPages {
     [[nodiscard]] BoardKind kind() const;
     // Makes an empty board a page board with one column of one page. Not an undo step: a
     // board is created as one kind. Throws std::logic_error unless the board is empty.
-    void start(PaperSize paper, const std::string &title);
+    void start(PaperSize paper, const std::string &title,
+               PageBackground background = PageBackground::Blank);
 
     [[nodiscard]] const std::vector<ColumnSpec> &columns() const;
     // Adds a column with one page before the column `before` (or last), returning its id.
-    std::string addColumn(const std::string &before, PaperSize paper, const std::string &title);
+    std::string addColumn(const std::string &before, PaperSize paper, const std::string &title,
+                          PageBackground background = PageBackground::Blank);
     void removeColumn(const std::string &columnId);
     void setColumnTitle(const std::string &columnId, const std::string &title);
+    void setColumnBackground(const std::string &columnId, PageBackground background);
     // Changes the column's paper: its width and the size of pages added from now on. Existing
     // pages keep their size, unless allPages, which gives every page the new paper.
     void setColumnPaper(const std::string &columnId, PaperSize paper, bool allPages = false);

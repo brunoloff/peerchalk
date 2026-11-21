@@ -16,6 +16,7 @@ struct Bounds {
     float right;
     float bottom;
 
+    bool operator==(const Bounds &) const = default;
     [[nodiscard]] float width() const { return right - left; }
     [[nodiscard]] float height() const { return bottom - top; }
     [[nodiscard]] bool contains(Point point, float margin = 0.0F) const {

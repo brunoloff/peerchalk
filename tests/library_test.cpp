@@ -1,3 +1,4 @@
+#include "board/board_pages.hpp"
 #include "ui/library.hpp"
 
 #include <QSignalSpy>
@@ -236,6 +237,29 @@ TEST_F(LibraryTest, BoardDocumentsAreSharedSavedAndReloaded) {
     } // the destructor saves the second stroke
     Library reloaded(dir_.path());
     EXPECT_EQ(reloaded.openBoard(boardId)->board().strokes().size(), 2U);
+}
+
+TEST_F(LibraryTest, CreatesPageBoardsWithTheirPaper) {
+    QString boardId;
+    {
+        Library library(dir_.path());
+        library.createProject(QStringLiteral("P"));
+        QSignalSpy errors(&library, &Library::errorOccurred);
+        EXPECT_TRUE(library.createPageBoard("X", "B5", false, "blank").isEmpty());
+        EXPECT_TRUE(library.createPageBoard("X", "A4", false, "wavy").isEmpty());
+        EXPECT_EQ(errors.count(), 2);
+        boardId = library.createPageBoard("Paper", "Letter", true, "ruled");
+        ASSERT_FALSE(boardId.isEmpty());
+        library.saveBoards();
+    }
+    Library reloaded(dir_.path());
+    const BoardPages &pages = reloaded.openBoard(boardId)->board().pages();
+    ASSERT_EQ(pages.kind(), BoardKind::Pages);
+    const ColumnSpec &column = pages.columns().at(0);
+    EXPECT_EQ(column.title, "Paper");
+    EXPECT_FLOAT_EQ(column.paper.width, paperLetter.height); // landscape
+    EXPECT_EQ(column.background, PageBackground::Ruled);
+    EXPECT_EQ(reloaded.workspace().boards().size(), 1U); // the refused ones were not made
 }
 
 TEST_F(LibraryTest, LoadingABoardDoesNotCountAsAnEdit) {

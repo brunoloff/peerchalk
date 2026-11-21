@@ -5,6 +5,7 @@
 #include "board/stroke_builder.hpp"
 #include "board/viewport.hpp"
 #include "ui/board_document.hpp"
+#include "ui/page_overlay_model.hpp"
 #include "ui/page_scene.hpp"
 #include "ui/text_box_model.hpp"
 
@@ -44,6 +45,11 @@ class BoardCanvas : public QQuickItem {
     Q_PROPERTY(QColor gridColor READ gridColor WRITE setGridColor NOTIFY gridColorChanged)
     Q_PROPERTY(QColor pageColor READ pageColor WRITE setPageColor NOTIFY pageColorChanged)
     Q_PROPERTY(bool pageBoard READ pageBoard NOTIFY strokesChanged)
+    // Page boards: what to draw over the pages in view (PageOverlayModel), and the columns
+    // as maps {columnId, title, left, right, headingBottom, paper ("A4"... or ""), landscape,
+    // background, pages}, left to right, for the column ruler.
+    Q_PROPERTY(QAbstractItemModel *pageItems READ pageItems CONSTANT)
+    Q_PROPERTY(QVariantList pageColumns READ pageColumns NOTIFY strokesChanged)
     Q_PROPERTY(int strokeCount READ strokeCount NOTIFY strokesChanged)
     Q_PROPERTY(bool canUndo READ canUndo NOTIFY strokesChanged)
     // Panning and zooming only; a stroke already being drawn may finish.
@@ -74,6 +80,8 @@ class BoardCanvas : public QQuickItem {
     void setPageColor(const QColor &color);
     [[nodiscard]] bool pageBoard() const { return pageBoard_; }
     [[nodiscard]] const PageMap &pageMap() const { return pageMap_; }
+    [[nodiscard]] QAbstractItemModel *pageItems() { return &overlay_; }
+    [[nodiscard]] QVariantList pageColumns() const;
     // What of a page board is in view and around it, for drawing.
     [[nodiscard]] PageView pageView() const;
     [[nodiscard]] int strokeCount() const;
@@ -116,6 +124,28 @@ class BoardCanvas : public QQuickItem {
     Q_INVOKABLE void setTextBoxFontSize(const QString &id, qreal size);
     Q_INVOKABLE void setTextBoxColor(const QString &id, const QColor &color);
     Q_INVOKABLE void removeTextBox(const QString &id);
+    // Page board edits (board_canvas_page_edits.cpp), by id; unknown ids are ignored and
+    // nothing changes while readOnly. `before` is the item or column to insert before, or
+    // "" for the end. Each is one undo step.
+    Q_INVOKABLE void addPage(const QString &columnId, const QString &before);
+    Q_INVOKABLE void addSubheading(const QString &columnId, const QString &before,
+                                   const QString &text);
+    Q_INVOKABLE void removePageItem(const QString &columnId, const QString &itemId);
+    Q_INVOKABLE void setSubheadingText(const QString &columnId, const QString &itemId,
+                                       const QString &text);
+    // A new column takes the paper and background of the column before it (or the first).
+    Q_INVOKABLE void addColumn(const QString &before);
+    Q_INVOKABLE void removeColumn(const QString &columnId);
+    Q_INVOKABLE void moveColumn(const QString &columnId, const QString &before);
+    Q_INVOKABLE void setColumnTitle(const QString &columnId, const QString &title);
+    // paper is "A4", "A5", "Letter" or "Legal"; allPages also resizes the existing pages.
+    Q_INVOKABLE void setColumnPaper(const QString &columnId, const QString &paper, bool landscape,
+                                    bool allPages);
+    // background is "blank", "ruled", "squared" or "dotted".
+    Q_INVOKABLE void setColumnBackground(const QString &columnId, const QString &background);
+    // Shows a column from its heading down, as large as fits the width.
+    Q_INVOKABLE void showColumn(const QString &columnId);
+
     // Ends the undo step of a change made in several parts, such as a drag.
     Q_INVOKABLE void endTextBoxChange();
     void setTextBoxBody(const QString &id, const RichText &body);
@@ -172,6 +202,7 @@ class BoardCanvas : public QQuickItem {
     [[nodiscard]] Board &editableBoard() { return document_->board(); }
     // Page boards (board_canvas_pages.cpp).
     void refreshPages();
+    void showStartOfPages();
     [[nodiscard]] std::optional<Bounds> shownBounds() const;
     void commitStroke(const Stroke &stroke);
     std::size_t eraseAt(Point world, float radius);
@@ -182,6 +213,9 @@ class BoardCanvas : public QQuickItem {
     // A box at a board position, on the page there; none between pages.
     [[nodiscard]] std::optional<TextBox> newTextBoxAt(Point world) const;
     void appendPageSheets(QSGNode *parent) const;
+    void syncPageOverlay();
+    // Runs edit on the board's pages unless readOnly, then shows the change.
+    template <typename Edit> void editPages(Edit edit);
 
     Tool tool_{Tool::Pen};
     bool readOnly_{false};
@@ -190,8 +224,10 @@ class BoardCanvas : public QQuickItem {
     QColor gridColor_{Qt::lightGray};
     QColor pageColor_{Qt::white};
     bool pageBoard_{false};
+    bool startViewPending_{false};
     PageMap pageMap_;
     std::vector<TextBox> placedBoxes_;
+    PageOverlayModel overlay_;
     BoardDocument ownDocument_;
     QPointer<BoardDocument> document_;
     Viewport viewport_;

@@ -89,5 +89,14 @@ TEST(PageLayout, FindsTheItemsInAnAreaAndThePageUnderAPoint) {
     EXPECT_FALSE(pageAt(layout, {paperA4.width + 10.0F, 500.0F}));         // between columns
 }
 
+TEST(PaperSizes, AreFoundByNameAndNamedEitherWayUp) {
+    ASSERT_TRUE(paperNamed("Letter"));
+    EXPECT_FLOAT_EQ(paperNamed("Letter")->width, 816.0F);
+    EXPECT_FALSE(paperNamed("B5"));
+    EXPECT_EQ(paperName(paperA4), "A4");
+    EXPECT_EQ(paperName(landscape(paperA5)), "A5");
+    EXPECT_EQ(paperName({500.0F, 500.0F}), "");
+}
+
 } // namespace
 } // namespace peerchalk

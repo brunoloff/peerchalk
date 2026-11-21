@@ -13,8 +13,10 @@ Item {
     signal openBoard(string boardId)
     signal openSettings()
 
-    function createBoard(name: string) {
-        const id = Library.createBoard(name);
+    function createBoard(name: string, pages: bool, paper: string, landscape: bool,
+                         background: string) {
+        const id = pages ? Library.createPageBoard(name, paper, landscape, background)
+                         : Library.createBoard(name);
         if (id.length > 0)
             home.openBoard(id);
     }
@@ -177,13 +179,11 @@ Item {
         onConfirmed: Library.removeProject(Library.currentProjectId)
     }
 
-    TextInputDialog {
+    NewBoardDialog {
         id: newBoardDialog
 
-        title: qsTr("New infinite board")
-        placeholder: qsTr("Board name")
-        acceptText: qsTr("Create")
-        onSubmitted: text => home.createBoard(text)
+        onSubmitted: (name, pages, paper, landscape, background) =>
+                     home.createBoard(name, pages, paper, landscape, background)
     }
 
     TextInputDialog {

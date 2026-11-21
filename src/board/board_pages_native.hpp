@@ -58,9 +58,11 @@ void setPageSizes(const Branch *items, YTransaction *txn, std::optional<PaperSiz
 void createStrokeArray(const Board::Native &native, YTransaction *txn, const std::string &page);
 void insertColumnSpec(const Board::Native &native, YTransaction *txn, std::uint32_t index,
                       const ColumnSpec &spec);
-// A new column with one new page; returns the column's id.
+// A new column like `like` (its paper, title and background) with one new page; returns the
+// column's id.
 std::string insertColumn(const Board::Native &native, YTransaction *txn, std::uint32_t index,
-                         PaperSize paper, const std::string &title);
+                         const ColumnSpec &like);
+[[nodiscard]] const char *backgroundName(PageBackground background);
 [[nodiscard]] const Branch *columnItems(const Board::Native &native, const YTransaction *txn,
                                         const std::string &columnId);
 // Removes a page's strokes and its text boxes.

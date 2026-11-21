@@ -264,5 +264,12 @@ Work happens on the `page-boards` branch, one commit per finished piece.
       build 0.5 s, save 37.8 MB, layout 1.1 ms; panning a 1920 × 1080 view p95 per frame:
       5.2 ms at 100 %, 2.9 ms at 25 %, 3.9 ms at 2 %; the worst single frame (first decode)
       15 ms at 100 % and 46 ms at 2 %
+- [x] M3 · new-board dialog (kind, paper, orientation, background); page backgrounds (blank,
+      ruled, squared, dotted) drawn on the sheets; a sticky column ruler that sits on the
+      heading band and pins below the title, with a column menu (rename, paper for new pages
+      or all pages, background, add left/right, move, delete) and + between columns; "+ Page ·
+      + Subheading" in the gaps and "+ Add page" at each column's end; subheadings with rename
+      and remove; page numbers; the minimap shows pages; boards open on their first column.
+      The printed h1 is left to the ruler on screen (export will print it)
 - [ ] M0 · PDFium trial on Linux first (pdfium-binaries), then CI for the other targets
       (needs a push, so ask first)

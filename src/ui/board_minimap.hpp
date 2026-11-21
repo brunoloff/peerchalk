@@ -43,6 +43,7 @@ class BoardMinimap : public QQuickItem {
 
   private:
     void centerCanvasOn(QPointF position);
+    void appendPageNodes(QSGNode *parent) const;
 
     QPointer<BoardCanvas> canvas_;
     QColor viewportColor_{Qt::blue};

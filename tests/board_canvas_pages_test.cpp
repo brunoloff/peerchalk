@@ -33,13 +33,18 @@ class BoardCanvasPagesTest : public ::testing::Test {
         document_.board().pages().start(paperA4, "Notes");
         page_ = document_.board().pages().columns().at(0).items.at(0).id;
         canvas_.setParentItem(window_.contentItem());
-        canvas_.setSize(QSizeF(300, 300));
+        canvas_.setSize(QSizeF(900, 600));
         canvas_.setDocument(&document_);
-        window_.resize(300, 300);
+        window_.resize(900, 600);
         window_.show();
         ASSERT_TRUE(QTest::qWaitForWindowExposed(&window_));
         ASSERT_TRUE(canvas_.pageBoard());
-        top_ = canvas_.pageMap().page(page_)->bounds.top;
+        page = canvas_.pageMap().page(page_)->bounds;
+    }
+
+    // Where a point of the first page is on screen.
+    [[nodiscard]] QPoint screen(float x, float y) const {
+        return canvas_.toScreen(QPointF(page.left + x, page.top + y)).toPoint();
     }
 
     void drag(QPoint from, QPoint to) {
@@ -56,27 +61,26 @@ class BoardCanvasPagesTest : public ::testing::Test {
     BoardDocument document_;
     BoardCanvas canvas_;
     std::string page_;
-    float top_{0.0F}; // the first page's top; the view starts at the board's origin
+    Bounds page{}; // the first page on the board
 };
 
 TEST_F(BoardCanvasPagesTest, DrawsOnThePageUnderTheStrokeInPageCoordinates) {
-    const int y = static_cast<int>(top_) + 40;
-    drag({50, y}, {120, y + 20});
+    drag(screen(50.0F, 40.0F), screen(120.0F, 60.0F));
     ASSERT_EQ(pageStrokes().size(), 1U);
     EXPECT_TRUE(document_.board().strokes().empty());
-    EXPECT_FLOAT_EQ(pageStrokes()[0].points().front().x, 50.0F);
-    EXPECT_FLOAT_EQ(pageStrokes()[0].points().front().y, 40.0F);
+    EXPECT_NEAR(pageStrokes()[0].points().front().x, 50.0F, 0.6F); // within a pixel
+    EXPECT_NEAR(pageStrokes()[0].points().front().y, 40.0F, 0.6F);
 }
 
 TEST_F(BoardCanvasPagesTest, DropsStrokesStartedBetweenPages) {
-    drag({50, 20}, {80, static_cast<int>(top_) + 40}); // starts in the heading band
+    drag(screen(50.0F, -60.0F), screen(80.0F, 40.0F)); // starts in the heading band
     EXPECT_TRUE(pageStrokes().empty());
 }
 
 TEST_F(BoardCanvasPagesTest, ErasesPageStrokesAndUndoBringsThemBack) {
     document_.board().pages().addStroke(page_, strokeAt(40.0F, 30.0F));
     canvas_.setTool(BoardCanvas::Tool::Eraser);
-    drag({45, static_cast<int>(top_) + 30}, {46, static_cast<int>(top_) + 30});
+    drag(screen(45.0F, 30.0F), screen(46.0F, 30.0F));
     EXPECT_TRUE(pageStrokes().empty());
     canvas_.undo();
     EXPECT_EQ(pageStrokes().size(), 1U);
@@ -84,19 +88,26 @@ TEST_F(BoardCanvasPagesTest, ErasesPageStrokesAndUndoBringsThemBack) {
 
 TEST_F(BoardCanvasPagesTest, PutsTextBoxesOnPagesAndMovesThemInPageCoordinates) {
     canvas_.setTool(BoardCanvas::Tool::Text);
-    QTest::mouseClick(&window_, Qt::LeftButton, {}, {60, static_cast<int>(top_) + 50});
+    QTest::mouseClick(&window_, Qt::LeftButton, {}, screen(60.0F, 50.0F));
     ASSERT_EQ(document_.board().textBoxes().size(), 1U);
     const TextBox box = document_.board().textBoxes()[0];
     EXPECT_EQ(box.page, page_);
-    EXPECT_FLOAT_EQ(box.x, 60.0F);
+    EXPECT_NEAR(box.x, 60.0F, 0.6F);
     const QModelIndex row = canvas_.textBoxes()->index(0, 0);
     const int xRole = canvas_.textBoxes()->roleNames().key("boxX");
-    EXPECT_FLOAT_EQ(row.data(xRole).toFloat(), 60.0F); // the model shows board positions
-    canvas_.moveTextBox(QString::fromStdString(box.id), QPointF(70.0, top_ + 90.0));
+    EXPECT_FLOAT_EQ(row.data(xRole).toFloat(), page.left + box.x); // board positions
+    canvas_.moveTextBox(QString::fromStdString(box.id), QPointF(page.left, page.top + 90.0));
     EXPECT_FLOAT_EQ(document_.board().textBox(box.id)->y, 90.0F);
-    canvas_.finishTextEditing();                               // an empty box goes away
-    QTest::mouseClick(&window_, Qt::LeftButton, {}, {60, 20}); // between pages: no box
+    canvas_.finishTextEditing(); // an empty box goes away
+    QTest::mouseClick(&window_, Qt::LeftButton, {}, screen(60.0F, -60.0F)); // no page: no box
     EXPECT_TRUE(document_.board().textBoxes().empty());
+}
+
+TEST_F(BoardCanvasPagesTest, OpensOnTheTopOfTheFirstColumnAtFullSize) {
+    EXPECT_DOUBLE_EQ(canvas_.zoom(), 1.0); // the column fits the width
+    const QRectF visible = canvas_.visibleArea();
+    EXPECT_NEAR(visible.center().x(), (page.left + page.right) / 2.0, 0.01);
+    EXPECT_LT(visible.top(), 0.0); // the heading band is in view
 }
 
 TEST_F(BoardCanvasPagesTest, FitsThePagesAndReportsTheirBounds) {

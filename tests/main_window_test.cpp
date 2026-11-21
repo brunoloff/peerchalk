@@ -1,5 +1,6 @@
 #include "ui/library.hpp"
 
+#include <QAbstractItemModel>
 #include <QQmlApplicationEngine>
 #include <QQmlError>
 #include <QQuickItem>
@@ -66,9 +67,11 @@ class MainWindowTest : public ::testing::Test {
     }
 
     // Creates a project and a board in it, opens the board and returns its page.
-    QQuickItem *openNewBoard() {
+    QQuickItem *openNewBoard(bool pages = false) {
         library_->createProject(QStringLiteral("Project"));
-        const QString boardId = library_->createBoard(QStringLiteral("Board"));
+        const QString boardId =
+            pages ? library_->createPageBoard(QStringLiteral("Board"), "A4", false, "ruled")
+                  : library_->createBoard(QStringLiteral("Board"));
         QMetaObject::invokeMethod(window_, "openBoard", Q_ARG(QString, boardId));
         QQuickItem *page = nullptr;
         // Wait for the page to exist and the stack to finish its transition; the stack
@@ -137,6 +140,28 @@ void openEveryDialog(QQuickWindow *window) {
         QTest::qWait(50);
         QMetaObject::invokeMethod(object, "close");
     }
+}
+
+TEST_F(MainWindowTest, PageBoardsShowTheirColumnsAndChangeThroughTheCanvas) {
+    QQuickItem *page = openNewBoard(true);
+    ASSERT_NE(page, nullptr);
+    QQuickItem *ruler = item("columnRuler");
+    ASSERT_NE(ruler, nullptr);
+    EXPECT_TRUE(ruler->isVisible());
+    auto *canvas = page->findChild<QQuickItem *>(QStringLiteral("boardCanvas"));
+    ASSERT_NE(canvas, nullptr);
+    EXPECT_TRUE(canvas->property("pageBoard").toBool());
+    auto *items = canvas->property("pageItems").value<QAbstractItemModel *>();
+    ASSERT_NE(items, nullptr);
+    EXPECT_GE(items->rowCount(), 3); // the heading, the page's number and its gaps
+    const QVariantList columns = canvas->property("pageColumns").toList();
+    ASSERT_EQ(columns.size(), 1);
+    EXPECT_EQ(columns[0].toMap()["paper"].toString(), QStringLiteral("A4"));
+    QMetaObject::invokeMethod(canvas, "addColumn", Q_ARG(QString, QString()));
+    EXPECT_EQ(canvas->property("pageColumns").toList().size(), 2);
+    openEveryDialog(window_);
+    for (const QQmlError &warning : warnings_)
+        ADD_FAILURE() << warning.toString().toStdString();
 }
 
 TEST_F(MainWindowTest, UsesTheBasicControlsStyle) {

@@ -21,10 +21,6 @@ float pointSpacing(int detail) {
     return detail == 0 ? 0.0F : 1.5F * std::exp2(static_cast<float>(detail));
 }
 
-bool sameBounds(const Bounds &a, const Bounds &b) {
-    return a.left == b.left && a.top == b.top && a.right == b.right && a.bottom == b.bottom;
-}
-
 // The page's strokes in page coordinates, moved onto the page and clipped to it.
 QSGNode *createPageNode(const Board &board, const PlacedPage &page, StrokeSelection selection,
                         int detail) {
@@ -55,7 +51,7 @@ void PageStrokeNodes::release(QSGNode *root, const Board &board, const PageMap &
                               const PageView &view, int detail) {
     for (auto it = entries_.begin(); it != entries_.end();) {
         const std::optional<PlacedPage> page = map.page(it->first);
-        const bool stale = !page || !sameBounds(page->bounds, it->second.bounds) ||
+        const bool stale = !page || page->bounds != it->second.bounds ||
                            it->second.detail != detail ||
                            board.pages().strokesVersion(it->first) != it->second.version;
         const bool far = !page || page->bounds.right < view.keep.left ||

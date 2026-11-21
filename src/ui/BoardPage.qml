@@ -101,10 +101,12 @@ Item {
         BoardCanvas {
             id: canvas
 
+            objectName: "boardCanvas"
             anchors.fill: parent
             penColor: Theme.penColors[0]
             penWidth: Theme.penWidths[1]
             gridColor: Theme.gridDot
+            pageColor: Theme.surface
             document: Library.openBoard(page.boardId)
             readOnly: page.access !== "edit"
             onCursorMoved: (point, inside) => Network.setPresence(page.boardId, point, inside)
@@ -113,9 +115,26 @@ Item {
             onHeightChanged: page.publishView()
         }
 
+        PageOverlay {
+            anchors.fill: parent
+            canvas: canvas
+            visible: canvas.pageBoard
+            onRenameSubheading: (columnId, itemId, text) =>
+                                pageChrome.renameSubheading(columnId, itemId, text)
+            onAddSubheadingRequested: (columnId, before) => pageChrome.addSubheading(columnId, before)
+        }
+
         TextBoxLayer {
             anchors.fill: parent
             canvas: canvas
+        }
+
+        PageBoardChrome {
+            id: pageChrome
+
+            anchors.fill: parent
+            canvas: canvas
+            visible: canvas.pageBoard
         }
 
         Panel {

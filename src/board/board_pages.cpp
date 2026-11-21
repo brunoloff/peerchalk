@@ -64,7 +64,7 @@ BoardKind BoardPages::kind() const {
                                                                      : BoardKind::Infinite;
 }
 
-void BoardPages::start(PaperSize paper, const std::string &title) {
+void BoardPages::start(PaperSize paper, const std::string &title, PageBackground background) {
     checkPaper(paper);
     {
         const BoardTransaction txn = native_.read();
@@ -76,7 +76,7 @@ void BoardPages::start(PaperSize paper, const std::string &title) {
     const BoardTransaction txn = native_.write(false);
     const YInput kind = yinput_string(pagesKind);
     ymap_insert(native_.layout, txn.get(), "kind", &kind);
-    insertColumn(native_, txn.get(), 0, paper, title);
+    insertColumn(native_, txn.get(), 0, {{}, paper, {}, title, background});
 }
 
 const std::vector<ColumnSpec> &BoardPages::columns() const {
@@ -94,7 +94,7 @@ const std::vector<ColumnSpec> &BoardPages::columns() const {
 }
 
 std::string BoardPages::addColumn(const std::string &before, PaperSize paper,
-                                  const std::string &title) {
+                                  const std::string &title, PageBackground background) {
     checkPaper(paper);
     yundo_manager_stop(native_.undo.get());
     std::string id;
@@ -102,7 +102,7 @@ std::string BoardPages::addColumn(const std::string &before, PaperSize paper,
         const BoardTransaction txn = native_.write(true);
         const std::uint32_t index =
             indexOf(native_.columns, txn.get(), before).value_or(yarray_len(native_.columns));
-        id = insertColumn(native_, txn.get(), index, paper, title);
+        id = insertColumn(native_, txn.get(), index, {{}, paper, {}, title, background});
     }
     yundo_manager_stop(native_.undo.get());
     return id;
@@ -130,6 +130,19 @@ void BoardPages::setColumnTitle(const std::string &columnId, const std::string &
                 indexOf(native_.columns, txn.get(), columnId)) {
             const YInput value = yinput_string(title.c_str());
             ymap_insert(mapAt(native_.columns, txn.get(), *index), txn.get(), "title", &value);
+        }
+    }
+    yundo_manager_stop(native_.undo.get());
+}
+
+void BoardPages::setColumnBackground(const std::string &columnId, PageBackground background) {
+    yundo_manager_stop(native_.undo.get());
+    {
+        const BoardTransaction txn = native_.write(true);
+        if (const std::optional<std::uint32_t> index =
+                indexOf(native_.columns, txn.get(), columnId)) {
+            const YInput value = yinput_string(backgroundName(background));
+            ymap_insert(mapAt(native_.columns, txn.get(), *index), txn.get(), "background", &value);
         }
     }
     yundo_manager_stop(native_.undo.get());

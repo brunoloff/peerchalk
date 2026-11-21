@@ -1,3 +1,4 @@
+#include "board/board_pages.hpp"
 #include "ui/board_minimap.hpp"
 
 #include <QQuickWindow>
@@ -43,6 +44,19 @@ TEST_F(BoardMinimapTest, FrameShowsTheVisibleArea) {
     const Bounds shown = frame->visibleWorld(100.0F, 100.0F);
     EXPECT_LE(shown.left, 0.0F);
     EXPECT_GE(shown.right, 200.0F);
+}
+
+TEST_F(BoardMinimapTest, FramesAPageBoardsPages) {
+    BoardDocument document;
+    document.board().pages().start(paperA4, "");
+    canvas_.setDocument(&document);
+    minimap_.setCanvas(&canvas_);
+    const std::optional<Viewport> frame = minimap_.frame();
+    ASSERT_TRUE(frame);
+    // The whole page fits, though the canvas shows only its top left.
+    const Point bottom = frame->toScreen({paperA4.width, paperA4.height});
+    EXPECT_LE(bottom.x, 100.0F);
+    EXPECT_LE(bottom.y, 100.0F);
 }
 
 } // namespace

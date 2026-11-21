@@ -222,9 +222,11 @@ void BoardCanvas::geometryChange(const QRectF &newGeometry, const QRectF &oldGeo
     highlighterLayer_->setSize(newGeometry.size());
     penLayer_->setSize(newGeometry.size());
     viewUpdated();
+    showStartOfPages();
 }
 
 void BoardCanvas::viewUpdated() {
+    syncPageOverlay();
     emit viewChanged();
     update();
     highlighterLayer_->update();
@@ -233,6 +235,7 @@ void BoardCanvas::viewUpdated() {
 
 void BoardCanvas::strokesUpdated() {
     refreshPages();
+    syncPageOverlay();
     update();
     emit strokesChanged();
     textBoxesUpdated();

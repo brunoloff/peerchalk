@@ -21,6 +21,7 @@ TEST(PageMap, FindsPagesByIdAndPositionAndFollowsColumnChanges) {
     ASSERT_TRUE(placed);
     EXPECT_EQ(placed->column, columnId);
     EXPECT_FLOAT_EQ(placed->bounds.width(), paperA4.width);
+    EXPECT_EQ(placed->background, PageBackground::Blank);
     const Point inside{placed->bounds.left + 5.0F, placed->bounds.top + 5.0F};
     ASSERT_TRUE(map.pageAt(inside));
     EXPECT_EQ(map.pageAt(inside)->id, first);

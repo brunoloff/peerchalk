@@ -1,6 +1,8 @@
 // Library: the live board documents and their saving.
 #include "ui/library.hpp"
 
+#include "board/board_pages.hpp"
+
 #include <QTimer>
 
 #include <stdexcept>
@@ -8,6 +10,45 @@
 namespace peerchalk {
 
 Library::~Library() { saveBoards(); }
+
+namespace {
+
+PageBackground backgroundNamed(const QString &name) {
+    static const std::pair<const char *, PageBackground> names[] = {
+        {"blank", PageBackground::Blank},
+        {"ruled", PageBackground::Ruled},
+        {"squared", PageBackground::Squared},
+        {"dotted", PageBackground::Dotted}};
+    for (const auto &[text, background] : names) {
+        if (name == QLatin1String(text))
+            return background;
+    }
+    throw std::invalid_argument("Unknown page background");
+}
+
+} // namespace
+
+QString Library::createPageBoard(const QString &name, const QString &paper, bool landscape,
+                                 const QString &background) {
+    std::optional<PaperSize> size = paperNamed(paper.toStdString());
+    std::optional<PageBackground> pattern;
+    if (!attempt([&] {
+            if (!size)
+                throw std::invalid_argument("Unknown paper size");
+            pattern = backgroundNamed(background);
+        }))
+        return {};
+    const QString id = createBoard(name);
+    if (id.isEmpty())
+        return {};
+    attempt([&] {
+        document(QUuid::fromString(id))
+            .board()
+            .pages()
+            .start(landscape ? peerchalk::landscape(*size) : *size, name.toStdString(), *pattern);
+    });
+    return id;
+}
 
 BoardDocument &Library::document(const QUuid &boardId) {
     if (const auto it = documents_.find(boardId); it != documents_.end())

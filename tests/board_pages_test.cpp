@@ -39,11 +39,12 @@ class BoardPagesTest : public ::testing::Test {
 TEST(BoardPagesStart, MakesAnEmptyBoardAPageBoardWithOnePage) {
     Board board;
     EXPECT_EQ(board.pages().kind(), BoardKind::Infinite);
-    board.pages().start(paperLetter, "Paper");
+    board.pages().start(paperLetter, "Paper", PageBackground::Ruled);
     EXPECT_EQ(board.pages().kind(), BoardKind::Pages);
     ASSERT_EQ(board.pages().columns().size(), 1U);
     const ColumnSpec &column = board.pages().columns()[0];
     EXPECT_EQ(column.title, "Paper");
+    EXPECT_EQ(column.background, PageBackground::Ruled);
     EXPECT_FLOAT_EQ(column.paper.width, paperLetter.width);
     ASSERT_EQ(column.items.size(), 1U);
     EXPECT_EQ(column.items[0].kind, ColumnItemKind::Page);
@@ -68,6 +69,9 @@ TEST_F(BoardPagesTest, AddsColumnsBeforeOthersOrLast) {
     EXPECT_EQ(column(1).id, middle);
     EXPECT_EQ(column(2).id, last);
     EXPECT_EQ(column(2).items.size(), 1U); // every new column starts with a page
+    EXPECT_EQ(column(1).background, PageBackground::Blank);
+    pages().setColumnBackground(middle, PageBackground::Squared);
+    EXPECT_EQ(column(1).background, PageBackground::Squared);
     pages().setColumnTitle(middle, "Renamed");
     pages().setColumnPaper(middle, landscape(paperA5));
     EXPECT_EQ(column(1).title, "Renamed");
