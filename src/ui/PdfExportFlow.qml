@@ -14,10 +14,13 @@ Item {
 
     signal reported(string message)
 
-    // columnId: one column of a page board, or "" for everything.
-    function start(title: string, columnId: string) {
+    // columnId: one column of a page board, or "" for everything; with it, first and last
+    // pick its pages (from 1; 0 for all).
+    function start(title: string, columnId: string, first: int, last: int) {
         flow.title = title;
         exporter.columnId = columnId;
+        exporter.firstPage = first;
+        exporter.lastPage = last;
         if (flow.inBrowser)
             exporter.download(title);
         else

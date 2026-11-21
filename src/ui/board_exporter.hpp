@@ -23,6 +23,9 @@ class BoardExporter : public QObject {
     Q_PROPERTY(QString fontFamily MEMBER fontFamily_)
     // Page boards: export only the column with this id; "" for the whole board.
     Q_PROPERTY(QString columnId MEMBER columnId_)
+    // With columnId: only its pages firstPage to lastPage, counted from 1; 0 for all.
+    Q_PROPERTY(int firstPage MEMBER firstPage_)
+    Q_PROPERTY(int lastPage MEMBER lastPage_)
     Q_PROPERTY(bool busy READ busy NOTIFY busyChanged)
 
   public:
@@ -49,6 +52,8 @@ class BoardExporter : public QObject {
     QPointer<BoardCanvas> canvas_;
     QString fontFamily_;
     QString columnId_;
+    int firstPage_{0};
+    int lastPage_{0};
     QString title_;
     bool busy_{false};
     int waiting_{0};

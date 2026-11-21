@@ -55,17 +55,32 @@ void drawBackground(QPainter &painter, const ExportPage &page) {
     painter.restore();
 }
 
-bool exported(const ColumnSpec &column, const std::string &only) {
-    return only.empty() || column.id == only;
-}
+// Which pages go into the PDF: every column's, one column's, or a range of one column's.
+struct Selection {
+    std::string column;
+    int first;
+    int last;
 
-std::vector<ExportPage> exportPages(const BoardPages &pages, const std::string &only) {
+    explicit Selection(const BoardPdfInput &input)
+        : column(input.column), first(input.firstPage), last(input.lastPage) {}
+
+    [[nodiscard]] bool takes(const ColumnSpec &spec) const {
+        return column.empty() || spec.id == column;
+    }
+    // number counts the column's pages from 1.
+    [[nodiscard]] bool takes(int number) const {
+        return column.empty() || first <= 0 || (number >= first && number <= last);
+    }
+};
+
+std::vector<ExportPage> exportPages(const BoardPages &pages, const Selection &selection) {
     std::vector<ExportPage> list;
     for (const ColumnSpec &column : pages.columns()) {
-        if (!exported(column, only))
+        if (!selection.takes(column))
             continue;
+        int number = 0;
         for (const ColumnItem &item : column.items) {
-            if (item.kind == ColumnItemKind::Page)
+            if (item.kind == ColumnItemKind::Page && selection.takes(++number))
                 list.push_back(
                     {item.id, item.size.value_or(column.paper), item.pdf, column.background});
         }
@@ -74,18 +89,23 @@ std::vector<ExportPage> exportPages(const BoardPages &pages, const std::string &
 }
 
 // Each column's heading leads to its first page, and each subheading to the page after it
-// (or, at the end of a column, the page before it).
-std::vector<PdfOutlineEntry> outlineOf(const BoardPages &pages, const std::string &only) {
+// (or, at the end of a column, the page before it); only exported pages count.
+std::vector<PdfOutlineEntry> outlineOf(const BoardPages &pages, const Selection &selection) {
     std::vector<PdfOutlineEntry> entries;
     int page = 0;
     for (const ColumnSpec &column : pages.columns()) {
-        if (!exported(column, only))
+        if (!selection.takes(column))
             continue;
         const int first = page;
+        int number = 0;
         std::vector<std::string> waiting; // subheadings until the next page
         for (const ColumnItem &item : column.items) {
             if (item.kind == ColumnItemKind::Subheading) {
                 waiting.push_back(item.text);
+                continue;
+            }
+            if (!selection.takes(++number)) {
+                waiting.clear(); // they belong to a page left out
                 continue;
             }
             if (page == first)
@@ -150,7 +170,7 @@ QByteArray drawPages(const BoardPdfInput &input, const std::vector<ExportPage> &
 } // namespace
 
 QByteArray renderPagesPdf(const BoardPdfInput &input) {
-    const std::vector<ExportPage> pages = exportPages(input.board->pages(), input.column);
+    const std::vector<ExportPage> pages = exportPages(input.board->pages(), Selection(input));
     if (pages.empty())
         throw std::invalid_argument("The board has no pages");
     const QByteArray ink = drawPages(input, pages);
@@ -169,7 +189,7 @@ QByteArray renderPagesPdf(const BoardPdfInput &input) {
     }
     const auto *begin = reinterpret_cast<const std::byte *>(ink.constData());
     const Bytes combined = addPdfOutline(composePdf(Bytes(begin, begin + ink.size()), composed),
-                                         outlineOf(input.board->pages(), input.column));
+                                         outlineOf(input.board->pages(), Selection(input)));
     return {reinterpret_cast<const char *>(combined.data()), qsizetype(combined.size())};
 }
 

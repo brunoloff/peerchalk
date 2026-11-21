@@ -36,7 +36,10 @@ Item {
     }
 
     function exportColumn(columnId: string, title: string) {
-        columnExport.start(title.length > 0 ? title : qsTr("Column"), columnId);
+        const column = chrome.canvas.pageColumns.find(entry => entry.columnId === columnId);
+        const current = chrome.canvas.currentPage;
+        exportDialog.ask(columnId, title, column?.pages ?? 1,
+                         current.columnId === columnId ? current.number : 1);
     }
 
     function addSubheading(columnId: string, before: string) {
@@ -90,6 +93,13 @@ Item {
                 : qsTr("Delete this column with all its pages and what is written on them?");
             deleteDialog.open();
         }
+    }
+
+    ExportPagesDialog {
+        id: exportDialog
+
+        onChosen: (columnId, title, first, last) =>
+                  columnExport.start(title.length > 0 ? title : qsTr("Column"), columnId, first, last)
     }
 
     PdfExportFlow {

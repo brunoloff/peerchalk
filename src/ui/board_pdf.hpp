@@ -29,7 +29,8 @@ struct BoardPdfInput {
     // Page boards: the PDFs their pages show, by blob hash; null when missing here.
     std::function<std::shared_ptr<const Bytes>(const std::string &)> pdfBlob{};
     std::string column{}; // page boards: only the column with this id; "" for all
-
+    int firstPage{0};     // with column: only its pages firstPage to lastPage, from 1
+    int lastPage{0};      // (0: all of them)
 };
 
 // One page holding everything on the board, at its size (1 board unit = 1/96 inch) with

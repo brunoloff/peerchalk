@@ -128,6 +128,20 @@ TEST(BoardPdf, PageBoardsBecomeOnePageEachAtItsExactSize) {
     ASSERT_EQ(column->pageCount(), 1);
     EXPECT_NEAR(column->pageSize(0).width, paperLetter.height, 0.05F);
     EXPECT_EQ(column->outline(), (std::vector<PdfOutlineEntry>{{"Wide", 1, 0}}));
+    // Pages 2 to 3 of the first column; subheadings before page 2 lead to the PDF's first page.
+    const std::string notes2 = board.pages().insertItem(notes, {}, ColumnItemKind::Page);
+    board.pages().insertItem(notes, notes2, ColumnItemKind::Subheading, "Part two");
+    board.pages().insertItem(notes, {}, ColumnItemKind::Page);
+    BoardPdfInput range = inputFor(board);
+    range.column = notes;
+    range.firstPage = 2;
+    range.lastPage = 3;
+    const std::unique_ptr<PdfDocument> part = openPdf(renderBoardPdf(range));
+    ASSERT_TRUE(part);
+    EXPECT_EQ(part->pageCount(), 2);
+    // "Last words" now also comes right before page 2, so both subheadings lead to it.
+    EXPECT_EQ(part->outline(), (std::vector<PdfOutlineEntry>{
+                                   {"Notes", 1, 0}, {"Last words", 2, 0}, {"Part two", 2, 0}}));
     const PaperSize a4 = pdf->pageSize(0);
     const PdfImage page = pdf->render(0, int(a4.width), int(a4.height)); // 1 pixel per unit
     EXPECT_LT(blueAt(page, 200, 100), 64); // the stroke, where it is on the page

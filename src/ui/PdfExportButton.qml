@@ -14,7 +14,7 @@ RailButton {
     text: qsTr("Export as PDF")
     iconPath: Icons.exportFile
     enabled: !flow.busy && button.canvas.contentBounds.width > 0
-    onClicked: flow.start(button.title, "")
+    onClicked: flow.start(button.title, "", 0, 0)
 
     PdfExportFlow {
         id: flow
