@@ -134,6 +134,8 @@ class Library : public QObject {
                 const QString &before);
     [[nodiscard]] BlobStore &blobs() { return blobs_; }
     [[nodiscard]] static bool pdfSupported();
+    // A blob arrived from a peer: pages waiting for it are drawn again.
+    void blobArrived();
     Q_INVOKABLE void renameBoard(const QString &boardId, const QString &name);
     Q_INVOKABLE void removeBoard(const QString &boardId);
     Q_INVOKABLE bool isBoardAdmin(const QString &boardId);

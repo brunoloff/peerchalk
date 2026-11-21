@@ -1,7 +1,8 @@
 #pragma once
 
 // A small PDF for tests: an A4 page with a black square in its bottom-left corner, then a
-// Letter page turned a quarter, titled "Lemma notes".
+// Letter page turned a quarter, titled "Lemma notes". padding adds an unused stream of that
+// many bytes, for a larger file.
 #include "board/stroke_codec.hpp"
 
 #include <cstdio>
@@ -10,7 +11,7 @@
 
 namespace peerchalk::test {
 
-inline Bytes samplePdf() {
+inline Bytes samplePdf(std::size_t padding = 0) {
     const std::string stream = "0 0 0 rg 0 0 100 100 re f";
     const std::vector<std::string> objects = {
         "<< /Type /Catalog /Pages 2 0 R >>",
@@ -18,7 +19,9 @@ inline Bytes samplePdf() {
         "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Contents 5 0 R >>",
         "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Rotate 90 >>",
         "<< /Length " + std::to_string(stream.size()) + " >>\nstream\n" + stream + "\nendstream",
-        "<< /Title (Lemma notes) >>"};
+        "<< /Title (Lemma notes) >>",
+        "<< /Length " + std::to_string(padding) + " >>\nstream\n" + std::string(padding, 'x') +
+            "\nendstream"};
     std::string pdf = "%PDF-1.4\n";
     std::vector<std::size_t> offsets;
     for (std::size_t i = 0; i < objects.size(); ++i) {

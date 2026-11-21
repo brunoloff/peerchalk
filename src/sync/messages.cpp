@@ -25,7 +25,9 @@ enum Type : char {
     PartType = 8,
     BoardStateType = 9,
     BoardLinkJoinType = 10,
-    InstanceHelloType = 11
+    InstanceHelloType = 11,
+    BlobWantType = 12,
+    BlobChunkType = 13
 };
 constexpr qsizetype uuidSize = 16;
 constexpr qsizetype partHeaderSize = 1 + 4 + 4;
@@ -89,6 +91,18 @@ struct Encoder {
         return QByteArray(1, BoardLinkJoinType) + join.board.toRfc4122() + join.token;
     }
     QByteArray operator()(const InstanceHello &) const { return QByteArray(1, InstanceHelloType); }
+    QByteArray operator()(const BlobWant &want) const {
+        // Written after the hash as given: a wrong hash makes a message decode() refuses.
+        QByteArray bytes = QByteArray(1, BlobWantType) + want.hash + QByteArray(8, '\0');
+        qToLittleEndian(want.offset, bytes.data() + 1 + want.hash.size());
+        return bytes;
+    }
+    QByteArray operator()(const BlobChunk &chunk) const {
+        QByteArray bytes = QByteArray(1, BlobChunkType) + chunk.hash + QByteArray(16, '\0');
+        qToLittleEndian(chunk.offset, bytes.data() + 1 + chunk.hash.size());
+        qToLittleEndian(chunk.total, bytes.data() + 9 + chunk.hash.size());
+        return bytes + chunk.data;
+    }
     QByteArray operator()(const MessagePart &part) const {
         QByteArray bytes(partHeaderSize, '\0');
         bytes[0] = PartType;
@@ -168,6 +182,30 @@ std::optional<Message> decodeBoardLinkJoin(const QByteArray &bytes) {
     if (board.isNull())
         return std::nullopt;
     return BoardLinkJoin{board, bytes.mid(1 + uuidSize)};
+}
+
+std::optional<Message> decodeBlobWant(const QByteArray &bytes) {
+    if (bytes.size() != 1 + blobHashBytes + 8)
+        return std::nullopt;
+    const quint64 offset = qFromLittleEndian<quint64>(bytes.constData() + 1 + blobHashBytes);
+    if (offset >= maxBlobBytes)
+        return std::nullopt;
+    return BlobWant{bytes.mid(1, blobHashBytes), offset};
+}
+
+std::optional<Message> decodeBlobChunk(const QByteArray &bytes) {
+    constexpr qsizetype header = 1 + blobHashBytes + 16;
+    if (bytes.size() <= header)
+        return std::nullopt;
+    BlobChunk chunk{bytes.mid(1, blobHashBytes),
+                    qFromLittleEndian<quint64>(bytes.constData() + 1 + blobHashBytes),
+                    qFromLittleEndian<quint64>(bytes.constData() + 9 + blobHashBytes),
+                    bytes.mid(header)};
+    const auto size = static_cast<quint64>(chunk.data.size());
+    if (chunk.total > maxBlobBytes || chunk.offset >= chunk.total ||
+        size > chunk.total - chunk.offset)
+        return std::nullopt;
+    return chunk;
 }
 
 bool isJsonType(char type) {
@@ -286,6 +324,10 @@ std::optional<Message> decode(const QByteArray &bytes) {
         return decodeBoardState(bytes);
     if (type == BoardLinkJoinType)
         return decodeBoardLinkJoin(bytes);
+    if (type == BlobWantType)
+        return decodeBlobWant(bytes);
+    if (type == BlobChunkType)
+        return decodeBlobChunk(bytes);
     if (type == InstanceHelloType)
         return InstanceHello{};
     if (!isJsonType(type))

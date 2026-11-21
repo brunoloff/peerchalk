@@ -222,6 +222,12 @@ class Network : public QObject {
     bool queueNextBoard(const PeerId &id, Peer &peer);
     void offerLinkJoin(Peer &peer);
     void handleLinkJoin(const Peer &peer, const BoardLinkJoin &join);
+    // network_blobs.cpp: fetching the PDFs that shared page boards show
+    void requestMissingBlobs(const PeerId &id, Peer &peer, const QUuid &board);
+    void handleBlobWant(Peer &peer, const BlobWant &want);
+    void handleBlobChunk(const PeerId &id, Peer &peer, const BlobChunk &chunk);
+    [[nodiscard]] bool blobSharedWith(const Peer &peer, const std::string &hash) const;
+    void dropDownloadsFrom(const PeerId &id);
     // An owner of the board, here or connected and sharing it.
     [[nodiscard]] bool boardLive(const QUuid &board) const;
 
@@ -336,6 +342,11 @@ class Network : public QObject {
     bool restartNeeded_{false};
     QTimer logTimer_;
     quint64 logRevision_{0};
+    struct Download {
+        PeerId from;
+        QByteArray data;
+    };
+    std::map<std::string, Download> downloads_; // by blob hash, one peer each
 };
 
 } // namespace peerchalk::sync

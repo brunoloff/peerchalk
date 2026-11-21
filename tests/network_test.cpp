@@ -1,6 +1,8 @@
 // End-to-end sync between PeerChalk users over p2pdc, on a private OpenDHT network
 // running on the loopback interface.
+#include "board/board_pages.hpp"
 #include "sync/network.hpp"
+#include "test_pdf.hpp"
 #include "ui/library.hpp"
 
 #include <opendht.h>
@@ -138,6 +140,26 @@ TEST_F(NetworkTest, BoardsTooLargeForOneMessageStillArrive) {
     EXPECT_TRUE(
         QTest::qWaitFor([&] { return shared.bob.strokesOn(shared.board) == 150; }, timeoutMs))
         << "the large board never arrived";
+}
+
+TEST_F(NetworkTest, PageBoardsArriveWithTheirPdfs) {
+    TwoMembers shared(dht_);
+    const QString board = shared.alice.library.createPageBoard("Reading", "A4", false, "blank");
+    const Bytes pdf = test::samplePdf(700 * 1024); // several pieces
+    ASSERT_TRUE(shared.alice.library.addPdf(
+        board, QByteArray(reinterpret_cast<const char *>(pdf.data()), qsizetype(pdf.size())),
+        "notes", {}));
+    const std::string blob = shared.alice.library.document(QUuid::fromString(board))
+                                 .board()
+                                 .pages()
+                                 .columns()[1]
+                                 .items[0]
+                                 .pdf->blob;
+    EXPECT_TRUE(QTest::qWaitFor(
+        [&] { return shared.bob.library.blobs().has(QString::fromStdString(blob)); }, timeoutMs))
+        << "the PDF never arrived";
+    EXPECT_EQ(shared.bob.library.document(QUuid::fromString(board)).board().pages().kind(),
+              BoardKind::Pages);
 }
 
 TEST_F(NetworkTest, EditsMadeWhileApartMergeAfterReconnecting) {

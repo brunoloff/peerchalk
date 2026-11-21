@@ -54,6 +54,8 @@ class PdfRenderer : public QObject {
   signals:
     // An image was added; views should draw again.
     void rendered();
+    // PDFs that failed may be here now; views should ask for their pages again.
+    void retryWanted();
 
   private:
     using Key = std::tuple<std::string, int, int>; // blob, page, height

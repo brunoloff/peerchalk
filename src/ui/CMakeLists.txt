@@ -24,7 +24,7 @@ qt_add_qml_module(peerchalk_ui URI PeerChalk VERSION 1.0
         board_preview.cpp board_preview.hpp library.cpp library.hpp library_people.cpp
         desktop_launcher.cpp desktop_launcher.hpp app_updater.cpp app_updater.hpp
         library_boards.cpp library_links.cpp board_document.cpp board_document.hpp
-        ../sync/messages.cpp ../sync/messages.hpp ../sync/network.cpp ../sync/network.hpp
+        ../sync/messages.cpp ../sync/messages.hpp ../sync/network.cpp ../sync/network.hpp ../sync/network_blobs.cpp
         ../sync/network_config.cpp ../sync/network_config.hpp ../sync/network_peers.cpp
         ../sync/network_settings.cpp ../sync/network_settings.hpp ../sync/network_settings_page.cpp
         ../sync/network_live.cpp ../sync/live_strokes.cpp ../sync/live_strokes.hpp

@@ -39,9 +39,9 @@ Sizes are stored as floats and written to PDFs in points, so an exported A4 page
    Text boxes also belong to a page.
 4. **PDF files travel separately from the Yrs document**, as content-addressed blobs (SHA-256),
    so a board's document stays small and a PDF shared by several boards is sent once.
-5. **Older versions never see page boards.** Protocol version 4: page boards and blobs are
-   offered only to peers with protocol ≥ 4. A 0.1 peer would otherwise show an empty
-   infinite board and draw into it.
+5. **Older versions never see page boards.** Protocol version 4 is also the oldest one
+   accepted: before 1.0 there is no backwards compatibility, so 0.1 devices are told to
+   update instead of showing a page board as an empty infinite board.
 6. **Changing a column's paper size** changes its width and the default for new pages. Existing
    pages keep their size unless the person picks "Apply to all pages in this column". PDF pages
    are never resized.
@@ -222,7 +222,7 @@ Each milestone lands on main with tests, and keeps infinite boards working.
 | M2 | Page canvas | Culled per-page meshes, drawing, erasing, text and undo on pages; the benchmark exists |
 | M3 | Page interface | New-board dialog, column ruler, + controls, headings, inspector paper settings, outline |
 | M4 | PDF display and import | Render queue, buckets, tiles, cache, import flow; the 300-page target met |
-| M5 | Sync | Blob store and messages, protocol 4, gating of older peers, progress on pages |
+| M5 | Sync | Blob store and messages, protocol 4 (older versions refused), progress on pages |
 | M6 | Export | Exact page sizes, vector-preserving composition, bookmarks, ranges |
 | M7 | Polish and release | Phone layout, benchmark targets met, metainfo and release notes, 0.2 |
 
@@ -282,5 +282,11 @@ Work happens on the `page-boards` branch, one commit per finished piece.
       worker thread, √2 size buckets from 64 to 4096 px, 384 MB / 128 MB image budget, the
       view's wishes replace the queue), textures held by the canvas's root scene node;
       "Import a PDF…" on the ruler's + and in the column menu
+- [x] M5 · sync: protocol 4, also the oldest accepted (no compatibility before 1.0);
+      `BlobWant` / `BlobChunk` in 256 KiB pieces, one request at a time from one peer,
+      answered only for blobs on boards shared with the asker, stored only when the SHA-256
+      matches; an end-to-end test sends a 700 KB PDF between two devices
+- [ ] M5 · still to do: "Fetching PDF · 34 %" on pages, a second peer when the first leaves
+      mid-download (it retries on the next connection now), forgetting unused blobs
 - [ ] M4 · still to do: tiles above 4096 px, progressive rendering in the browser, the
       "Fetching PDF" placeholder, the 300-page timing

@@ -52,8 +52,12 @@ void BoardCanvas::setDocument(BoardDocument *document) {
     // Remote changes (and saved state loading) arrive through the document.
     connect(document_, &BoardDocument::changed, this, &BoardCanvas::strokesUpdated);
     connect(document_, &BoardDocument::remoteDraftsChanged, this, &BoardCanvas::updateDrafts);
-    if (PdfRenderer *pdfs = document_->pdfRenderer())
-        connect(pdfs, &PdfRenderer::rendered, this, &QQuickItem::update);
+    if (PdfRenderer *pdfs = document_->pdfRenderer()) {
+        // Documents share one renderer, so the canvas connects to it once.
+        connect(pdfs, &PdfRenderer::rendered, this, &QQuickItem::update, Qt::UniqueConnection);
+        connect(pdfs, &PdfRenderer::retryWanted, this, &BoardCanvas::requestPdfPages,
+                Qt::UniqueConnection);
+    }
     if (document_ != &ownDocument_) // that one goes away together with the canvas
         connect(document_, &QObject::destroyed, this, [this] { setDocument(nullptr); });
     strokesUpdated();

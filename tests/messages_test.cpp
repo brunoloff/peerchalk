@@ -155,6 +155,21 @@ TEST(Messages, BoardLinkJoinsRoundTripAndNeedAWholeToken) {
     EXPECT_FALSE(decode(encode(BoardLinkJoin{board, "short"})).has_value());
 }
 
+TEST(Messages, BlobRequestsAndPiecesRoundTripWithinTheirLimits) {
+    const QByteArray hash(blobHashBytes, 'h');
+    const BlobWant want = roundTrip<BlobWant>(BlobWant{hash, 1024});
+    EXPECT_EQ(want.hash, hash);
+    EXPECT_EQ(want.offset, 1024U);
+    const BlobChunk chunk = roundTrip<BlobChunk>(BlobChunk{hash, 4, 10, "abcdef"});
+    EXPECT_EQ(chunk.offset, 4U);
+    EXPECT_EQ(chunk.total, 10U);
+    EXPECT_EQ(chunk.data, QByteArray("abcdef"));
+    EXPECT_FALSE(decode(encode(BlobWant{"short", 0})).has_value());
+    EXPECT_FALSE(decode(encode(BlobChunk{hash, 8, 10, "abcdef"})).has_value()); // past the end
+    EXPECT_FALSE(decode(encode(BlobChunk{hash, 0, maxBlobBytes + 1, "a"})).has_value());
+    EXPECT_FALSE(decode(encode(BlobChunk{hash, 0, 10, ""})).has_value()); // no data
+}
+
 TEST(Messages, RejectsMalformedInput) {
     EXPECT_FALSE(decode({}).has_value());
     EXPECT_FALSE(decode(QByteArray("\x09{}", 3)).has_value());       // board state, no id

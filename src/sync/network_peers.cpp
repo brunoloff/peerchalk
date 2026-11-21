@@ -133,6 +133,7 @@ void Network::disconnectPeer(const PeerId &id, std::uint64_t generation) {
                                 .arg(peerLabel(id))
                                 .arg(peer->started.elapsed() / 1000));
     peer->ready = false;
+    dropDownloadsFrom(id);
     QTimer::singleShot(0, this, [this, id, generation] {
         if (livePeer(id, generation) != nullptr)
             peers_.erase(id);

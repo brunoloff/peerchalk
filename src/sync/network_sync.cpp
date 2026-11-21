@@ -82,10 +82,16 @@ void Network::dispatch(const PeerId &id, Peer &peer, const std::optional<Message
         handlePersonal(peer, *personal);
     } else if (const auto *update = std::get_if<BoardUpdate>(&*message)) {
         handleBoardUpdate(peer, *update);
+        requestMissingBlobs(id, peer, update->board);
     } else if (const auto *join = std::get_if<BoardLinkJoin>(&*message)) {
         handleLinkJoin(peer, *join);
     } else if (const auto *state = std::get_if<BoardState>(&*message)) {
         handleBoardState(id, peer, *state);
+    } else if (const auto *want = std::get_if<BlobWant>(&*message)) {
+        handleBlobWant(peer, *want);
+        flush(id);
+    } else if (const auto *chunk = std::get_if<BlobChunk>(&*message)) {
+        handleBlobChunk(id, peer, *chunk);
     } else if (const auto *presence = std::get_if<Presence>(&*message)) {
         applyPresence(peer, *presence);
     } else if (const auto *profile = std::get_if<Profile>(&*message)) {
@@ -118,8 +124,9 @@ bool Network::handleHello(Peer &peer, const Hello &hello) {
     const std::optional<DeviceCertificate> certificate = verifyDeviceCertificate(
         hello.certificatePayload, hello.certificateSignature, keyBytes(peer.device));
     if (!certificate) {
-        logWarning(QStringLiteral("sync"), QStringLiteral("Device %1 sent an invalid certificate")
-                                               .arg(shortDevice(peer.device)));
+        logWarning(
+            QStringLiteral("sync"),
+            QStringLiteral("Device %1 sent an invalid certificate").arg(shortDevice(peer.device)));
         return false;
     }
     if (!protocolsCompatible(hello)) {
@@ -152,8 +159,10 @@ void Network::peerAuthenticated(const PeerId &id, Peer &peer) {
     offerAccess(peer);
     offerLinkJoin(peer);
     offerBoardStates(peer);
-    for (const QUuid &board : syncableBoards(peer))
+    for (const QUuid &board : syncableBoards(peer)) {
         peer.dirtyBoards.insert(board);
+        requestMissingBlobs(id, peer, board);
+    }
     peer.presenceDirty = true;
     flush(id);
     emit peersChanged();

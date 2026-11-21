@@ -4,6 +4,7 @@
 #include "board/board_pages.hpp"
 #include "library/files.hpp"
 #include "pdf/pdf_document.hpp"
+#include "ui/pdf_renderer.hpp"
 
 #include <QFileInfo>
 
@@ -29,6 +30,8 @@ std::string refusal(PdfError error) {
 } // namespace
 
 bool Library::pdfSupported() { return PdfDocument::available(); }
+
+void Library::blobArrived() { pdfRenderer_->forgetFailures(); }
 
 bool Library::importPdf(const QString &boardId, const QUrl &file, const QString &before) {
     QByteArray contents;

@@ -79,8 +79,11 @@ bool PdfRenderer::failed(const std::string &blob) const {
 }
 
 void PdfRenderer::forgetFailures() {
-    const std::lock_guard lock(lock_);
-    failed_.clear();
+    {
+        const std::lock_guard lock(lock_);
+        failed_.clear();
+    }
+    emit retryWanted();
 }
 
 void PdfRenderer::run() {

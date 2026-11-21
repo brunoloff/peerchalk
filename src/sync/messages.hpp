@@ -24,8 +24,10 @@ namespace peerchalk::sync {
 
 // This version of the protocol, and the oldest one it can still talk to. Raise the first
 // for additions older peers can ignore, and the second only for incompatible changes.
-inline constexpr int protocolVersion = 3;
-inline constexpr int minSupportedProtocol = 3;
+// Version 4 adds page boards and blobs. Until PeerChalk 1.0 there is no compatibility with
+// older versions: they are told to update.
+inline constexpr int protocolVersion = 4;
+inline constexpr int minSupportedProtocol = 4;
 
 // First message on every connection: who the device is and acts for.
 struct Hello {
@@ -113,9 +115,24 @@ struct LiveStroke {
     std::vector<StrokePoint> points; // at most maxLiveStrokePoints
 };
 
-using Message =
-    std::variant<Hello, AccessChanges, Personal, BoardUpdate, Presence, Profile, LiveStroke,
-                 BoardState, MessagePart, BoardLinkJoin, InstanceHello, UnknownMessage>;
+// Files that boards refer to by their SHA-256, such as PDFs (protocol 4). A device asks for
+// a blob from an offset, and the peer answers with the next piece of it.
+inline constexpr qsizetype blobHashBytes = 32;
+inline constexpr quint64 maxBlobBytes = quint64{200} * 1024 * 1024;
+struct BlobWant {
+    QByteArray hash; // blobHashBytes raw bytes
+    quint64 offset{0};
+};
+struct BlobChunk {
+    QByteArray hash;
+    quint64 offset{0};
+    quint64 total{0}; // the whole blob's size, at most maxBlobBytes
+    QByteArray data;  // the bytes from offset on, ending at or before total
+};
+
+using Message = std::variant<Hello, AccessChanges, Personal, BoardUpdate, Presence, Profile,
+                             LiveStroke, BoardState, MessagePart, BoardLinkJoin, InstanceHello,
+                             BlobWant, BlobChunk, UnknownMessage>;
 
 [[nodiscard]] QByteArray encode(const Message &message);
 [[nodiscard]] std::optional<Message> decode(const QByteArray &bytes);
