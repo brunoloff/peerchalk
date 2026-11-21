@@ -6,8 +6,10 @@
 #include "pdf/pdf_document.hpp"
 #include "ui/pdf_renderer.hpp"
 
+#include <QDateTime>
 #include <QFileInfo>
 
+#include <set>
 #include <stdexcept>
 
 namespace peerchalk {
@@ -32,6 +34,42 @@ std::string refusal(PdfError error) {
 bool Library::pdfSupported() { return PdfDocument::available(); }
 
 void Library::blobArrived() { pdfRenderer_->forgetFailures(); }
+
+QVariantMap Library::blobProgress(const QString &hash) const {
+    const auto found = blobProgress_.find(hash);
+    return found != blobProgress_.end() ? found->second : QVariantMap();
+}
+
+void Library::setBlobProgress(const QString &hash, qint64 received, qint64 total,
+                              const QString &from) {
+    const int percent = total > 0 ? int(received * 100 / total) : 0;
+    blobProgress_[hash] = {{"percent", percent}, {"from", from}};
+    ++blobProgressRevision_;
+    emit blobProgressChanged();
+}
+
+void Library::endBlobProgress(const QString &hash) {
+    if (blobProgress_.erase(hash) == 0)
+        return;
+    ++blobProgressRevision_;
+    emit blobProgressChanged();
+}
+
+int Library::forgetUnusedBlobs() {
+    constexpr int keptDays = 30;
+    int removed = 0;
+    attempt([&] {
+        std::set<QString> used;
+        for (const BoardEntry &board : workspace_.boards()) {
+            if (board.deleted())
+                continue;
+            for (const std::string &blob : document(board.id).board().pages().pdfBlobs())
+                used.insert(QString::fromStdString(blob));
+        }
+        removed = blobs_.forgetUnused(used, QDateTime::currentDateTimeUtc().addDays(-keptDays));
+    });
+    return removed;
+}
 
 namespace {
 

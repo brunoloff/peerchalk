@@ -243,6 +243,7 @@ TEST(PageOverlayRows, ListHeadingsSubheadingsGapsAndNumbersInTheArea) {
                                       [](const std::string &blob) { return blob == "absent"; });
     const std::string pdfPage = board.pages().columns()[1].items[0].id;
     EXPECT_TRUE(std::ranges::find(rows, "p" + pdfPage, &PageOverlayModel::Row::key)->waiting);
+    EXPECT_EQ(std::ranges::find(rows, "p" + pdfPage, &PageOverlayModel::Row::key)->blob, "absent");
     EXPECT_FALSE(std::ranges::find(rows, "p" + second, &PageOverlayModel::Row::key)->waiting);
 
     PageOverlayModel model;

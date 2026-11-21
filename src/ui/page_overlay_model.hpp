@@ -31,6 +31,7 @@ class PageOverlayModel : public QAbstractListModel {
         int number;          // page numbers, from 1 in each column
         Bounds bounds;       // board coordinates
         bool waiting{false}; // page numbers: the PDF the page shows is not on this device
+        std::string blob{};  // and which PDF that is
         bool operator==(const Row &) const = default;
     };
 
@@ -54,7 +55,8 @@ class PageOverlayModel : public QAbstractListModel {
         Y,
         Width,
         Height,
-        Waiting
+        Waiting,
+        Blob
     };
 
     std::vector<Row> rows_;

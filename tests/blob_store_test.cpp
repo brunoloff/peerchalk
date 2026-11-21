@@ -1,5 +1,6 @@
 #include "library/blob_store.hpp"
 
+#include <QDateTime>
 #include <QFile>
 #include <QTemporaryDir>
 
@@ -36,6 +37,30 @@ TEST(BlobStore, RefusesMissingDamagedAndBadlyNamedBlobs) {
     file.write("changed");
     file.close();
     EXPECT_FALSE(store.get(hash)); // no longer what its name says
+}
+
+TEST(BlobStore, ForgetsBlobsUnusedForLong) {
+    QTemporaryDir dir;
+    BlobStore store(dir.path());
+    const QString used = store.put("used");
+    const QString recent = store.put("unused, but new");
+    const QString old = store.put("unused for long");
+    QFile oldFile(dir.path() + "/" + old);
+    ASSERT_TRUE(oldFile.open(QIODevice::ReadWrite));
+    ASSERT_TRUE(oldFile.setFileTime(QDateTime::currentDateTimeUtc().addDays(-40),
+                                    QFileDevice::FileModificationTime));
+    oldFile.close();
+    QFile usedFile(dir.path() + "/" + used);
+    ASSERT_TRUE(usedFile.open(QIODevice::ReadWrite));
+    ASSERT_TRUE(usedFile.setFileTime(QDateTime::currentDateTimeUtc().addDays(-40),
+                                     QFileDevice::FileModificationTime));
+    usedFile.close();
+    EXPECT_EQ(store.forgetUnused({used}, QDateTime::currentDateTimeUtc().addDays(-30)), 1);
+    EXPECT_TRUE(store.has(used)); // in use, however old its file
+    EXPECT_TRUE(store.has(recent));
+    EXPECT_FALSE(store.has(old));
+    EXPECT_EQ(store.forgetUnused({}, QDateTime::currentDateTimeUtc().addDays(-30)), 0);
+    EXPECT_TRUE(store.has(used)); // using it renewed its date
 }
 
 } // namespace

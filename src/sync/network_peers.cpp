@@ -119,6 +119,7 @@ void Network::connectionState(const PeerId &id, std::uint64_t generation, Connec
         flush(id);
     } else if (state == ConnectionState::Suspended) {
         peer->ready = false;
+        dropDownloadsFrom(id); // it may not come back soon
     } else if (state == ConnectionState::Failed || state == ConnectionState::Closed) {
         disconnectPeer(id, generation);
     }

@@ -39,6 +39,8 @@ Network::Network(Library &library, NetworkConfig config, QObject *parent,
     connect(&presenceTimer_, &QTimer::timeout, this, [this] { sendPresence(); });
     rotationTimer_.setInterval(config_.spaceRotation);
     connect(&rotationTimer_, &QTimer::timeout, this, &Network::rotateSpaces);
+    downloadTimer_.setInterval(std::chrono::seconds(5));
+    connect(&downloadTimer_, &QTimer::timeout, this, &Network::checkStalledDownloads);
     logTimer_.setInterval(std::chrono::seconds(1));
     connect(&logTimer_, &QTimer::timeout, this, [this] {
         if (const quint64 revision = ConnectionLog::instance().revision(); revision != logRevision_) {

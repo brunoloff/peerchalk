@@ -189,6 +189,12 @@ class Network : public QObject {
         std::optional<Presence> presence;
     };
     using PeerId = std::pair<QString, p2pdc::SigningPublicKey>;
+    // A PDF coming from one peer, piece by piece.
+    struct Download {
+        PeerId from;
+        QByteArray data;
+        QElapsedTimer quiet; // since the last piece came, or the request went
+    };
 
     // network.cpp: node, executor and spaces
     [[nodiscard]] p2pdc::Executor executor() const;
@@ -228,6 +234,9 @@ class Network : public QObject {
     void handleBlobChunk(const PeerId &id, Peer &peer, const BlobChunk &chunk);
     [[nodiscard]] bool blobSharedWith(const Peer &peer, const std::string &hash) const;
     void dropDownloadsFrom(const PeerId &id);
+    // Asks another peer for the rest of a download; false when there is no one to ask.
+    bool handOver(const std::string &hash, Download &download);
+    void checkStalledDownloads();
     // An owner of the board, here or connected and sharing it.
     [[nodiscard]] bool boardLive(const QUuid &board) const;
 
@@ -342,10 +351,7 @@ class Network : public QObject {
     bool restartNeeded_{false};
     QTimer logTimer_;
     quint64 logRevision_{0};
-    struct Download {
-        PeerId from;
-        QByteArray data;
-    };
+    QTimer downloadTimer_;
     std::map<std::string, Download> downloads_; // by blob hash, one peer each
 };
 

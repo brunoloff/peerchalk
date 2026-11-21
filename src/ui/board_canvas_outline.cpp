@@ -46,7 +46,7 @@ void BoardCanvas::showItem(const QString &columnId, const QString &itemId) {
         Viewport view;
         view.zoomAt({0.0F, 0.0F}, scale);
         view.panBy(w / 2.0F - (column.bounds.left + column.bounds.width() / 2.0F) * scale,
-                   marginPx - top * view.scale());
+                   static_cast<float>(topInset_) + marginPx / 2.0F - top * view.scale());
         pointerCancelled();
         viewport_ = view;
         viewUpdated();

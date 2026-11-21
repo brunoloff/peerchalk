@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <stdexcept>
 
 namespace peerchalk {
@@ -58,6 +59,7 @@ Library::Library(const QString &directory, QObject *parent)
       contacts_(new RowModel({"key", "name", "fingerprint", "verification"}, this)) {
     saveTimer_->setSingleShot(true);
     saveTimer_->setInterval(500);
+    QTimer::singleShot(std::chrono::minutes(2), this, [this] { forgetUnusedBlobs(); });
     connect(saveTimer_, &QTimer::timeout, this, &Library::saveBoards);
     ensureValidSelection();
     refreshProjects();

@@ -47,7 +47,8 @@ void addColumn(std::vector<Row> &rows, const PlacedColumn &placed, const ColumnS
                             {},
                             number,
                             item.bounds,
-                            item.pdf && missing && missing(item.pdf->blob)});
+                            item.pdf && missing && missing(item.pdf->blob),
+                            item.pdf ? item.pdf->blob : std::string()});
         else
             rows.push_back({"s" + item.id, Kind::Subheading, spec.id, item.id,
                             i < spec.items.size() ? spec.items[i].text : std::string(), 0,
@@ -107,6 +108,8 @@ QVariant PageOverlayModel::data(const QModelIndex &index, int role) const {
         return row.bounds.height();
     case Waiting:
         return row.waiting;
+    case Blob:
+        return QString::fromStdString(row.blob);
     default:
         return {};
     }
@@ -115,7 +118,7 @@ QVariant PageOverlayModel::data(const QModelIndex &index, int role) const {
 QHash<int, QByteArray> PageOverlayModel::roleNames() const {
     return {{KindRole, "kind"},     {Column, "columnId"}, {Item, "itemId"}, {Text, "label"},
             {Number, "number"},     {X, "itemX"},         {Y, "itemY"},     {Width, "itemWidth"},
-            {Height, "itemHeight"}, {Waiting, "waiting"}};
+            {Height, "itemHeight"}, {Waiting, "waiting"}, {Blob, "blob"}};
 }
 
 void PageOverlayModel::sync(const std::vector<Row> &rows) {

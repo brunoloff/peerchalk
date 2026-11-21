@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtQuick.Controls
 import Qt.labs.qmlmodels
 
 // What a page board shows over its pages: each column's heading (h1) with its pages and
@@ -162,16 +161,6 @@ Item {
                             horizontalAlignment: Text.AlignHCenter
                         }
 
-                        Text {
-                            anchors.centerIn: parent
-                            width: parent.width * 0.8
-                            visible: pageLabels.waiting
-                            text: qsTr("This page shows a PDF that has not reached this device yet. It comes from the others on this board.")
-                            wrapMode: Text.WordWrap
-                            horizontalAlignment: Text.AlignHCenter
-                            font.pixelSize: 22
-                            color: Theme.muted
-                        }
                     }
                 }
 
@@ -263,6 +252,29 @@ Item {
                             }
                         }
                     }
+                }
+            }
+
+            DelegateChoice {
+                roleValue: "page"
+
+                PdfWaitingPill {
+                    required property bool waiting
+                    required property string blob
+                    required property real itemX
+                    required property real itemY
+                    required property real itemWidth
+                    required property real itemHeight
+
+                    // The middle of the part of the page on screen.
+                    readonly property real shownTop: Math.max(0, itemY * overlay.canvas.zoom + overlay.offsetY)
+                    readonly property real shownBottom: Math.min(overlay.height,
+                        (itemY + itemHeight) * overlay.canvas.zoom + overlay.offsetY)
+
+                    visible: waiting && itemWidth * overlay.canvas.zoom > 160 && shownBottom - shownTop > 60
+                    hash: blob
+                    x: (itemX + itemWidth / 2) * overlay.canvas.zoom + overlay.offsetX - width / 2
+                    y: (shownTop + shownBottom) / 2 - height / 2
                 }
             }
 

@@ -5,6 +5,7 @@
 #include <QCryptographicHash>
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 
 #include <algorithm>
 #include <stdexcept>
@@ -38,6 +39,28 @@ QString BlobStore::put(const QByteArray &data) {
 
 bool BlobStore::has(const QString &hash) const {
     return isHash(hash) && QFile::exists(pathOf(hash));
+}
+
+int BlobStore::forgetUnused(const std::set<QString> &used, const QDateTime &unusedSince) {
+    const std::lock_guard lock(lock_);
+    int removed = 0;
+    const QStringList names = QDir(directory_).entryList(QDir::Files);
+    for (const QString &name : names) {
+        if (!isHash(name))
+            continue; // not a blob; left alone
+        QFile file(pathOf(name));
+        if (used.contains(name)) {
+            if (file.open(QIODevice::ReadWrite)) // the date has to change for the file to say so
+                file.setFileTime(QDateTime::currentDateTimeUtc(),
+                                 QFileDevice::FileModificationTime);
+            continue;
+        }
+        if (QFileInfo(file).lastModified() < unusedSince && file.remove()) {
+            loaded_.erase(name);
+            ++removed;
+        }
+    }
+    return removed;
 }
 
 std::shared_ptr<const Bytes> BlobStore::get(const QString &hash) const {

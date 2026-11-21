@@ -3,11 +3,13 @@
 #include "board/stroke_codec.hpp"
 
 #include <QByteArray>
+#include <QDateTime>
 #include <QString>
 
 #include <map>
 #include <memory>
 #include <mutex>
+#include <set>
 
 namespace peerchalk {
 
@@ -28,6 +30,9 @@ class BlobStore {
     // The blob's contents, shared by everyone holding them; null when it is missing, not a
     // hash, or no longer matches its hash.
     [[nodiscard]] std::shared_ptr<const Bytes> get(const QString &hash) const;
+    // Marks the blobs in use as used now, and deletes those unused since before `unusedSince`
+    // (a blob's file date records when it was last used). Returns how many were deleted.
+    int forgetUnused(const std::set<QString> &used, const QDateTime &unusedSince);
 
   private:
     [[nodiscard]] QString pathOf(const QString &hash) const;

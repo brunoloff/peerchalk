@@ -8,6 +8,7 @@
 #include <opendht.h>
 
 #include <QFile>
+#include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
 
@@ -76,6 +77,8 @@ struct Device {
         network->start();
     }
     void goOffline() {
+        if (!network)
+            return; // already offline
         network->shutdown(3s);
         network.reset();
     }
@@ -142,8 +145,22 @@ TEST_F(NetworkTest, BoardsTooLargeForOneMessageStillArrive) {
         << "the large board never arrived";
 }
 
+QByteArray bytesOf(const Bytes &bytes) {
+    return {reinterpret_cast<const char *>(bytes.data()), qsizetype(bytes.size())};
+}
+
+std::string firstPdfOf(Library &library, const QString &board) {
+    return library.document(QUuid::fromString(board))
+        .board()
+        .pages()
+        .columns()[1]
+        .items[0]
+        .pdf->blob;
+}
+
 TEST_F(NetworkTest, PageBoardsArriveWithTheirPdfs) {
     TwoMembers shared(dht_);
+    QSignalSpy progress(&shared.bob.library, &Library::blobProgressChanged);
     const QString board = shared.alice.library.createPageBoard("Reading", "A4", false, "blank");
     const Bytes pdf = test::samplePdf(700 * 1024); // several pieces
     ASSERT_TRUE(shared.alice.library.addPdf(
@@ -160,6 +177,34 @@ TEST_F(NetworkTest, PageBoardsArriveWithTheirPdfs) {
         << "the PDF never arrived";
     EXPECT_EQ(shared.bob.library.document(QUuid::fromString(board)).board().pages().kind(),
               BoardKind::Pages);
+    EXPECT_GE(progress.count(), 3); // it said how far it had got, piece by piece
+    EXPECT_TRUE(shared.bob.library.blobProgress(QString::fromStdString(blob)).isEmpty());
+}
+
+// Bob starts fetching a PDF; when the owner he fetches it from leaves, another owner who has
+// it sends the rest. (Boards, and their PDFs, travel only to and from owners.)
+TEST_F(NetworkTest, APdfComesFromSomeoneElseWhenItsSenderLeaves) {
+    TwoMembers shared(dht_);
+    Device carol(dht_);
+    shared.alice.library.setDisplayName("Alice");
+    carol.library.setDisplayName("Carol");
+    ASSERT_TRUE(shared.alice.library.addContact(carol.library.contactCode()));
+    shared.alice.library.setProjectRole(shared.project, carol.library.userKey(), "owner");
+    ASSERT_FALSE(
+        carol.library.joinInvite(shared.alice.library.projectInvite(shared.project)).isEmpty());
+    shared.bob.goOffline();
+    const QString board = shared.alice.library.createPageBoard("Reading", "A4", false, "blank");
+    ASSERT_TRUE(shared.alice.library.addPdf(board, bytesOf(test::samplePdf(8 << 20)), "big", {}));
+    const QString blob = QString::fromStdString(firstPdfOf(shared.alice.library, board));
+    ASSERT_TRUE(QTest::qWaitFor([&] { return carol.library.blobs().has(blob); }, timeoutMs));
+    shared.bob.goOnline();
+    ASSERT_TRUE(QTest::qWaitFor(
+        [&] { return shared.bob.library.blobProgress(blob).value("percent").toInt() > 0; },
+        timeoutMs));
+    const QString sender = shared.bob.library.blobProgress(blob).value("from").toString();
+    (sender == "Carol" ? carol : shared.alice).goOffline();
+    EXPECT_TRUE(QTest::qWaitFor([&] { return shared.bob.library.blobs().has(blob); }, timeoutMs))
+        << "the rest of the PDF never came from the one still here";
 }
 
 TEST_F(NetworkTest, EditsMadeWhileApartMergeAfterReconnecting) {

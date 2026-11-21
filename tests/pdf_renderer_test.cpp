@@ -4,6 +4,7 @@
 #include "ui/library.hpp"
 #include "ui/pdf_renderer.hpp"
 
+#include <QDateTime>
 #include <QFile>
 #include <QSignalSpy>
 #include <QTemporaryDir>
@@ -66,6 +67,20 @@ TEST(PdfRenderer, RendersWhatIsWantedAndOffersTheNearestSize) {
     EXPECT_FALSE(renderer.failed("0000"));
 }
 
+TEST(LibraryPdfs, SaysHowFarADownloadHasGot) {
+    QTemporaryDir dir;
+    Library library(dir.path());
+    QSignalSpy changed(&library, &Library::blobProgressChanged);
+    EXPECT_TRUE(library.blobProgress("abc").isEmpty());
+    library.setBlobProgress("abc", 256, 1024, "Ana");
+    EXPECT_EQ(library.blobProgress("abc")["percent"].toInt(), 25);
+    EXPECT_EQ(library.blobProgress("abc")["from"].toString(), "Ana");
+    library.endBlobProgress("abc");
+    library.endBlobProgress("abc"); // nothing more to say
+    EXPECT_TRUE(library.blobProgress("abc").isEmpty());
+    EXPECT_EQ(changed.count(), 2);
+}
+
 TEST(LibraryPdfs, AddsAPdfAsAColumnOfItsPages) {
     QTemporaryDir dir;
     Library library(dir.path());
@@ -95,6 +110,16 @@ TEST(LibraryPdfs, AddsAPdfAsAColumnOfItsPages) {
     ASSERT_EQ(startedPages.columns().size(), 1U);
     EXPECT_EQ(startedPages.columns()[0].title, "Lemma notes");
     EXPECT_EQ(library.boardName(started), "From a PDF");
+    const QString blob = QString::fromStdString(startedPages.columns()[0].items[0].pdf->blob);
+    const QString loose = library.blobs().put("no board shows this");
+    QFile looseFile(dir.path() + "/blobs/" + loose);
+    ASSERT_TRUE(looseFile.open(QIODevice::ReadWrite));
+    ASSERT_TRUE(looseFile.setFileTime(QDateTime::currentDateTimeUtc().addDays(-31),
+                                      QFileDevice::FileModificationTime));
+    looseFile.close();
+    EXPECT_EQ(library.forgetUnusedBlobs(), 1);
+    EXPECT_TRUE(library.blobs().has(blob));
+    EXPECT_FALSE(library.blobs().has(loose));
 }
 
 } // namespace

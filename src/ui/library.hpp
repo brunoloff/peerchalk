@@ -44,6 +44,8 @@ class Library : public QObject {
     Q_PROPERTY(QString sharedId READ sharedId CONSTANT)
     // Whether this build can show and import PDFs.
     Q_PROPERTY(bool pdfSupported READ pdfSupported CONSTANT)
+    // Grows whenever a PDF download from a peer makes progress (see blobProgress).
+    Q_PROPERTY(int blobProgressRevision READ blobProgressRevision NOTIFY blobProgressChanged)
     Q_PROPERTY(int sharedBoardCount READ sharedBoardCount NOTIFY workspaceChanged)
     Q_PROPERTY(QString currentProjectId READ currentProjectId WRITE setCurrentProjectId NOTIFY
                    currentProjectChanged)
@@ -138,6 +140,15 @@ class Library : public QObject {
     [[nodiscard]] static bool pdfSupported();
     // A blob arrived from a peer: pages waiting for it are drawn again.
     void blobArrived();
+    // Deletes the PDFs that no board has shown for 30 days; returns how many. The library
+    // does it two minutes after it opens.
+    int forgetUnusedBlobs();
+    // A PDF coming from a peer: {percent, from: the person's name}, or empty when none is.
+    Q_INVOKABLE [[nodiscard]] QVariantMap blobProgress(const QString &hash) const;
+    [[nodiscard]] int blobProgressRevision() const { return blobProgressRevision_; }
+    // For sync: how far a download has got, and that it ended (arrived or not).
+    void setBlobProgress(const QString &hash, qint64 received, qint64 total, const QString &from);
+    void endBlobProgress(const QString &hash);
     Q_INVOKABLE void renameBoard(const QString &boardId, const QString &name);
     Q_INVOKABLE void removeBoard(const QString &boardId);
     Q_INVOKABLE bool isBoardAdmin(const QString &boardId);
@@ -217,6 +228,7 @@ class Library : public QObject {
     void boardChanged(const QUuid &boardId);
     void errorOccurred(const QString &message);
     void customColorsChanged();
+    void blobProgressChanged();
 
   private:
     // Runs action, reporting a thrown error through errorOccurred; returns success.
@@ -233,6 +245,8 @@ class Library : public QObject {
 
     QString directory_;
     BlobStore blobs_;
+    std::map<QString, QVariantMap> blobProgress_;
+    int blobProgressRevision_{0};
     PdfRenderer *pdfRenderer_;
     int workspaceRevision_{0};
     IdentityStore identity_;

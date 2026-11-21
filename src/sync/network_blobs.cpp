@@ -3,11 +3,15 @@
 // SHA-256 matches, and given only to peers that share a board showing it.
 #include "sync/network.hpp"
 
+#include "sync/connection_log.hpp"
+
 #include "board/board_pages.hpp"
 #include "library/blob_store.hpp"
 #include "ui/library.hpp"
 
 #include <QtLogging>
+
+#include <algorithm>
 
 namespace peerchalk::sync {
 
@@ -30,7 +34,10 @@ void Network::requestMissingBlobs(const PeerId &id, Peer &peer, const QUuid &boa
         if (!BlobStore::isHash(QString::fromStdString(hash)) ||
             blobs.has(QString::fromStdString(hash)) || downloads_.contains(hash))
             continue;
-        downloads_.emplace(hash, Download{id, {}});
+        downloads_[hash] = Download{id, {}, {}};
+        downloads_[hash].quiet.start();
+        downloadTimer_.start();
+        library_.setBlobProgress(QString::fromStdString(hash), 0, 0, peer.user->name);
         queue(peer, BlobWant{rawHash(hash), 0});
         asked = true;
     }
@@ -67,6 +74,9 @@ void Network::handleBlobChunk(const PeerId &id, Peer &peer, const BlobChunk &chu
         return; // not asked for, or not the piece asked for
     QByteArray &data = download->second.data;
     data += chunk.data;
+    download->second.quiet.restart();
+    library_.setBlobProgress(QString::fromStdString(hash), data.size(),
+                             static_cast<qint64>(chunk.total), peer.user->name);
     if (static_cast<quint64>(data.size()) < chunk.total) {
         queue(peer, BlobWant{chunk.hash, static_cast<quint64>(data.size())});
         flush(id);
@@ -74,6 +84,7 @@ void Network::handleBlobChunk(const PeerId &id, Peer &peer, const BlobChunk &chu
     }
     const QByteArray complete = std::move(data);
     downloads_.erase(download);
+    library_.endBlobProgress(QString::fromStdString(hash));
     if (BlobStore::hashOf(complete).toStdString() != hash) {
         qWarning("PeerChalk: a peer sent a PDF that does not match its hash");
         return;
@@ -86,8 +97,48 @@ void Network::handleBlobChunk(const PeerId &id, Peer &peer, const BlobChunk &chu
     }
 }
 
+bool Network::handOver(const std::string &hash, Download &download) {
+    const PeerId from = download.from;
+    const auto other = std::ranges::find_if(peers_, [&](const auto &entry) {
+        const Peer &peer = *entry.second;
+        return entry.first != from && peer.ready && peer.user && blobSharedWith(peer, hash);
+    });
+    if (other == peers_.end())
+        return false;
+    logInfo(QStringLiteral("sync"), QStringLiteral("%1: goes on fetching a PDF from %2")
+                                        .arg(peerLabel(from), peerLabel(other->first)));
+    download.from = other->first;
+    download.quiet.restart();
+    queue(*other->second, BlobWant{rawHash(hash), static_cast<quint64>(download.data.size())});
+    flush(other->first);
+    return true;
+}
+
+// A peer left: its downloads go on from another peer that shares a board showing them, from
+// where they stopped, or end.
 void Network::dropDownloadsFrom(const PeerId &id) {
-    std::erase_if(downloads_, [&](const auto &entry) { return entry.second.from == id; });
+    for (auto it = downloads_.begin(); it != downloads_.end();) {
+        if (it->second.from != id || handOver(it->first, it->second)) {
+            ++it;
+            continue;
+        }
+        library_.endBlobProgress(QString::fromStdString(it->first));
+        it = downloads_.erase(it);
+    }
+}
+
+// A sender that went quiet may be gone without its connection saying so yet: after a while
+// its downloads go to someone else, when there is someone else.
+void Network::checkStalledDownloads() {
+    constexpr qint64 quietLimitMs = 15000;
+    if (downloads_.empty()) {
+        downloadTimer_.stop();
+        return;
+    }
+    for (auto &[hash, download] : downloads_) {
+        if (download.quiet.elapsed() > quietLimitMs)
+            handOver(hash, download);
+    }
 }
 
 } // namespace peerchalk::sync
