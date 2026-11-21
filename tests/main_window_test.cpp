@@ -1,6 +1,7 @@
 #include "ui/library.hpp"
 
 #include <QAbstractItemModel>
+#include <QPointer>
 #include <QQmlApplicationEngine>
 #include <QQmlError>
 #include <QQuickItem>
@@ -132,7 +133,13 @@ TEST_F(MainWindowTest, LoadsWithoutQmlWarnings) {
 
 // Opens every dialog on the current screens, then reports the QML warnings seen.
 void openEveryDialog(QQuickWindow *window) {
-    for (QObject *object : window->findChildren<QObject *>()) {
+    // Guarded: views may delete their delegates while the dialogs open and close.
+    QList<QPointer<QObject>> objects;
+    for (QObject *object : window->findChildren<QObject *>())
+        objects.append(object);
+    for (const QPointer<QObject> &object : objects) {
+        if (object.isNull())
+            continue;
         const QMetaObject *type = object->metaObject();
         if (!QByteArray(type->className()).contains("Dialog") || type->indexOfMethod("open()") < 0)
             continue;

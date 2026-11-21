@@ -50,6 +50,9 @@ class BoardCanvas : public QQuickItem {
     // background, pages}, left to right, for the column ruler.
     Q_PROPERTY(QAbstractItemModel *pageItems READ pageItems CONSTANT)
     Q_PROPERTY(QVariantList pageColumns READ pageColumns NOTIFY strokesChanged)
+    // The outline of a page board: per column {columnId, itemId: "", text, level: 1, pages}
+    // followed by its subheadings {columnId, itemId, text, level: 2}.
+    Q_PROPERTY(QVariantList pageOutline READ pageOutline NOTIFY strokesChanged)
     Q_PROPERTY(int strokeCount READ strokeCount NOTIFY strokesChanged)
     Q_PROPERTY(bool canUndo READ canUndo NOTIFY strokesChanged)
     // Panning and zooming only; a stroke already being drawn may finish.
@@ -82,6 +85,7 @@ class BoardCanvas : public QQuickItem {
     [[nodiscard]] const PageMap &pageMap() const { return pageMap_; }
     [[nodiscard]] QAbstractItemModel *pageItems() { return &overlay_; }
     [[nodiscard]] QVariantList pageColumns() const;
+    [[nodiscard]] QVariantList pageOutline() const;
     // What of a page board is in view and around it, for drawing.
     [[nodiscard]] PageView pageView() const;
     [[nodiscard]] int strokeCount() const;
@@ -143,8 +147,10 @@ class BoardCanvas : public QQuickItem {
                                     bool allPages);
     // background is "blank", "ruled", "squared" or "dotted".
     Q_INVOKABLE void setColumnBackground(const QString &columnId, const QString &background);
-    // Shows a column from its heading down, as large as fits the width.
+    // Shows a column from its heading down, at most as large as fits the width.
     Q_INVOKABLE void showColumn(const QString &columnId);
+    // Moves the view to an item of a column, keeping the zoom unless the column is wider.
+    Q_INVOKABLE void showItem(const QString &columnId, const QString &itemId);
 
     // Ends the undo step of a change made in several parts, such as a drag.
     Q_INVOKABLE void endTextBoxChange();

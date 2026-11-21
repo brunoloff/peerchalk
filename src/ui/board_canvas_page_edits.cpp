@@ -127,16 +127,7 @@ QVariantList BoardCanvas::pageColumns() const {
     return list;
 }
 
-void BoardCanvas::showColumn(const QString &columnId) {
-    for (const PlacedColumn &column : pageMap_.layout().columns) {
-        if (column.id != text(columnId))
-            continue;
-        const float w = column.bounds.width();
-        const float h = w * static_cast<float>(height() / std::max(1.0, width()));
-        showArea(QRectF(column.bounds.left, column.bounds.top, w, h));
-        return;
-    }
-}
+void BoardCanvas::showColumn(const QString &columnId) { showItem(columnId, {}); }
 
 void BoardCanvas::syncPageOverlay() {
     if (!pageBoard_) {

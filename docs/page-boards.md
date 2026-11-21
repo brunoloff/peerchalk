@@ -270,6 +270,7 @@ Work happens on the `page-boards` branch, one commit per finished piece.
       or all pages, background, add left/right, move, delete) and + between columns; "+ Page ·
       + Subheading" in the gaps and "+ Add page" at each column's end; subheadings with rename
       and remove; page numbers; the minimap shows pages; boards open on their first column.
-      The printed h1 is left to the ruler on screen (export will print it)
+      The printed h1 is left to the ruler on screen (export will print it); an outline of
+      columns and subheadings in the side panel jumps to them
 - [ ] M0 · PDFium trial on Linux first (pdfium-binaries), then CI for the other targets
       (needs a push, so ask first)

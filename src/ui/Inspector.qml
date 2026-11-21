@@ -134,8 +134,22 @@ Rectangle {
                 : qsTr("Drag to move around the board. With any tool you can also drag with the right or middle mouse button, scroll to pan, or hold Ctrl and scroll to zoom.")
         }
 
+        SectionLabel {
+            visible: inspector.canvas.pageBoard
+            text: qsTr("Outline")
+        }
+
+        PageOutline {
+            objectName: "pageOutline"
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            visible: inspector.canvas.pageBoard
+            canvas: inspector.canvas
+        }
+
         Item {
             Layout.fillHeight: true
+            visible: !inspector.canvas.pageBoard
         }
 
         NavigatorPanel {

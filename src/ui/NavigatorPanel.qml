@@ -72,9 +72,10 @@ ColumnLayout {
 
             RailButton {
                 implicitHeight: 40
-                text: qsTr("Fit all strokes (Shift+1)")
+                text: navigator.canvas.pageBoard ? qsTr("Fit all pages (Shift+1)")
+                                                 : qsTr("Fit all strokes (Shift+1)")
                 iconPath: Icons.fit
-                enabled: navigator.canvas.strokeCount > 0
+                enabled: navigator.canvas.strokeCount > 0 || navigator.canvas.pageBoard
                 onClicked: navigator.canvas.fitContent()
             }
         }

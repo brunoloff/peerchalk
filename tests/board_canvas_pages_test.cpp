@@ -153,6 +153,25 @@ TEST_F(BoardCanvasPagesTest, EditsColumnsAndItemsUnlessReadOnly) {
     EXPECT_EQ(document_.board().pages().columns().size(), 1U);
 }
 
+TEST_F(BoardCanvasPagesTest, OutlinesColumnsAndSubheadingsAndShowsThem) {
+    const std::string column = document_.board().pages().columns().at(0).id;
+    for (int i = 0; i < 6; ++i)
+        canvas_.addPage(QString::fromStdString(column), {});
+    canvas_.addSubheading(QString::fromStdString(column), {}, "Appendix");
+    const QVariantList outline = canvas_.pageOutline();
+    ASSERT_EQ(outline.size(), 2);
+    EXPECT_EQ(outline[0].toMap()["text"].toString(), "Notes");
+    EXPECT_EQ(outline[0].toMap()["pages"].toInt(), 7);
+    const QVariantMap appendix = outline[1].toMap();
+    EXPECT_EQ(appendix["level"].toInt(), 2);
+    canvas_.showItem(appendix["columnId"].toString(), appendix["itemId"].toString());
+    const std::optional<PlacedPage> last =
+        canvas_.pageMap().page(document_.board().pages().columns()[0].items[6].id);
+    EXPECT_GT(canvas_.visibleArea().top(), last->bounds.top); // past the pages above it
+    canvas_.showColumn(QString::fromStdString(column));
+    EXPECT_LT(canvas_.visibleArea().top(), 0.0);
+}
+
 TEST(PageOverlayRows, ListHeadingsSubheadingsGapsAndNumbersInTheArea) {
     Board board;
     board.pages().start(paperA4, "Notes");
