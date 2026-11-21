@@ -58,6 +58,16 @@ TEST_F(AccountStoreTest, RemembersWhetherToReopenTheLastAccount) {
     EXPECT_FALSE(store_.opensLastAccount());
 }
 
+TEST_F(AccountStoreTest, ChecksForUpdatesUntilToldNotTo) {
+    EXPECT_TRUE(store_.checksForUpdates()); // before any session file exists
+    const QString ana = store_.create(QStringLiteral("Ana"));
+    store_.setCurrent(ana);
+    EXPECT_TRUE(store_.checksForUpdates()); // a session file without the setting
+    store_.setChecksForUpdates(false);
+    EXPECT_FALSE(AccountStore(root_.path()).checksForUpdates());
+    EXPECT_EQ(store_.current(), ana); // the other settings stay
+}
+
 TEST_F(AccountStoreTest, RemovingAnAccountDeletesItAndSignsItOut) {
     const QString id = store_.create(QStringLiteral("Ana"));
     const QString directory = store_.directory(id);

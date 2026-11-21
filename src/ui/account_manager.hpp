@@ -41,6 +41,8 @@ class AccountManager : public QObject {
     // Whether the installed app reopens the signed-in account instead of the account screen.
     Q_PROPERTY(bool opensLastAccount READ opensLastAccount WRITE setOpensLastAccount NOTIFY
                    opensLastAccountChanged)
+    Q_PROPERTY(bool checksForUpdates READ checksForUpdates WRITE setChecksForUpdates NOTIFY
+                   checksForUpdatesChanged)
     // In browsers, the visitor's computer system ("Linux", "Windows" or "macOS") for the
     // download button; "" elsewhere, on phones and when unknown.
     Q_PROPERTY(QString visitorSystem READ visitorSystem CONSTANT)
@@ -60,6 +62,8 @@ class AccountManager : public QObject {
     [[nodiscard]] static QString siteUrl();
     [[nodiscard]] bool opensLastAccount() const;
     void setOpensLastAccount(bool opens);
+    [[nodiscard]] bool checksForUpdates() const;
+    void setChecksForUpdates(bool checks);
     [[nodiscard]] static QString visitorSystem();
     [[nodiscard]] QString pendingBoardName() const;
     [[nodiscard]] bool hasPendingBoardLink() const { return !pendingBoardLink_.isEmpty(); }
@@ -99,6 +103,7 @@ class AccountManager : public QObject {
     void accountsChanged();
     void pendingBoardLinkChanged();
     void opensLastAccountChanged();
+    void checksForUpdatesChanged();
     void errorOccurred(const QString &message);
     void noticeOccurred(const QString &message);
     void importFileReady();

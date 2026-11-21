@@ -4,7 +4,8 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-// The left column of the home screen: the app name, the projects, and you (opening the settings).
+// The left column of the home screen: the way back to the accounts, the app name with any
+// update, the projects, and you (opening the settings).
 Rectangle {
     id: sidebar
 
@@ -30,20 +31,38 @@ Rectangle {
         spacing: 16
 
         RowLayout {
-            spacing: 10
+            Layout.fillWidth: true
+            spacing: 8
 
-            Rectangle {
-                implicitWidth: 28
-                implicitHeight: 28
-                radius: 7
-                color: Theme.ink
+            ToolButton {
+                Layout.leftMargin: -6
+                implicitWidth: 32
+                implicitHeight: 32
+                Accessible.name: qsTr("Back to the accounts")
+                ToolTip.visible: hovered
+                ToolTip.text: Accessible.name
+                ToolTip.delay: 400
+                onClicked: Accounts.signOut()
 
-                Icon {
-                    anchors.centerIn: parent
-                    path: "M5 15c3-6 6 2 9-4s3-3 5-2"
-                    color: Theme.background
-                    lineWidth: 2.4
+                contentItem: Item {
+                    Icon {
+                        anchors.centerIn: parent
+                        path: Icons.chevronLeft
+                        color: Theme.ink
+                        lineWidth: 2
+                    }
                 }
+            }
+
+            Image {
+                Layout.preferredWidth: 32
+                Layout.preferredHeight: 32
+                source: "qrc:/PeerChalk/peerchalk-logo.png"
+                sourceSize: Qt.size(128, 128)
+                fillMode: Image.PreserveAspectFit
+                mipmap: true
+                Accessible.role: Accessible.Graphic
+                Accessible.name: qsTr("PeerChalk icon")
             }
 
             Label {
@@ -53,6 +72,12 @@ Rectangle {
                 font.weight: Font.DemiBold
                 color: Theme.ink
             }
+
+            Item {
+                Layout.fillWidth: true
+            }
+
+            UpdateBadge {}
         }
 
         RowLayout {

@@ -12,6 +12,7 @@
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
+#include <QQmlEngine>
 #ifndef __EMSCRIPTEN__
 #include <QProcess>
 #endif
@@ -23,11 +24,13 @@
 namespace peerchalk {
 namespace {
 
-const QUrl latestReleaseApi(
-    QStringLiteral("https://api.github.com/repos/brunoloff/peerchalk/releases/latest"));
 constexpr int transferTimeoutMs = 60000;
 
 } // namespace
+
+QUrl latestReleaseApi() {
+    return QUrl(QStringLiteral("https://api.github.com/repos/brunoloff/peerchalk/releases/latest"));
+}
 
 std::optional<LatestRelease> parseLatestRelease(const QByteArray &json) {
     const QJsonObject release = QJsonDocument::fromJson(json).object();
@@ -64,15 +67,20 @@ QByteArray listedChecksum(const QByteArray &sums, const QString &file) {
     return {};
 }
 
-AppUpdater::AppUpdater(QString appImage, QObject *parent)
-    : QObject(parent), appImage_(std::move(appImage)), network_(new QNetworkAccessManager(this)) {
+AppUpdater::AppUpdater(QString appImage, QUrl releaseApi, QObject *parent)
+    : QObject(parent), appImage_(std::move(appImage)), releaseApi_(std::move(releaseApi)),
+      network_(new QNetworkAccessManager(this)) {
     network_->setTransferTimeout(transferTimeoutMs);
 }
 
 AppUpdater::~AppUpdater() = default;
 
-AppUpdater *AppUpdater::create(QQmlEngine *, QJSEngine *) {
-    return new AppUpdater(qEnvironmentVariable("APPIMAGE"));
+AppUpdater *AppUpdater::create(QQmlEngine *engine, QJSEngine *) {
+    auto *shared = engine->property("appUpdater").value<AppUpdater *>();
+    if (shared == nullptr)
+        return new AppUpdater(qEnvironmentVariable("APPIMAGE"));
+    QJSEngine::setObjectOwnership(shared, QJSEngine::CppOwnership);
+    return shared;
 }
 
 QNetworkReply *AppUpdater::get(const QUrl &url) {
@@ -97,20 +105,46 @@ void AppUpdater::check() {
     if (status_ == Status::Checking || status_ == Status::Downloading)
         return;
     setStatus(Status::Checking);
-    QNetworkReply *reply = get(latestReleaseApi);
+    startCheck(false);
+}
+
+void AppUpdater::checkQuietly() {
+    if (status_ == Status::Idle && !checking_)
+        startCheck(true);
+}
+
+// An asked-for check takes over a quiet one already under way and reports its answer.
+void AppUpdater::startCheck(bool quiet) {
+    quiet_ = quiet;
+    if (checking_)
+        return;
+    checking_ = true;
+    QNetworkReply *reply = get(releaseApi_);
     connect(reply, &QNetworkReply::finished, this, [this, reply] { finishCheck(reply); });
 }
 
 void AppUpdater::finishCheck(QNetworkReply *reply) {
     reply->deleteLater();
+    checking_ = false;
     if (reply->error() != QNetworkReply::NoError)
-        return fail(tr("Could not reach GitHub: %1").arg(reply->errorString()));
+        return settleCheck(Status::Failed,
+                           tr("Could not reach GitHub: %1").arg(reply->errorString()));
     const std::optional<LatestRelease> release = parseLatestRelease(reply->readAll());
     if (!release)
-        return fail(tr("GitHub's answer did not name a release."));
+        return settleCheck(Status::Failed, tr("GitHub's answer did not name a release."));
     latest_ = *release;
-    setStatus(isNewerVersion(latest_.version, DesktopLauncher::appVersion()) ? Status::Available
-                                                                             : Status::UpToDate);
+    settleCheck(isNewerVersion(latest_.version, DesktopLauncher::appVersion()) ? Status::Available
+                                                                               : Status::UpToDate);
+}
+
+// A quiet check that found nothing new leaves no trace beyond a line in the log.
+void AppUpdater::settleCheck(Status status, const QString &problem) {
+    if (quiet_ && status != Status::Available) {
+        if (!problem.isEmpty())
+            qInfo("PeerChalk skipped its update check: %s", qPrintable(problem));
+        return setStatus(Status::Idle);
+    }
+    setStatus(status, problem);
 }
 
 void AppUpdater::install() {

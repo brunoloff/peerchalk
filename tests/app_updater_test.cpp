@@ -1,6 +1,9 @@
 #include "ui/app_updater.hpp"
 
+#include <QFile>
+#include <QSignalSpy>
 #include <QSysInfo>
+#include <QTemporaryDir>
 
 #include <gtest/gtest.h>
 
@@ -53,6 +56,61 @@ TEST(AppUpdater, InstallsOnlyFromAnAppImage) {
     EXPECT_FALSE(AppUpdater({}).canInstall());
     EXPECT_TRUE(AppUpdater(QStringLiteral("/tmp/peerchalk.AppImage")).canInstall());
     EXPECT_EQ(AppUpdater({}).status(), AppUpdater::Status::Idle); // nothing contacted yet
+}
+
+// Answers like GitHub's API, from a file the test writes.
+class AppUpdaterCheckTest : public ::testing::Test {
+  protected:
+    QUrl answer(const QByteArray &json) {
+        QFile file(dir_.filePath(QStringLiteral("latest.json")));
+        EXPECT_TRUE(file.open(QIODevice::WriteOnly));
+        file.write(json);
+        return QUrl::fromLocalFile(file.fileName());
+    }
+    QUrl missing() { return QUrl::fromLocalFile(dir_.filePath(QStringLiteral("missing.json"))); }
+
+    static void waitForCheck(AppUpdater &updater) {
+        QSignalSpy changed(&updater, &AppUpdater::changed);
+        while (updater.status() == AppUpdater::Status::Checking || changed.isEmpty())
+            ASSERT_TRUE(changed.wait(5000));
+    }
+
+    QTemporaryDir dir_;
+};
+
+TEST_F(AppUpdaterCheckTest, AQuietCheckAnnouncesANewerVersion) {
+    AppUpdater updater({}, answer(R"({"tag_name": "v999.0", "html_url": "https://a.example"})"));
+    updater.checkQuietly();
+    EXPECT_EQ(updater.status(), AppUpdater::Status::Idle); // nothing shows while it asks
+    waitForCheck(updater);
+    EXPECT_EQ(updater.status(), AppUpdater::Status::Available);
+    EXPECT_EQ(updater.latestVersion(), QStringLiteral("999.0"));
+}
+
+TEST_F(AppUpdaterCheckTest, AQuietCheckStaysSilentWhenUpToDateOrUnreachable) {
+    AppUpdater upToDate({}, answer(R"({"tag_name": "v0.0.1"})"));
+    upToDate.checkQuietly();
+    waitForCheck(upToDate);
+    EXPECT_EQ(upToDate.status(), AppUpdater::Status::Idle);
+    AppUpdater offline({}, missing());
+    offline.checkQuietly();
+    waitForCheck(offline);
+    EXPECT_EQ(offline.status(), AppUpdater::Status::Idle);
+    EXPECT_TRUE(offline.problem().isEmpty());
+}
+
+TEST_F(AppUpdaterCheckTest, AnAskedForCheckReportsWhatItFound) {
+    AppUpdater offline({}, missing());
+    offline.check();
+    EXPECT_EQ(offline.status(), AppUpdater::Status::Checking);
+    waitForCheck(offline);
+    EXPECT_EQ(offline.status(), AppUpdater::Status::Failed);
+    EXPECT_FALSE(offline.problem().isEmpty());
+    AppUpdater upToDate({}, answer(R"({"tag_name": "v0.0.1"})"));
+    upToDate.checkQuietly();
+    upToDate.check(); // asking during a quiet check takes over its answer
+    waitForCheck(upToDate);
+    EXPECT_EQ(upToDate.status(), AppUpdater::Status::UpToDate);
 }
 
 } // namespace

@@ -43,7 +43,8 @@ QQuickWindow *rootWindow(QQmlApplicationEngine *engine) {
 } // namespace
 
 AppController::AppController(InstanceSlot &slot, QObject *parent)
-    : QObject(parent), slot_(slot), accounts_(slot.root()) {
+    : QObject(parent), slot_(slot), accounts_(slot.root()),
+      updater_(qEnvironmentVariable("APPIMAGE")) {
     accounts_.setOtherInstancesCheck([this] { return slot_.othersRunning(); });
     // Queued: these requests come from QML that the swap is about to destroy.
     connect(&accounts_, &AccountManager::openRequested, this, &AppController::showAccount,
@@ -65,6 +66,8 @@ void AppController::start(const QString &boardLink) {
     const bool reopen = false;
 #else
     const bool reopen = !current.isEmpty() && accounts_.store().opensLastAccount();
+    if (accounts_.store().checksForUpdates())
+        updater_.checkQuietly();
 #endif
     if (reopen)
         showAccount(current);
@@ -101,6 +104,7 @@ void AppController::showAccount(const QString &id) {
 void AppController::load(const char *type, const QString &accountDirectory) {
     auto engine = std::make_unique<QQmlApplicationEngine>();
     engine->setProperty("accountManager", QVariant::fromValue(&accounts_));
+    engine->setProperty("appUpdater", QVariant::fromValue(&updater_));
     engine->setProperty("accountDirectory", accountDirectory);
     engine->setProperty("instanceLink", QVariant::fromValue(instanceLink_.get()));
     connect(

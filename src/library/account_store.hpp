@@ -61,6 +61,9 @@ class AccountStore {
     // Whether the installed app skips the account screen and reopens the signed-in account.
     [[nodiscard]] bool opensLastAccount() const;
     void setOpensLastAccount(bool opens);
+    // Whether the installed app asks GitHub for a newer release when it starts; on by default.
+    [[nodiscard]] bool checksForUpdates() const;
+    void setChecksForUpdates(bool checks);
 
   private:
     [[nodiscard]] QString accountsDirectory() const;

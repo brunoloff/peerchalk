@@ -80,6 +80,15 @@ TEST_F(AccountManagerTest, ChangingWhetherToReopenTheLastAccountIsAnnouncedOnce)
     EXPECT_TRUE(AccountManager(root_.path()).opensLastAccount());
 }
 
+TEST_F(AccountManagerTest, TurningOffUpdateChecksIsAnnouncedOnce) {
+    QSignalSpy changed(&accounts_, &AccountManager::checksForUpdatesChanged);
+    EXPECT_TRUE(accounts_.checksForUpdates());
+    accounts_.setChecksForUpdates(false);
+    accounts_.setChecksForUpdates(false);
+    EXPECT_EQ(changed.size(), 1);
+    EXPECT_FALSE(AccountManager(root_.path()).checksForUpdates());
+}
+
 TEST(SystemFromUserAgent, NamesComputersAndLeavesOutPhones) {
     EXPECT_EQ(systemFromUserAgent(QStringLiteral(
                   "Mozilla/5.0 (X11; Linux x86_64; rv:140.0) Gecko/20100101 Firefox/140.0")),

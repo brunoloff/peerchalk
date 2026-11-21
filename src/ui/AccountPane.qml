@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-// Settings → Account: backups of this account, and signing out.
+// Settings → Account: backups of this account, and how this device looks for updates.
 Item {
     id: pane
 
@@ -85,13 +85,29 @@ Item {
 
                 SectionLabel {
                     Layout.topMargin: 12
-                    text: qsTr("This device")
+                    visible: Qt.platform.os !== "wasm"
+                    text: qsTr("Updates")
+                }
+
+                CheckBox {
+                    Layout.leftMargin: -6
+                    visible: Qt.platform.os !== "wasm"
+                    text: qsTr("Check for a newer PeerChalk when the app starts")
+                    checked: Accounts.checksForUpdates
+                    onToggled: Accounts.checksForUpdates = checked
                 }
 
                 PaperButton {
                     Layout.fillWidth: true
-                    text: qsTr("Sign out")
-                    onClicked: signOutDialog.open()
+                    visible: Qt.platform.os !== "wasm"
+                    enabled: Updates.status !== Updates.Status.Checking
+                        && Updates.status !== Updates.Status.Downloading
+                    text: qsTr("Check for updates now")
+                    onClicked: Updates.check()
+                }
+
+                UpdateStatus {
+                    Layout.fillWidth: true
                 }
             }
         }
@@ -101,15 +117,6 @@ Item {
         id: backups
 
         onPeopleImported: people => Library.importPeople(people)
-    }
-
-    ConfirmDialog {
-        id: signOutDialog
-
-        title: qsTr("Sign out?")
-        message: qsTr("You will go offline. The account stays on this device, and anyone using it can open it again. On a shared computer, save a backup and then remove the account from the account screen.")
-        confirmText: qsTr("Sign out")
-        onConfirmed: Accounts.signOut()
     }
 
     Toast {

@@ -214,6 +214,15 @@ void AccountStore::setOpensLastAccount(bool opens) {
     updateSession(QStringLiteral("openLastAccount"), opens);
 }
 
+bool AccountStore::checksForUpdates() const {
+    const auto session = readJsonObject(sessionPath(root_), formatVersion);
+    return !session || session->value(QStringLiteral("checkForUpdates")).toBool(true);
+}
+
+void AccountStore::setChecksForUpdates(bool checks) {
+    updateSession(QStringLiteral("checkForUpdates"), checks);
+}
+
 // session.json holds several settings; each change keeps the others.
 void AccountStore::updateSession(const QString &key, const QJsonValue &value) {
     QJsonObject session = readJsonObject(sessionPath(root_), formatVersion).value_or(QJsonObject());

@@ -3,6 +3,7 @@
 #include "library/instance_slot.hpp"
 #include "sync/instance_link.hpp"
 #include "ui/account_manager.hpp"
+#include "ui/app_updater.hpp"
 
 #include <QObject>
 #include <QQmlApplicationEngine>
@@ -33,6 +34,7 @@ class AppController : public QObject {
 
     InstanceSlot &slot_;
     AccountManager accounts_;
+    AppUpdater updater_;
     std::unique_ptr<sync::InstanceLink> instanceLink_;
     std::unique_ptr<QQmlApplicationEngine> engine_;
     bool inAccount_{false};

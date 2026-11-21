@@ -33,11 +33,15 @@ struct LatestRelease {
 [[nodiscard]] QString appImageFileName(const QString &version);
 // The checksum SHA256SUMS lists for a file, in hex; "" when it is not listed.
 [[nodiscard]] QByteArray listedChecksum(const QByteArray &sums, const QString &file);
+// GitHub's API address for PeerChalk's latest release.
+[[nodiscard]] QUrl latestReleaseApi();
 
 // Finds out, when asked, whether GitHub has a newer release of PeerChalk. An AppImage can
 // then fetch the new AppImage, check it against the release's SHA256SUMS and put it in place
 // of the running one; other installations are pointed to the release page. Nothing is
-// contacted before check() is called.
+// contacted before check() or checkQuietly() is called. The app shares one updater between
+// its windows, so a check or download carries on when the account screen and an account
+// swap places.
 class AppUpdater : public QObject {
     Q_OBJECT
     QML_NAMED_ELEMENT(Updates)
@@ -54,7 +58,8 @@ class AppUpdater : public QObject {
     Q_ENUM(Status)
 
     // appImage: the AppImage file this copy runs from, or "" when it is not one.
-    explicit AppUpdater(QString appImage, QObject *parent = nullptr);
+    explicit AppUpdater(QString appImage, QUrl releaseApi = latestReleaseApi(),
+                        QObject *parent = nullptr);
     ~AppUpdater() override;
     static AppUpdater *create(QQmlEngine *engine, QJSEngine *scriptEngine);
 
@@ -66,6 +71,8 @@ class AppUpdater : public QObject {
     [[nodiscard]] bool canInstall() const { return !appImage_.isEmpty(); }
 
     Q_INVOKABLE void check();
+    // A check at startup: the status changes only when a newer version is found.
+    void checkQuietly();
     // Fetches and puts in place the latest AppImage; installed follows.
     Q_INVOKABLE void install();
     // Starts the installed AppImage and quits this one.
@@ -76,7 +83,9 @@ class AppUpdater : public QObject {
     void installed(const QString &appImage);
 
   private:
+    void startCheck(bool quiet);
     void finishCheck(QNetworkReply *reply);
+    void settleCheck(Status status, const QString &problem = {});
     void downloadAppImage(const QByteArray &checksum);
     void finishAppImage(QNetworkReply *reply, const QByteArray &checksum);
     QNetworkReply *get(const QUrl &url);
@@ -84,10 +93,13 @@ class AppUpdater : public QObject {
     void fail(const QString &problem);
 
     QString appImage_;
+    QUrl releaseApi_;
     QString installedPath_;
     QNetworkAccessManager *network_;
     LatestRelease latest_;
     Status status_{Status::Idle};
+    bool checking_{false};
+    bool quiet_{false};
     double progress_{0};
     QString problem_;
     std::unique_ptr<QSaveFile> download_;

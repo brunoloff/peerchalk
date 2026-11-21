@@ -101,6 +101,15 @@ void AccountManager::setOpensLastAccount(bool opens) {
         emit opensLastAccountChanged();
 }
 
+bool AccountManager::checksForUpdates() const { return store_.checksForUpdates(); }
+
+void AccountManager::setChecksForUpdates(bool checks) {
+    if (checks == checksForUpdates())
+        return;
+    if (attempt([&] { store_.setChecksForUpdates(checks); }))
+        emit checksForUpdatesChanged();
+}
+
 QString AccountManager::visitorSystem() {
 #ifdef __EMSCRIPTEN__
     return systemFromUserAgent(pageUserAgent());

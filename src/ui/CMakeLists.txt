@@ -49,7 +49,7 @@ qt_add_qml_module(peerchalk_ui URI PeerChalk VERSION 1.0
         NetworkStatus.qml PersonRoleRow.qml RequestsDialog.qml SettingsPage.qml
         NetworkPane.qml SettingField.qml PaperTab.qml ColorPalette.qml
         AccountsWindow.qml AccountRow.qml AccountMenu.qml AccountChooser.qml ContinueButton.qml
-        WelcomeLogo.qml WelcomeAbout.qml WelcomeFact.qml ReadyMark.qml UpdateStatus.qml
+        WelcomeLogo.qml WelcomeAbout.qml WelcomeFact.qml ReadyMark.qml UpdateStatus.qml UpdateBadge.qml
         AccountPane.qml BackupFlow.qml PassphraseDialog.qml
         BoardLinkSection.qml SiteLinks.qml EquationPanel.qml BoardShortcuts.qml TroubleshootingPane.qml
         TextBoxLayer.qml TextBoxView.qml TextBoxChrome.qml PdfExportButton.qml
