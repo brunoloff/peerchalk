@@ -25,6 +25,9 @@ enum class BoardKind : std::uint8_t { Infinite, Pages };
 // race to create it. Everything is found by id, so a peer's entries this version cannot
 // read are skipped without shifting anything.
 //
+// Pages showing a PDF have the keys pdf (the blob) and pdfPage, and always their own size;
+// paper changes never resize them.
+//
 // Edits are local changes: each structural edit is its own undo step, and strokes follow the
 // Board's gestures. Unknown ids are ignored; invalid input throws std::invalid_argument.
 // Text boxes on pages are the Board's, with TextBox::page set; removing a page removes them.
@@ -61,6 +64,14 @@ class BoardPages {
     void removeItem(const std::string &columnId, const std::string &itemId);
     void setSubheadingText(const std::string &columnId, const std::string &itemId,
                            const std::string &text);
+    // Adds a column before the column `before` (or last) with one page per page of a PDF,
+    // in order, each the size given; the column's paper is the most common of them. blob is
+    // the PDF's SHA-256 in hex. Returns the column's id. Throws std::invalid_argument for no
+    // pages, an empty blob or an invalid size.
+    std::string addPdfColumn(const std::string &before, const std::string &title,
+                             const std::string &blob, const std::vector<PaperSize> &pageSizes);
+    // The PDFs that pages show, by blob.
+    [[nodiscard]] std::set<std::string> pdfBlobs() const;
     // Moves an item before the item `before` of column `toColumn` (or last); a page keeps its
     // strokes. Yrs has no move, so the item is removed and inserted again: a peer's change
     // to that same item at the same moment is lost.

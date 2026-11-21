@@ -18,6 +18,7 @@ struct PlacedPage {
     std::string column;
     Bounds bounds;
     PageBackground background;
+    std::optional<PdfSource> pdf{};
 };
 
 // A page board's layout with its pages found by id or by position. refresh() lays the board

@@ -43,7 +43,8 @@ PlacedColumn placeColumn(const ColumnSpec &spec, float left, const LayoutMetrics
         }
         const PaperSize size = item.size.value_or(spec.paper);
         const float x = left + (width - size.width) / 2.0F;
-        column.items.push_back({item.id, item.kind, {x, y, x + size.width, y + size.height}});
+        column.items.push_back(
+            {item.id, item.kind, {x, y, x + size.width, y + size.height}, item.pdf});
         y += size.height;
     }
     column.insertSlots.push_back({spec.items.size(), {left, y, right, y + metrics.itemGap}});

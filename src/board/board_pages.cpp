@@ -175,7 +175,8 @@ void BoardPages::setPageSize(const std::string &columnId, const std::string &pag
         const Branch *items = columnItems(native_, txn.get(), columnId);
         const auto index = items ? indexOf(items, txn.get(), pageId) : std::nullopt;
         const Branch *page = index ? mapAt(items, txn.get(), *index) : nullptr;
-        if (page != nullptr && mapString(page, txn.get(), "kind") == "page")
+        if (page != nullptr && mapString(page, txn.get(), "kind") == "page" &&
+            mapString(page, txn.get(), "pdf").empty()) // PDF pages keep their PDF's size
             setOwnSize(page, txn.get(), size);
     }
     yundo_manager_stop(native_.undo.get());

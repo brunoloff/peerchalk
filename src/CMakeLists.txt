@@ -2,10 +2,22 @@
 add_library(peerchalk_board STATIC board/stroke.cpp board/stroke_mesh.cpp board/viewport.cpp
     board/board.cpp board/board_text.cpp board/rich_text.cpp board/stroke_codec.cpp board/stroke_builder.cpp
     board/page_layout.cpp board/page_map.cpp board/board_pages.cpp board/board_page_strokes.cpp
-    board/board_pages_native.cpp board/board_page_moves.cpp)
+    board/board_pages_native.cpp board/board_page_moves.cpp board/board_page_pdfs.cpp)
 target_include_directories(peerchalk_board PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(peerchalk_board PRIVATE peerchalk_yrs)
 target_compile_options(peerchalk_board PRIVATE
+    $<$<CXX_COMPILER_ID:GNU,Clang>:${peerchalk_warning_flags}>)
+
+# PDFs through PDFium, or a stand-in that refuses them where PDFium is missing.
+if(TARGET peerchalk_pdfium)
+    add_library(peerchalk_pdf STATIC pdf/pdf_document.cpp)
+    target_link_libraries(peerchalk_pdf PRIVATE peerchalk_pdfium)
+else()
+    add_library(peerchalk_pdf STATIC pdf/pdf_document_none.cpp)
+endif()
+target_include_directories(peerchalk_pdf PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+target_link_libraries(peerchalk_pdf PUBLIC peerchalk_board)
+target_compile_options(peerchalk_pdf PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:${peerchalk_warning_flags}>)
 
 # Local projects, boards and identity: Qt Core plus p2pdc for keys and secrets.

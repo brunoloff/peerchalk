@@ -36,11 +36,20 @@ enum class PageBackground : std::uint8_t { Blank, Ruled, Squared, Dotted };
 // What a column holds, top to bottom: pages and subheadings (h2).
 enum class ColumnItemKind : std::uint8_t { Page, Subheading };
 
+// A page of a PDF shown under a page's ink. The PDF is a blob found by its SHA-256 (hex).
+struct PdfSource {
+    std::string blob;
+    int page{0};
+
+    bool operator==(const PdfSource &) const = default;
+};
+
 struct ColumnItem {
     std::string id;
     ColumnItemKind kind{ColumnItemKind::Page};
-    std::optional<PaperSize> size; // pages only; none: the column's paper
-    std::string text{};            // subheadings only
+    std::optional<PaperSize> size;  // pages only; none: the column's paper
+    std::string text{};             // subheadings only
+    std::optional<PdfSource> pdf{}; // pages showing a PDF page; they keep their own size
 };
 
 // A column of a page board: its paper sets its width and the size of its pages.
@@ -64,6 +73,7 @@ struct PlacedItem {
     std::string id;
     ColumnItemKind kind;
     Bounds bounds;
+    std::optional<PdfSource> pdf{};
 };
 
 // Where something can be added: an item before index `index` of a column, or a column

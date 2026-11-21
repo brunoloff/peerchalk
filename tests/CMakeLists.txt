@@ -10,6 +10,14 @@ target_compile_options(peerchalk_board_tests PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:${peerchalk_warning_flags}>)
 gtest_discover_tests(peerchalk_board_tests)
 
+if(TARGET peerchalk_pdfium)
+    add_executable(peerchalk_pdf_tests pdf_document_test.cpp)
+    target_link_libraries(peerchalk_pdf_tests PRIVATE peerchalk_pdf GTest::gtest_main)
+    target_compile_options(peerchalk_pdf_tests PRIVATE
+        $<$<CXX_COMPILER_ID:GNU,Clang>:${peerchalk_warning_flags}>)
+    gtest_discover_tests(peerchalk_pdf_tests)
+endif()
+
 add_executable(peerchalk_library_tests codes_test.cpp workspace_test.cpp
     identity_store_test.cpp signatures_test.cpp access_log_test.cpp files_test.cpp
     account_store_test.cpp backup_test.cpp instance_slot_test.cpp)

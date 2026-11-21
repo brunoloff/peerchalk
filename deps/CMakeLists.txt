@@ -1,6 +1,6 @@
 # Downloads and builds what PeerChalk links, at pinned versions, into CMAKE_INSTALL_PREFIX:
-# p2p-discovery-connect's dependencies, Yrs and the math engine. Qt, Emscripten and Rust come from
-# tools/setup.sh. Use the "deps" and "deps-web" presets.
+# p2p-discovery-connect's dependencies, Yrs, the math engine and PDFium. Qt, Emscripten and
+# Rust come from tools/setup.sh. Use the "deps" and "deps-web" presets.
 cmake_minimum_required(VERSION 3.25)
 project(peerchalk_dependencies LANGUAGES C CXX)
 
@@ -108,4 +108,21 @@ if(APPLE)
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
         CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${prefix}
             -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0 -DBUILD_GMOCK=OFF -DINSTALL_GTEST=ON)
+endif()
+
+# PDFium shows and exports PDFs, prebuilt by pdfium-binaries (BSD-3-Clause and Apache-2.0).
+# Only Linux x64 is listed so far; other platforms build without PDF support until theirs is.
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64")
+    ExternalProject_Add(pdfium
+        URL https://github.com/bblanchon/pdfium-binaries/releases/download/chromium%2F8125/pdfium-linux-x64.tgz
+        URL_HASH SHA256=e1c3ce6e270cb5e0c20816b379ad9f2c1309972697c505f508de92bf5e7d6659
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+        CONFIGURE_COMMAND ""
+        BUILD_COMMAND ""
+        INSTALL_COMMAND ${CMAKE_COMMAND} -E make_directory ${prefix}/include/pdfium ${prefix}/lib
+            ${prefix}/share/licenses/pdfium
+            COMMAND ${CMAKE_COMMAND} -E copy_directory <SOURCE_DIR>/include ${prefix}/include/pdfium
+            COMMAND ${CMAKE_COMMAND} -E copy <SOURCE_DIR>/lib/libpdfium.so ${prefix}/lib
+            COMMAND ${CMAKE_COMMAND} -E copy_directory <SOURCE_DIR>/licenses
+                ${prefix}/share/licenses/pdfium)
 endif()

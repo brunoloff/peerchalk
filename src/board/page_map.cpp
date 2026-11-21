@@ -30,7 +30,7 @@ void PageMap::clear() {
 PlacedPage PageMap::placed(ItemRef ref) const {
     const PlacedColumn &column = layout_.columns[ref.column];
     const PlacedItem &item = column.items[ref.item];
-    return {item.id, column.id, item.bounds, column.background};
+    return {item.id, column.id, item.bounds, column.background, item.pdf};
 }
 
 std::optional<PlacedPage> PageMap::page(const std::string &id) const {

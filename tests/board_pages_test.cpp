@@ -2,6 +2,7 @@
 
 #include <gtest/gtest.h>
 
+#include <set>
 #include <stdexcept>
 
 namespace peerchalk {
@@ -264,6 +265,36 @@ TEST_F(BoardPagesTest, GivesAPageItsOwnSizeAndTakesItBack) {
                  std::invalid_argument);
     ASSERT_TRUE(board_.undo());
     EXPECT_TRUE(column().items[0].size);
+}
+
+TEST_F(BoardPagesTest, AddsAColumnOfPdfPagesThatKeepTheirSizes) {
+    const std::string first = column().id;
+    const std::vector<PaperSize> sizes = {paperLetter, landscape(paperLetter), paperLetter};
+    const std::string pdf = pages().addPdfColumn(first, "Paper", "ab12", sizes);
+    ASSERT_EQ(column(0).id, pdf);
+    EXPECT_EQ(column(0).title, "Paper");
+    EXPECT_FLOAT_EQ(column(0).paper.width, paperLetter.width); // the most common size
+    ASSERT_EQ(column(0).items.size(), 3U);
+    const ColumnItem turned = column(0).items[1];
+    ASSERT_TRUE(turned.pdf);
+    EXPECT_EQ(turned.pdf->blob, "ab12");
+    EXPECT_EQ(turned.pdf->page, 1);
+    EXPECT_FLOAT_EQ(turned.size->width, paperLetter.height);
+    EXPECT_EQ(pages().pdfBlobs(), (std::set<std::string>{"ab12"}));
+    pages().setColumnPaper(pdf, paperA4, true); // PDF pages are never resized
+    pages().setPageSize(pdf, turned.id, paperA4);
+    EXPECT_FLOAT_EQ(column(0).items[1].size->width, paperLetter.height);
+    pages().addStroke(turned.id, strokeAt(1.0F, 1.0F));
+    EXPECT_EQ(pages().strokes(turned.id).size(), 1U);
+    Board loaded;
+    ASSERT_TRUE(loaded.apply(board_.encodeState()));
+    EXPECT_EQ(loaded.pages().columns()[0].items[2].pdf, (PdfSource{"ab12", 2}));
+    ASSERT_TRUE(board_.undo()); // the stroke
+    ASSERT_TRUE(board_.undo()); // the paper change
+    ASSERT_TRUE(board_.undo()); // the PDF column
+    EXPECT_EQ(pages().columns().size(), 1U);
+    EXPECT_THROW(pages().addPdfColumn({}, "", "ab12", {}), std::invalid_argument);
+    EXPECT_THROW(pages().addPdfColumn({}, "", "", {paperA4}), std::invalid_argument);
 }
 
 } // namespace

@@ -48,6 +48,19 @@ set_target_properties(peerchalk_yrs PROPERTIES
     IMPORTED_LOCATION "${PEERCHALK_YRS_LIBRARY}"
     INTERFACE_INCLUDE_DIRECTORIES "${PEERCHALK_YRS_INCLUDE_DIR}")
 
+# PDFium shows, imports and exports PDFs. Platforms whose dependencies do not include it yet
+# build without PDF support.
+find_path(PEERCHALK_PDFIUM_INCLUDE_DIR fpdfview.h PATH_SUFFIXES pdfium)
+find_library(PEERCHALK_PDFIUM_LIBRARY NAMES pdfium)
+if(PEERCHALK_PDFIUM_INCLUDE_DIR AND PEERCHALK_PDFIUM_LIBRARY)
+    add_library(peerchalk_pdfium UNKNOWN IMPORTED)
+    set_target_properties(peerchalk_pdfium PROPERTIES
+        IMPORTED_LOCATION "${PEERCHALK_PDFIUM_LIBRARY}"
+        INTERFACE_INCLUDE_DIRECTORIES "${PEERCHALK_PDFIUM_INCLUDE_DIR}")
+else()
+    message(STATUS "PDFium not found: building without PDF support")
+endif()
+
 # LaTeX layout through RaTeX. Browsers run it in a Web Worker instead (src/math/engine/web).
 if(NOT EMSCRIPTEN)
     find_library(PEERCHALK_MATH_LIBRARY NAMES peerchalk_math)

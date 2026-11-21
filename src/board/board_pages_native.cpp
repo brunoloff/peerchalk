@@ -18,6 +18,14 @@ std::optional<PaperSize> readSize(const Branch *map, const YTransaction *txn, co
     return PaperSize{static_cast<float>(*w), static_cast<float>(*h)};
 }
 
+std::optional<PdfSource> readPdf(const Branch *map, const YTransaction *txn) {
+    const std::string blob = mapString(map, txn, "pdf");
+    const std::optional<double> page = mapNumber(map, txn, "pdfPage");
+    if (blob.empty() || !page || *page < 0.0 || *page > 1e6)
+        return std::nullopt;
+    return PdfSource{blob, static_cast<int>(*page)};
+}
+
 constexpr const char *backgroundNames[] = {"blank", "ruled", "squared", "dotted"};
 
 // A background this version does not know is shown blank.
@@ -58,6 +66,10 @@ void writeItem(MapInput &map, const ColumnItem &item) {
         map.add("width", yinput_float(item.size->width));
         map.add("height", yinput_float(item.size->height));
     }
+    if (item.kind == ColumnItemKind::Page && item.pdf) {
+        map.addString("pdf", item.pdf->blob);
+        map.add("pdfPage", yinput_long(item.pdf->page));
+    }
 }
 
 void writeSize(const Branch *map, YTransaction *txn, const char *width, const char *height,
@@ -80,7 +92,8 @@ void setOwnSize(const Branch *page, YTransaction *txn, std::optional<PaperSize> 
 void setPageSizes(const Branch *items, YTransaction *txn, std::optional<PaperSize> keep) {
     for (std::uint32_t i = 0, length = yarray_len(items); i < length; ++i) {
         const Branch *item = mapAt(items, txn, i);
-        if (item == nullptr || mapString(item, txn, "kind") != "page")
+        if (item == nullptr || mapString(item, txn, "kind") != "page" ||
+            !mapString(item, txn, "pdf").empty()) // PDF pages keep their PDF's size
             continue;
         if (!keep)
             setOwnSize(item, txn, std::nullopt);
@@ -116,6 +129,9 @@ std::optional<ColumnItem> readItem(const Branch *map, const YTransaction *txn) {
         return std::nullopt;
     if (kind == "page") {
         item.size = readSize(map, txn, "width", "height");
+        item.pdf = readPdf(map, txn);
+        if (item.pdf && !item.size)
+            return std::nullopt; // a PDF page always records its size
     } else if (kind == "subheading") {
         item.kind = ColumnItemKind::Subheading;
         item.text = mapString(map, txn, "text");
