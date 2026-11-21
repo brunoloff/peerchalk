@@ -5,6 +5,7 @@
 #include "ui/library.hpp"
 
 #include <QGuiApplication>
+#include <QIcon>
 #include <QSurfaceFormat>
 #include <QtQml/qqmlextensionplugin.h>
 
@@ -30,6 +31,8 @@ int main(int argc, char **argv) {
     QGuiApplication::setApplicationName(QStringLiteral("PeerChalk"));
     // Matches the desktop entry, so desktops find the icon and name for the window.
     QGuiApplication::setDesktopFileName(QStringLiteral("io.github.brunoloff.PeerChalk"));
+    // For desktops that take the icon from the window, and for builds without a launcher.
+    QGuiApplication::setWindowIcon(QIcon(QStringLiteral(":/PeerChalk/peerchalk-logo.png")));
     peerchalk::useAppControlsStyle();
     std::unique_ptr<peerchalk::InstanceSlot> slot;
     try {

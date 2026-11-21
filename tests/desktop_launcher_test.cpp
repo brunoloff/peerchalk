@@ -39,7 +39,7 @@ TEST_F(DesktopLauncherTest, InstallsALauncherThatStartsThisAppImage) {
     EXPECT_EQ(launcher.state(), DesktopLauncher::State::Current);
     const QString entry = read(launcher.desktopFilePath());
     EXPECT_TRUE(entry.contains(QStringLiteral("Exec=\"%1\" %u").arg(launcher.appImage())));
-    EXPECT_TRUE(entry.contains(QStringLiteral("Icon=io.github.brunoloff.PeerChalk")));
+    EXPECT_TRUE(entry.contains(QStringLiteral("Icon=") + launcher.iconPath() + "\n"));
     EXPECT_TRUE(QFile::exists(launcher.iconPath()));
 }
 

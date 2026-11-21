@@ -92,7 +92,9 @@ QString DesktopLauncher::desktopEntry() const {
                           "StartupWMClass=PeerChalk\n"
                           "%4%2\n"
                           "%5%6\n")
-        .arg(quotedForExec(appImage_), appImage_, appId, pathKey, versionKey, appVersion());
+        // The icon by its path: desktops that cache icon themes, such as Plasma, would not
+        // notice one added to the user's theme folder.
+        .arg(quotedForExec(appImage_), appImage_, iconPath(), pathKey, versionKey, appVersion());
 }
 
 void DesktopLauncher::writeIcon() const {
