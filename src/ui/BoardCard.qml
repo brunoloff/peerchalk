@@ -39,6 +39,8 @@ AbstractButton {
             clip: true
 
             BoardPreview {
+                id: preview
+
                 anchors.fill: parent
                 // Depending on `edited` reloads the preview whenever the board is saved.
                 boardState: card.edited.getTime() >= 0 ? Library.boardState(card.boardId) : ""
@@ -65,6 +67,8 @@ AbstractButton {
                 Label {
                     Layout.fillWidth: true
                     text: card.pending ? qsTr("Waiting for its admin to let you in")
+                        : preview.pageBoard
+                        ? qsTr("Pages · %1 · %2 · edited %3").arg(Format.count(preview.columnCount, qsTr("column"), qsTr("columns"))).arg(Format.count(preview.pageCount, qsTr("page"), qsTr("pages"))).arg(Format.relativeTime(card.edited))
                         : qsTr("Infinite board · edited %1").arg(Format.relativeTime(card.edited))
                     elide: Text.ElideRight
                     font.pixelSize: 12

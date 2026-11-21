@@ -31,9 +31,9 @@ TEST(PageLayout, StacksItemsBelowTheHeadingWithGaps) {
     EXPECT_FLOAT_EQ(column.items[1].bounds.top, subheadingTop + m.subheadingHeight + m.itemGap);
     EXPECT_FLOAT_EQ(column.items[2].bounds.top, column.items[1].bounds.bottom + m.itemGap);
     EXPECT_FLOAT_EQ(column.items[2].bounds.height(), paperLetter.height);
-    ASSERT_EQ(column.slots.size(), 4U); // before each item and after the last
-    EXPECT_FLOAT_EQ(column.slots[3].bounds.top, column.items[2].bounds.bottom);
-    EXPECT_FLOAT_EQ(column.bounds.bottom, column.slots[3].bounds.bottom);
+    ASSERT_EQ(column.insertSlots.size(), 4U); // before each item and after the last
+    EXPECT_FLOAT_EQ(column.insertSlots[3].bounds.top, column.items[2].bounds.bottom);
+    EXPECT_FLOAT_EQ(column.bounds.bottom, column.insertSlots[3].bounds.bottom);
 }
 
 TEST(PageLayout, PlacesColumnsLeftToRightWithSlotsAroundThem) {

@@ -68,7 +68,7 @@ struct PlacedColumn {
     Bounds bounds;  // from the top of the heading band to the last slot
     Bounds heading; // the heading band
     std::vector<PlacedItem> items;
-    std::vector<InsertSlot> slots; // items.size() + 1, before each item and after the last
+    std::vector<InsertSlot> insertSlots; // items.size() + 1, before each item and after the last
 };
 
 struct PageLayout {

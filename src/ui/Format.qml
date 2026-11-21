@@ -22,6 +22,11 @@ QtObject {
         return date.toLocaleDateString(Qt.locale(), Locale.ShortFormat);
     }
 
+    // "1 page", "3 pages": a number with the word for one or for several.
+    function count(n: int, one: string, several: string): string {
+        return n === 1 ? qsTr("1 %1").arg(one) : qsTr("%1 %2").arg(n).arg(several);
+    }
+
     // The first letter of a name, upper case, for avatars.
     function initial(name: string): string {
         return name.length > 0 ? name.charAt(0).toUpperCase() : "?";

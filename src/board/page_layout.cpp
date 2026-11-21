@@ -32,7 +32,7 @@ PlacedColumn placeColumn(const ColumnSpec &spec, float left, const LayoutMetrics
     float y = metrics.headingHeight;
     for (std::size_t i = 0; i < spec.items.size(); ++i) {
         const ColumnItem &item = spec.items[i];
-        column.slots.push_back({i, {left, y, right, y + metrics.itemGap}});
+        column.insertSlots.push_back({i, {left, y, right, y + metrics.itemGap}});
         y += metrics.itemGap;
         if (item.kind == ColumnItemKind::Subheading) {
             column.items.push_back(
@@ -45,7 +45,7 @@ PlacedColumn placeColumn(const ColumnSpec &spec, float left, const LayoutMetrics
         column.items.push_back({item.id, item.kind, {x, y, x + size.width, y + size.height}});
         y += size.height;
     }
-    column.slots.push_back({spec.items.size(), {left, y, right, y + metrics.itemGap}});
+    column.insertSlots.push_back({spec.items.size(), {left, y, right, y + metrics.itemGap}});
     column.bounds = {left, 0.0F, right, y + metrics.itemGap};
     return column;
 }
