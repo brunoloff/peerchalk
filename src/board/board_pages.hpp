@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <functional>
 #include <map>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -25,6 +26,7 @@ enum class BoardKind : std::uint8_t { Infinite, Pages };
 //
 // Edits are local changes: each structural edit is its own undo step, and strokes follow the
 // Board's gestures. Unknown ids are ignored; invalid input throws std::invalid_argument.
+// Text boxes on pages are the Board's, with TextBox::page set; removing a page removes them.
 // Reads must not happen from the Board's change listener.
 class BoardPages {
   public:
@@ -43,8 +45,12 @@ class BoardPages {
     std::string addColumn(const std::string &before, PaperSize paper, const std::string &title);
     void removeColumn(const std::string &columnId);
     void setColumnTitle(const std::string &columnId, const std::string &title);
-    // Changes the column's width and the size of its pages that have no size of their own.
-    void setColumnPaper(const std::string &columnId, PaperSize paper);
+    // Changes the column's paper: its width and the size of pages added from now on. Existing
+    // pages keep their size, unless allPages, which gives every page the new paper.
+    void setColumnPaper(const std::string &columnId, PaperSize paper, bool allPages = false);
+    // Gives a page its own size, or (nullopt) its column's paper.
+    void setPageSize(const std::string &columnId, const std::string &pageId,
+                     std::optional<PaperSize> size);
     // Adds a page or subheading before the item `before` (or last), returning its id.
     std::string insertItem(const std::string &columnId, const std::string &before,
                            ColumnItemKind kind, const std::string &text = {});

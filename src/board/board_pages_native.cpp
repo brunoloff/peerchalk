@@ -43,6 +43,35 @@ void writeItem(MapInput &map, const ColumnItem &item) {
     }
 }
 
+void writeSize(const Branch *map, YTransaction *txn, const char *width, const char *height,
+               PaperSize size) {
+    const YInput w = yinput_float(size.width);
+    const YInput h = yinput_float(size.height);
+    ymap_insert(map, txn, width, &w);
+    ymap_insert(map, txn, height, &h);
+}
+
+void setOwnSize(const Branch *page, YTransaction *txn, std::optional<PaperSize> size) {
+    if (size) {
+        writeSize(page, txn, "width", "height", *size);
+        return;
+    }
+    ymap_remove(page, txn, "width");
+    ymap_remove(page, txn, "height");
+}
+
+void setPageSizes(const Branch *items, YTransaction *txn, std::optional<PaperSize> keep) {
+    for (std::uint32_t i = 0, length = yarray_len(items); i < length; ++i) {
+        const Branch *item = mapAt(items, txn, i);
+        if (item == nullptr || mapString(item, txn, "kind") != "page")
+            continue;
+        if (!keep)
+            setOwnSize(item, txn, std::nullopt);
+        else if (!readSize(item, txn, "width", "height"))
+            setOwnSize(item, txn, keep);
+    }
+}
+
 const Branch *mapAt(const Branch *array, const YTransaction *txn, std::uint32_t index) {
     const Output value(yarray_get(array, txn, index), youtput_destroy);
     return value && value->tag == Y_MAP ? youtput_read_ymap(value.get()) : nullptr;
@@ -132,10 +161,28 @@ const Branch *columnItems(const Board::Native &native, const YTransaction *txn,
     return index ? itemsOf(mapAt(native.columns, txn, *index), txn) : nullptr;
 }
 
-void removePageStrokes(const Board::Native &native, YTransaction *txn, const Branch *items) {
+void removePageContent(const Board::Native &native, YTransaction *txn, const std::string &pageId) {
+    ymap_remove(native.pageStrokes, txn, pageId.c_str());
+    std::vector<std::string> boxes;
+    {
+        const std::unique_ptr<YMapIter, decltype(&ymap_iter_destroy)> entries(
+            ymap_iter(native.textBoxes, txn), ymap_iter_destroy);
+        while (YMapEntry *raw = ymap_iter_next(entries.get())) {
+            const std::unique_ptr<YMapEntry, decltype(&ymap_entry_destroy)> entry(
+                raw, ymap_entry_destroy);
+            if (entry->value->tag == Y_MAP &&
+                mapString(youtput_read_ymap(entry->value), txn, "page") == pageId)
+                boxes.emplace_back(entry->key);
+        }
+    }
+    for (const std::string &box : boxes)
+        ymap_remove(native.textBoxes, txn, box.c_str());
+}
+
+void removeColumnContent(const Board::Native &native, YTransaction *txn, const Branch *items) {
     for (std::uint32_t i = 0, length = yarray_len(items); i < length; ++i) {
         if (const Branch *item = mapAt(items, txn, i))
-            ymap_remove(native.pageStrokes, txn, mapString(item, txn, "id").c_str());
+            removePageContent(native, txn, mapString(item, txn, "id"));
     }
 }
 

@@ -40,6 +40,12 @@ class MapInput {
 };
 
 void writeItem(MapInput &map, const ColumnItem &item);
+void writeSize(const Branch *map, YTransaction *txn, const char *width, const char *height,
+               PaperSize size);
+// Sets or (nullopt) clears a page item's own size.
+void setOwnSize(const Branch *page, YTransaction *txn, std::optional<PaperSize> size);
+// Gives the pages without a size of their own `keep`, or with nullopt clears every page's size.
+void setPageSizes(const Branch *items, YTransaction *txn, std::optional<PaperSize> keep);
 [[nodiscard]] const Branch *mapAt(const Branch *array, const YTransaction *txn,
                                   std::uint32_t index);
 // The index of the map whose "id" is id.
@@ -57,6 +63,9 @@ std::string insertColumn(const Board::Native &native, YTransaction *txn, std::ui
                          PaperSize paper, const std::string &title);
 [[nodiscard]] const Branch *columnItems(const Board::Native &native, const YTransaction *txn,
                                         const std::string &columnId);
-void removePageStrokes(const Board::Native &native, YTransaction *txn, const Branch *items);
+// Removes a page's strokes and its text boxes.
+void removePageContent(const Board::Native &native, YTransaction *txn, const std::string &pageId);
+// Removes the content of every page in a column's items.
+void removeColumnContent(const Board::Native &native, YTransaction *txn, const Branch *items);
 
 } // namespace peerchalk::page_yrs

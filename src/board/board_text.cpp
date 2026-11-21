@@ -1,6 +1,7 @@
 // Board's text boxes. The document's "textBoxes" map holds one map per box, by id, with the
 // numbers x, y, width and size, the integer color and the text "body". Bold and italic are
-// text attributes; an equation is an embedded {tex, display} object of length one.
+// text attributes; an equation is an embedded {tex, display} object of length one. On page
+// boards, "page" holds the id of the page the box is on.
 #include "board/board_native.hpp"
 
 #include <algorithm>
@@ -87,6 +88,7 @@ std::optional<TextBox> readBox(const char *id, const Branch *map, const YTransac
     box.width = std::clamp(float(*width), TextBox::minWidth, TextBox::maxWidth);
     box.fontSize = std::clamp(float(*size), TextBox::minFontSize, TextBox::maxFontSize);
     box.argb = std::uint32_t(std::int64_t(*color));
+    box.page = mapString(map, txn, "page");
     box.body = readBody(text, txn);
     return box;
 }
@@ -111,6 +113,10 @@ void writeFrame(const Branch *map, YTransaction *txn, const TextBox &box) {
     ymap_insert(map, txn, "width", &width);
     ymap_insert(map, txn, "size", &size);
     ymap_insert(map, txn, "color", &color);
+    if (!box.page.empty()) {
+        const YInput page = yinput_string(box.page.c_str());
+        ymap_insert(map, txn, "page", &page);
+    }
 }
 
 // Attributes that set both styles, so that new text never inherits its neighbour's.
@@ -294,7 +300,7 @@ void Board::removeTextBox(const std::string &id) {
 std::size_t Board::eraseTextBoxesNear(Point point, float radius) {
     std::vector<std::string> hits;
     for (const TextBox &box : textBoxes()) {
-        if (textBoxBounds(box).contains(point, radius))
+        if (box.page.empty() && textBoxBounds(box).contains(point, radius))
             hits.push_back(box.id);
     }
     for (const std::string &id : hits)

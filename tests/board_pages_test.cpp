@@ -192,5 +192,60 @@ TEST_F(BoardPagesTest, TellsTheBoardsListenerAboutPageChanges) {
     EXPECT_GE(changes, 2);
 }
 
+TEST_F(BoardPagesTest, KeepsTextBoxesWithTheirPageAndRemovesThemWithIt) {
+    const std::string page = firstPage();
+    TextBox box;
+    box.id = "box";
+    box.page = page;
+    box.x = 10.0F;
+    box.y = 20.0F;
+    box.body = plainRichText(u"Lemma");
+    board_.addTextBox(box);
+    ASSERT_NE(board_.textBox("box"), nullptr);
+    EXPECT_EQ(board_.textBox("box")->page, page);
+    EXPECT_FALSE(board_.contentBounds()); // page coordinates are not board coordinates
+    EXPECT_EQ(board_.eraseNear({12.0F, 22.0F}, 4.0F), 0U);
+    pages().moveItem(column().id, page, pages().addColumn({}, paperA4, ""), {});
+    EXPECT_NE(board_.textBox("box"), nullptr); // moving keeps it
+    pages().removeItem(column(1).id, page);
+    EXPECT_EQ(board_.textBox("box"), nullptr);
+    ASSERT_TRUE(board_.undo());
+    EXPECT_NE(board_.textBox("box"), nullptr);
+}
+
+TEST_F(BoardPagesTest, ChangesAColumnsPaperForNewPagesOrForAll) {
+    const std::string columnId = column().id;
+    const std::string old = firstPage();
+    pages().setColumnPaper(columnId, paperLetter);
+    const std::string added = pages().insertItem(columnId, {}, ColumnItemKind::Page);
+    ASSERT_TRUE(column().items[0].size); // the existing page keeps A4
+    EXPECT_FLOAT_EQ(column().items[0].size->height, paperA4.height);
+    EXPECT_FALSE(column().items[1].size); // a new page takes the column's Letter
+    EXPECT_FLOAT_EQ(column().paper.width, paperLetter.width);
+    pages().setColumnPaper(columnId, paperA5, true);
+    EXPECT_FALSE(column().items[0].size);
+    EXPECT_FALSE(column().items[1].size);
+    EXPECT_FLOAT_EQ(column().paper.height, paperA5.height);
+    EXPECT_EQ(itemIds(column()), (std::vector<std::string>{old, added}));
+}
+
+TEST_F(BoardPagesTest, GivesAPageItsOwnSizeAndTakesItBack) {
+    const std::string columnId = column().id;
+    const std::string page = firstPage();
+    const std::string heading =
+        pages().insertItem(columnId, {}, ColumnItemKind::Subheading, "Part");
+    pages().setPageSize(columnId, page, landscape(paperA4));
+    ASSERT_TRUE(column().items[0].size);
+    EXPECT_FLOAT_EQ(column().items[0].size->width, paperA4.height);
+    pages().setPageSize(columnId, heading, paperA4); // only pages have sizes
+    EXPECT_FALSE(column().items[1].size);
+    pages().setPageSize(columnId, page, std::nullopt);
+    EXPECT_FALSE(column().items[0].size);
+    EXPECT_THROW(pages().setPageSize(columnId, page, PaperSize{1.0F, -1.0F}),
+                 std::invalid_argument);
+    ASSERT_TRUE(board_.undo());
+    EXPECT_TRUE(column().items[0].size);
+}
+
 } // namespace
 } // namespace peerchalk

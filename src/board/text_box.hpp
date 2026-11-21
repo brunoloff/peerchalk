@@ -16,7 +16,8 @@ struct TextBox {
     static constexpr float minFontSize = 6.0F;
     static constexpr float maxFontSize = 200.0F;
 
-    std::string id; // unique, chosen by whoever creates the box
+    std::string id;   // unique, chosen by whoever creates the box
+    std::string page; // on page boards, the page it is on; x and y are then page coordinates
     float x{0.0F};
     float y{0.0F};
     float width{320.0F};

@@ -150,6 +150,8 @@ std::optional<Bounds> Board::contentBounds() const {
             result = result ? unite(*result, *bounds) : *bounds;
     }
     for (const TextBox &box : textBoxes()) {
+        if (!box.page.empty())
+            continue; // in page coordinates; a page board's layout places it
         const Bounds bounds = textBoxBounds(box);
         result = result ? unite(*result, bounds) : bounds;
     }

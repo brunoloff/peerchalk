@@ -64,12 +64,14 @@ columns: YArray of YMap {
            }
          }
 pageStrokes: YMap  pageId -> YArray of encodeStroke() binaries (page coordinates)
-pageText:    YMap  pageId -> text boxes, as board_text.cpp stores them now
 ```
 
 - Strokes are kept by page id, not inside the item, so moving a page (a delete plus an insert in
   Yrs) never copies its strokes, and decoding happens one page at a time.
-- Removing a page also removes its `pageStrokes` and `pageText` entries, in the same undo step.
+- Text boxes on pages stay in the existing `textBoxes` map, with a `page` key holding their
+  page's id and their position in page coordinates, so all of the text editing is shared.
+- Removing a page also removes its `pageStrokes` entry and its text boxes, in the same undo
+  step.
 - Concurrent edits merge as CRDT arrays do: two people adding a page at the same place both get
   a page, and the order is the same on every device.
 - `Board` grows a `PageBoard` sibling (`src/board/page_board.{hpp,cpp}`) that owns these
@@ -245,14 +247,13 @@ Work happens on the `page-boards` branch, one commit per finished piece.
 - [x] M1 · `BoardPages` (`board.pages()`, `src/board/board_pages*`, 9 tests): kind and
       `start`, columns and items by id, strokes per page decoded lazily, undo, merges between
       two replicas, saving and loading
-- [ ] M1 · still to do in the model: moving items and columns, text boxes on pages
-      (`pageText`), per-page size changes ("Apply to all pages")
+- [x] M1 · moving items and columns, text boxes on pages (`TextBox::page`), per-page sizes
+      and "Apply to all pages" (`setColumnPaper(..., allPages)`, `setPageSize`); 14 tests
       Notes from libyrs (`libyrs.h`): nested types go in with `yinput_yarray` / `yinput_ymap`
-      and come out with `youtput_read_yarray` / `youtput_read_ymap`; `ybranch_id` and
-      `ybranch_get` keep a handle on a nested branch across transactions; `yobserve_deep`
-      reports nested changes (board_text.cpp already uses it); an undo scope on a root branch
-      covers what is nested inside it. There is no array move, so moving a page is a delete
-      plus an insert, which is why strokes are keyed by page id outside the item.
+      and come out with `youtput_read_yarray` / `youtput_read_ymap`; `yobserve_deep` reports
+      nested changes; an undo scope on a root branch covers what is nested inside it. There
+      is no array move, so moving a page is a delete plus an insert, which is why strokes and
+      text boxes are keyed by page id outside the item.
 - [x] M1 · `Board` knows its kind (`layout` map); the library shows "Pages · N columns"
 - [ ] M0 · PDFium trial on Linux first (pdfium-binaries), then CI for the other targets
       (needs a push, so ask first)

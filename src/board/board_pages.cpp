@@ -115,7 +115,7 @@ void BoardPages::removeColumn(const std::string &columnId) {
         if (!index)
             return;
         if (const Branch *items = itemsOf(mapAt(native_.columns, txn.get(), *index), txn.get()))
-            removePageStrokes(native_, txn.get(), items);
+            removeColumnContent(native_, txn.get(), items);
         yarray_remove_range(native_.columns, txn.get(), *index, 1);
     }
     yundo_manager_stop(native_.undo.get());
@@ -134,7 +134,7 @@ void BoardPages::setColumnTitle(const std::string &columnId, const std::string &
     yundo_manager_stop(native_.undo.get());
 }
 
-void BoardPages::setColumnPaper(const std::string &columnId, PaperSize paper) {
+void BoardPages::setColumnPaper(const std::string &columnId, PaperSize paper, bool allPages) {
     checkPaper(paper);
     yundo_manager_stop(native_.undo.get());
     {
@@ -142,11 +142,27 @@ void BoardPages::setColumnPaper(const std::string &columnId, PaperSize paper) {
         if (const std::optional<std::uint32_t> index =
                 indexOf(native_.columns, txn.get(), columnId)) {
             const Branch *column = mapAt(native_.columns, txn.get(), *index);
-            const YInput width = yinput_float(paper.width);
-            const YInput height = yinput_float(paper.height);
-            ymap_insert(column, txn.get(), "paperWidth", &width);
-            ymap_insert(column, txn.get(), "paperHeight", &height);
+            const std::optional<ColumnSpec> old = readColumn(column, txn.get());
+            if (const Branch *items = old ? itemsOf(column, txn.get()) : nullptr)
+                setPageSizes(items, txn.get(), allPages ? std::nullopt : std::optional(old->paper));
+            writeSize(column, txn.get(), "paperWidth", "paperHeight", paper);
         }
+    }
+    yundo_manager_stop(native_.undo.get());
+}
+
+void BoardPages::setPageSize(const std::string &columnId, const std::string &pageId,
+                             std::optional<PaperSize> size) {
+    if (size)
+        checkPaper(*size);
+    yundo_manager_stop(native_.undo.get());
+    {
+        const BoardTransaction txn = native_.write(true);
+        const Branch *items = columnItems(native_, txn.get(), columnId);
+        const auto index = items ? indexOf(items, txn.get(), pageId) : std::nullopt;
+        const Branch *page = index ? mapAt(items, txn.get(), *index) : nullptr;
+        if (page != nullptr && mapString(page, txn.get(), "kind") == "page")
+            setOwnSize(page, txn.get(), size);
     }
     yundo_manager_stop(native_.undo.get());
 }
@@ -179,7 +195,7 @@ void BoardPages::removeItem(const std::string &columnId, const std::string &item
         const BoardTransaction txn = native_.write(true);
         const Branch *items = columnItems(native_, txn.get(), columnId);
         if (const auto index = items ? indexOf(items, txn.get(), itemId) : std::nullopt) {
-            ymap_remove(native_.pageStrokes, txn.get(), itemId.c_str());
+            removePageContent(native_, txn.get(), itemId);
             yarray_remove_range(items, txn.get(), *index, 1);
         }
     }

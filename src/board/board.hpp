@@ -35,12 +35,14 @@ class Board {
 
     // Entries a peer sent that could not be decoded appear as strokes with no points.
     [[nodiscard]] const std::vector<Stroke> &strokes() const { return strokes_; }
-    // Union of all stroke and text box bounds; empty when the board shows nothing.
+    // Union of all stroke and text box bounds, leaving out boxes on pages; empty when the
+    // board shows nothing.
     [[nodiscard]] std::optional<Bounds> contentBounds() const;
     [[nodiscard]] bool canUndo() const;
 
     void addStroke(const Stroke &stroke);
-    // Removes every stroke and text box near point and returns how many. Removals
+    // Removes every stroke and text box near point (not those on pages) and returns how
+    // many. Removals
     // until endGesture() form one undo step. Throws std::invalid_argument for
     // non-finite input or a negative radius.
     std::size_t eraseNear(Point point, float radius);
