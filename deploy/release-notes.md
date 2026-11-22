@@ -1,6 +1,12 @@
 A whiteboard that people share directly, computer to computer, with no account and no server
 holding the boards. You can also [try it in the browser](https://brunoloff.github.io/peerchalk/).
 
+## New in 0.2.2
+
+- Devices behind strict networks now reach each other through PeerChalk's own relay, with
+  nothing to set up. To turn it off, set the TURN server to "none" in Settings → Network.
+- New boards are page boards unless you choose the infinite board.
+
 ## New in 0.2.1
 
 - PDFs and large boards reach the others on a board several times faster.

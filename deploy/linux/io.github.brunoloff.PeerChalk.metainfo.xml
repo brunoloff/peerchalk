@@ -24,6 +24,12 @@
   </developer>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.2.2" date="2026-11-22">
+      <description>
+        <p>Devices behind strict networks reach each other through PeerChalk's relay without
+        any setup, and new boards are page boards unless you choose otherwise.</p>
+      </description>
+    </release>
     <release version="0.2.1" date="2026-11-22">
       <description>
         <p>PDFs and large boards reach the others on a board several times faster, and a slow

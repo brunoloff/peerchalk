@@ -2,7 +2,7 @@
 # Builds PeerChalk from source against Arch's Qt. Its networking libraries need patches, so they
 # are built from pinned sources and installed privately in /usr/lib/peerchalk.
 pkgname=peerchalk
-pkgver=0.2.1
+pkgver=0.2.2
 pkgrel=1
 pkgdesc='Shared whiteboard: draw and write together, directly between devices'
 arch=('x86_64' 'aarch64')
