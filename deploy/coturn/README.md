@@ -18,7 +18,7 @@ terms). Create the account and the VM yourself, then:
 ## 2. Run the script on the server
 
 ```sh
-scp setup-coturn.sh ubuntu@SERVER:
+scp setup-coturn.sh traffic-cutoff.sh ubuntu@SERVER:
 ssh ubuntu@SERVER sudo ./setup-coturn.sh
 ```
 
@@ -40,6 +40,24 @@ keep it useful for whiteboards and unattractive for anything else, nftables limi
 address to 40 KB/s (with an 8 MB burst for loading boards) and 1 GB per day in each direction,
 and the whole server to 3.5 MB/s, about 9 TB per 30 days. Very low-quality video could fit in
 40 KB/s, so these limits discourage it rather than make it impossible.
+
+## Traffic cutoff
+
+Oracle includes 10 TB of outgoing traffic a month and bills past that, and a budget alert
+only sends mail, about a day late. So the script also installs `traffic-cutoff.sh` as
+`/usr/local/sbin/peerchalk-traffic-cutoff`, run by `peerchalk-traffic-cutoff.timer` every
+five minutes. It reads the server's outgoing bytes for the calendar month from vnstat:
+
+- at **5000 GB** (half the allowance) it stops coturn, and starts it again once a new
+  month begins;
+- at **8000 GB** it powers the server off, in case something else keeps sending. Start
+  it again from the Oracle console.
+
+vnstat counts only from when it was installed, and saves every few minutes, so the count
+lags slightly. To see what it would do at a given amount, run
+`peerchalk-traffic-cutoff --check 6000`; its log is `journalctl -t peerchalk-traffic-cutoff`.
+To change the thresholds, add `--stop-gb N --shutdown-gb N` to `ExecStart=` in
+`/etc/systemd/system/peerchalk-traffic-cutoff.service`.
 
 To change the password later, run the script again with `--password`, or edit the
 `user=` line in `/etc/turnserver.conf` and run `sudo systemctl restart coturn`.

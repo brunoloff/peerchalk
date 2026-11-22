@@ -7,7 +7,8 @@
 #
 # It installs coturn, writes /etc/turnserver.conf (keeping a backup of any existing
 # one), opens the TURN ports in the server's own firewall, limits what each IP address
-# may use and starts the service. The relay is meant to be open: its credentials ship in
+# may use, installs traffic-cutoff.sh on a timer (it stops coturn at half of Oracle's 10 TB
+# monthly traffic allowance, and powers the server off at 80%) and starts the service. The relay is meant to be open: its credentials ship in
 # the app, and the limits leave room for whiteboards but not for sustained video or bulk
 # traffic. It finishes by printing the TURN setting for PeerChalk. The cloud provider's
 # firewall (Oracle: the subnet's security list) must be opened separately; see README.md.
@@ -28,6 +29,9 @@ readonly ip_max_flows=32
 # The whole server: 3.5 MB/s is about 9 TB in 30 days, inside Oracle's 10 TB allowance.
 readonly server_rate_kbytes=3500
 readonly limits_file=/etc/peerchalk-turn-limits.nft
+readonly cutoff_script=/usr/local/sbin/peerchalk-traffic-cutoff
+script_dir=$(cd "$(dirname "$0")" && pwd)
+readonly script_dir
 
 public_ip=""
 user="peerchalk"
@@ -188,10 +192,39 @@ EOF
     systemctl enable --now peerchalk-turn-limits.service
 }
 
+# Checks this month's outgoing traffic every five minutes, and a minute after booting.
+install_cutoff() {
+    [ -f "$script_dir/traffic-cutoff.sh" ] || fail "traffic-cutoff.sh must sit beside this script"
+    install -m 755 "$script_dir/traffic-cutoff.sh" "$cutoff_script"
+    systemctl enable --now vnstat >/dev/null
+    cat >/etc/systemd/system/peerchalk-traffic-cutoff.service <<EOF
+[Unit]
+Description=Stop the PeerChalk TURN relay before its traffic costs money
+After=vnstat.service
+
+[Service]
+Type=oneshot
+ExecStart=$cutoff_script
+EOF
+    cat >/etc/systemd/system/peerchalk-traffic-cutoff.timer <<EOF
+[Unit]
+Description=Check the PeerChalk TURN relay's monthly traffic
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=5min
+
+[Install]
+WantedBy=timers.target
+EOF
+    systemctl daemon-reload
+    systemctl enable --now peerchalk-traffic-cutoff.timer
+}
+
 install_coturn() {
     command -v apt-get >/dev/null || fail "this script expects Ubuntu or Debian (apt-get)"
     DEBIAN_FRONTEND=noninteractive apt-get update -q
-    DEBIAN_FRONTEND=noninteractive apt-get install -y -q coturn nftables curl iptables iproute2
+    DEBIAN_FRONTEND=noninteractive apt-get install -y -q coturn nftables curl iptables iproute2 vnstat
     # Older packages start the service only when this is set.
     if [ -f /etc/default/coturn ]; then
         sed -i 's/^#\?TURNSERVER_ENABLED=.*/TURNSERVER_ENABLED=1/' /etc/default/coturn
@@ -258,7 +291,9 @@ Then paste this into PeerChalk's Settings → Network → TURN server:
   $user:$password@$public_ip:$turn_port
 
 This relay is open by design; each IP address is limited to $ip_rate_kbytes KB/s and
-$ip_daily_mbytes MB per day in each direction.
+$ip_daily_mbytes MB per day in each direction. coturn stops for the rest of the month
+once the server has sent 5000 GB, and the server powers off at 8000 GB; see
+journalctl -t peerchalk-traffic-cutoff.
 EOF
 }
 
@@ -277,6 +312,7 @@ main() {
     open_firewall
     install_limits
     start_service
+    install_cutoff
     report
 }
 
