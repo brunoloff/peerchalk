@@ -188,6 +188,25 @@ TEST_F(MainWindowTest, PageBoardsShowTheirColumnsAndChangeThroughTheCanvas) {
         ADD_FAILURE() << warning.toString().toStdString();
 }
 
+TEST_F(MainWindowTest, NewBoardsArePageBoardsUnlessChosenOtherwise) {
+    library_->createProject(QStringLiteral("Project"));
+    auto *dialog = window_->findChild<QObject *>(QStringLiteral("newBoardDialog"));
+    ASSERT_NE(dialog, nullptr);
+    auto *pages = dialog->findChild<QQuickItem *>(QStringLiteral("pagesKind"));
+    auto *infinite = dialog->findChild<QQuickItem *>(QStringLiteral("infiniteKind"));
+    ASSERT_NE(pages, nullptr);
+    ASSERT_NE(infinite, nullptr);
+    infinite->setProperty("checked", true); // a choice left from last time
+    QMetaObject::invokeMethod(dialog, "ask", Q_ARG(QString, QStringLiteral("Board")));
+    EXPECT_TRUE(dialog->property("pages").toBool());
+    ASSERT_TRUE(QTest::qWaitFor([&] { return pages->width() > 0 && infinite->width() > 0; }));
+    window_->resize(1280, 800);
+    ASSERT_TRUE(QTest::qWaitFor([&] {
+        return pages->mapToScene({}).x() < infinite->mapToScene({}).x(); // Pages on the left
+    }));
+    QMetaObject::invokeMethod(dialog, "close");
+}
+
 TEST_F(MainWindowTest, UsesTheBasicControlsStyle) {
     EXPECT_EQ(QQuickStyle::name(), QStringLiteral("Basic"));
 }

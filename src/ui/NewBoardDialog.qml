@@ -20,7 +20,7 @@ PaperDialog {
 
     function ask(initial: string) {
         nameField.text = initial;
-        infiniteCard.checked = true;
+        pagesCard.checked = true;
         open();
         nameField.selectAll();
         nameField.forceActiveFocus();
@@ -86,6 +86,20 @@ PaperDialog {
             rowSpacing: 12
 
             BoardKindCard {
+                id: pagesCard
+
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                Layout.preferredWidth: 1
+                objectName: "pagesKind"
+                pages: true
+                checked: true
+                text: qsTr("Pages")
+                summary: qsTr("Columns of real-size pages, with headings. Import PDFs to read and annotate.")
+                ButtonGroup.group: kinds
+            }
+
+            BoardKindCard {
                 id: infiniteCard
 
                 Layout.fillWidth: true
@@ -94,20 +108,6 @@ PaperDialog {
                 objectName: "infiniteKind"
                 text: qsTr("Infinite board")
                 summary: qsTr("Draw anywhere, in every direction. Exports as one large page.")
-                checked: true
-                ButtonGroup.group: kinds
-            }
-
-            BoardKindCard {
-                id: pagesCard
-
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                Layout.preferredWidth: 1
-                objectName: "pagesKind"
-                pages: true
-                text: qsTr("Pages")
-                summary: qsTr("Columns of real-size pages, with headings. Import PDFs to read and annotate.")
                 ButtonGroup.group: kinds
             }
         }
