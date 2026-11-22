@@ -145,6 +145,6 @@ modules:
     sources:
       - type: git
         url: https://github.com/brunoloff/peerchalk.git
-        tag: v0.2.0 # Flathub also wants the commit the tag names
+        tag: v0.2.1 # Flathub also wants the commit the tag names
       - *p2pdc
       - math-cargo-sources.json

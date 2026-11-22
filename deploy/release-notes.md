@@ -1,6 +1,11 @@
 A whiteboard that people share directly, computer to computer, with no account and no server
 holding the boards. You can also [try it in the browser](https://brunoloff.github.io/peerchalk/).
 
+## New in 0.2.1
+
+- PDFs and large boards reach the others on a board several times faster.
+- A device that falls behind while receiving no longer drops its connection.
+
 ## New in 0.2
 
 - **Page boards**, a second kind of board: columns of real-size pages (A4, Letter, A5, Legal,

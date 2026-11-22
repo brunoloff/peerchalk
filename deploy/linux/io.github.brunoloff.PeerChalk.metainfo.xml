@@ -24,6 +24,12 @@
   </developer>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.2.1" date="2026-11-22">
+      <description>
+        <p>PDFs and large boards reach the others on a board several times faster, and a slow
+        device no longer drops its connection.</p>
+      </description>
+    </release>
     <release version="0.2.0" date="2026-11-21">
       <description>
         <p>Page boards: columns of real-size pages with headings, PDFs to read and write on,
