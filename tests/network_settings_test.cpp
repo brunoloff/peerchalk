@@ -31,12 +31,28 @@ TEST_F(NetworkSettingsTest, DefaultsToThePublicNetwork) {
     EXPECT_EQ(config.bootstrap.front().host, "bootstrap.jami.net");
     EXPECT_EQ(config.bootstrap.front().port, 4222);
     EXPECT_EQ(config.networkId, 0U);
-    ASSERT_EQ(config.ice.servers.size(), 2U); // the public STUN servers
+    ASSERT_EQ(config.ice.servers.size(), 3U); // the public STUN servers and PeerChalk's relay
     const auto *stun = std::get_if<p2pdc::StunServer>(&config.ice.servers.front());
     ASSERT_NE(stun, nullptr);
     EXPECT_EQ(stun->host, "stun.cloudflare.com");
     EXPECT_EQ(stun->port, 3478);
+    const auto *turn = std::get_if<p2pdc::TurnServer>(&config.ice.servers.back());
+    ASSERT_NE(turn, nullptr);
+    EXPECT_EQ(turn->host, "89.168.35.4");
+    EXPECT_EQ(turn->port, 3478);
+    EXPECT_EQ(turn->username, "peerchalk");
     EXPECT_EQ(config.dhtProxy, "https://dhtproxy.jami.net");
+}
+
+TEST_F(NetworkSettingsTest, NoneTurnsTheRelayOff) {
+    NetworkSettings settings;
+    settings.turn = QStringLiteral(" None ");
+    const NetworkConfig config = NetworkConfig::from(settings);
+    ASSERT_EQ(config.ice.servers.size(), 2U); // only the public STUN servers
+    for (const auto &server : config.ice.servers)
+        EXPECT_EQ(std::get_if<p2pdc::TurnServer>(&server), nullptr);
+    settings.save(dir_.path());
+    EXPECT_EQ(NetworkSettings::load(dir_.path()).turn, QStringLiteral("None"));
 }
 
 TEST_F(NetworkSettingsTest, DhtProxyIsSavedAndMustBeSecureUnlessLocal) {

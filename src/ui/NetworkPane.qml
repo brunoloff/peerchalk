@@ -109,8 +109,8 @@ Item {
                     id: turnField
 
                     label: qsTr("TURN server")
-                    hint: qsTr("Relays traffic when no direct path exists, as user:password@host:port. The password is stored unencrypted on this device.")
-                    placeholder: "user:password@turn.example.org:3478"
+                    hint: qsTr("Relays traffic when no direct path exists, as user:password@host:port. Empty uses PeerChalk's free relay, and \"none\" uses no relay. The password is stored unencrypted on this device.")
+                    placeholder: "peerchalk:peerchalk-open-relay@89.168.35.4:3478"
                     secret: true
                 }
 

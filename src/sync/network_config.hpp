@@ -24,8 +24,8 @@ struct NetworkConfig {
     std::chrono::milliseconds spaceRotation{std::chrono::minutes(2)};
 
     // The configuration the settings describe, defaulting to the public OpenDHT network
-    // through Jami's bootstrap node and proxy, Cloudflare's and Google's public STUN servers and no
-    // TURN server. Throws
+    // through Jami's bootstrap node and proxy, Cloudflare's and Google's public STUN servers and
+    // PeerChalk's relay as TURN server ("none" for no TURN server). Throws
     // std::invalid_argument naming the setting when a value is malformed.
     [[nodiscard]] static NetworkConfig from(const NetworkSettings &settings);
 };

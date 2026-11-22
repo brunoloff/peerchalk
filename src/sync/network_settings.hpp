@@ -6,14 +6,14 @@ namespace peerchalk::sync {
 
 // The network choices made on the settings page, kept in network.json in the data
 // folder. An empty bootstrap or STUN field means the public defaults; an empty DHT
-// network means the public network, an empty TURN field means none and an empty proxy
-// means Jami's public one.
+// network means the public network, an empty TURN field means PeerChalk's relay ("none"
+// for no relay) and an empty proxy means Jami's public one.
 struct NetworkSettings {
     bool enabled{true};
     QString bootstrap;  // host:port, comma separated
     QString dhtNetwork; // OpenDHT network id; empty for the public network
     QString stun;       // host:port, comma separated
-    QString turn;       // user:password@host:port
+    QString turn;       // user:password@host:port, or "none"
     QString dhtProxy;   // https:// OpenDHT proxy, used by the browser build
 
     // The saved settings, or the defaults when none were saved. Throws

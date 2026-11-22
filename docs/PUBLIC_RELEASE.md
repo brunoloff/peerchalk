@@ -63,7 +63,8 @@ also still to do.
 ## Infrastructure
 
 - Run our own OpenDHT bootstrap nodes and at least two HTTPS proxies, with browser failover.
-- Run an open TURN relay on an Oracle Always Free server (**Decided**). Its credentials ship
+- Run an open TURN relay on an Oracle Always Free server (**Done**: `89.168.35.4:3478`, the
+  default from the release after 0.2.0, with a quota, a budget alert and a monthly traffic cutoff). Its credentials ship
   in the app, like a public STUN server, so nobody needs an account or a pass. Limits make it
   ample for whiteboards and poor for anything else:
   - each IP address, in each direction: 40 KB/s, an 8 MB burst for loading boards, and 1 GB

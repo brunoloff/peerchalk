@@ -13,6 +13,11 @@ const QString defaultBootstrap = QStringLiteral("bootstrap.jami.net:4222");
 // Free public STUN servers from Cloudflare, with Google's as a fallback.
 const QString defaultStun = QStringLiteral("stun.cloudflare.com:3478, stun.l.google.com:19302");
 
+// PeerChalk's open relay (deploy/coturn/), limited per IP address; its login is meant to be
+// shared, like a public STUN server.
+const QString defaultTurn = QStringLiteral("peerchalk:peerchalk-open-relay@89.168.35.4:3478");
+const QString noTurn = QStringLiteral("none");
+
 const QString defaultDhtProxy = QStringLiteral("https://dhtproxy.jami.net");
 
 struct HostPort {
@@ -73,8 +78,9 @@ NetworkConfig NetworkConfig::from(const NetworkSettings &settings) {
         const HostPort server = hostPort(entry.trimmed(), "STUN server");
         config.ice.servers.emplace_back(p2pdc::StunServer{server.host, server.port});
     }
-    if (!settings.turn.trimmed().isEmpty())
-        config.ice.servers.emplace_back(turnServer(settings.turn.trimmed()));
+    const QString turn = settings.turn.trimmed().isEmpty() ? defaultTurn : settings.turn.trimmed();
+    if (turn.compare(noTurn, Qt::CaseInsensitive) != 0)
+        config.ice.servers.emplace_back(turnServer(turn));
     config.dhtProxy = dhtProxyUrl(settings.dhtProxy);
     return config;
 }
