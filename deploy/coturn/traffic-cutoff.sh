@@ -71,6 +71,8 @@ sent_gb_this_month() {
     [ -n "$interface" ] || fail "could not tell the network interface; pass --interface"
     local line month bytes
     line=$(vnstat --oneline b -i "$interface") || fail "vnstat has no data for $interface yet"
+    # A new database says so until its first save, a few minutes after vnstat starts.
+    if [[ $line == *"No data."* ]]; then echo 0; return; fi
     month=$(cut -d';' -f8 <<<"$line")
     bytes=$(cut -d';' -f10 <<<"$line")
     [[ $month =~ ^[0-9]{4}-[0-9]{2}$ ]] || fail "vnstat's month '$month' is not YYYY-MM"

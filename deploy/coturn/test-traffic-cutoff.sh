@@ -13,7 +13,11 @@ failures=0
 mkdir "$work/bin"
 cat >"$work/bin/vnstat" <<'EOF'
 #!/usr/bin/env bash
-echo "1;eth0;2026-11-22;0;0;0;0;${MONTH};0;${SENT_BYTES};0;0;0;0;0"
+if [ "$MONTH" = new ]; then
+    echo " eth0: No data. Timestamp of last update is same 2026-11-22 18:08:56 as of database creation."
+else
+    echo "1;eth0;2026-11-22;0;0;0;0;${MONTH};0;${SENT_BYTES};0;0;0;0;0"
+fi
 EOF
 cat >"$work/bin/systemctl" <<'EOF'
 #!/usr/bin/env bash
@@ -64,6 +68,8 @@ expect "does not stop it twice" "" "$(run_with 5300 inactive)"
 expect "restarts it in a new month" "start coturn" "$(run_with 0 inactive 2026-01)"
 expect "leaves a coturn stopped by hand" "" "$(run_with 10 inactive)"
 expect "powers off at 80%" poweroff "$(run_with 8100 active)"
+rm -f "$work/marker"
+expect "a new database counts as nothing sent" "" "$(run_with 0 active new)"
 expect "an unreadable month is an error" refused \
     "$(run_with 9000 active 11/2026 2>/dev/null || echo refused)"
 
