@@ -73,6 +73,21 @@ Rectangle {
                 color: Theme.ink
             }
 
+            Label {
+                Layout.alignment: Qt.AlignBaseline
+                Layout.leftMargin: -4
+                objectName: "appVersion"
+                text: Launcher.version
+                font.family: Theme.headingFont
+                font.pixelSize: 11
+                font.weight: Font.Medium
+                font.letterSpacing: 0.6
+                color: Theme.engraved
+                style: Text.Sunken
+                styleColor: Theme.engravedEdge
+                Accessible.name: qsTr("Version %1").arg(Launcher.version)
+            }
+
             Item {
                 Layout.fillWidth: true
             }

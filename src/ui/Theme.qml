@@ -18,6 +18,9 @@ QtObject {
     readonly property color accent: "#2F5BEA"
     readonly property color accentSoft: "#EDF1FD"
     readonly property color hover: "#F3F1EC"
+    // Text pressed into the paper: a pale fill under a darker top edge.
+    readonly property color engraved: "#CBC6BC"
+    readonly property color engravedEdge: "#A8A399"
 
     readonly property string bodyFont: "Inter"
     readonly property string headingFont: "Space Grotesk"

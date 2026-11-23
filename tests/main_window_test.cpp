@@ -7,6 +7,7 @@
 #include <QQuickItem>
 #include <QQuickStyle>
 #include <QQuickWindow>
+#include <QRegularExpression>
 #include <QTemporaryDir>
 #include <QTest>
 #include <QtQml/qqmlextensionplugin.h>
@@ -205,6 +206,18 @@ TEST_F(MainWindowTest, NewBoardsArePageBoardsUnlessChosenOtherwise) {
         return pages->mapToScene({}).x() < infinite->mapToScene({}).x(); // Pages on the left
     }));
     QMetaObject::invokeMethod(dialog, "close");
+}
+
+TEST_F(MainWindowTest, TheSidebarShowsTheVersionBesideTheName) {
+    library_->createProject(QStringLiteral("Project"));
+    QQuickItem *version = nullptr;
+    ASSERT_TRUE(QTest::qWaitFor([&] {
+        version = item("appVersion");
+        return version != nullptr && version->isVisible() && version->width() > 0;
+    }));
+    EXPECT_TRUE(QRegularExpression(QStringLiteral("^\\d+\\.\\d+(\\.\\d+)?$"))
+                    .match(version->property("text").toString())
+                    .hasMatch());
 }
 
 TEST_F(MainWindowTest, UsesTheBasicControlsStyle) {
