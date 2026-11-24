@@ -50,4 +50,17 @@ QtObject {
     readonly property color warningSoft: "#FFF7ED"
     readonly property color danger: "#B91C1C"
     readonly property var penWidths: [2, 4, 8]
+    // Network status: servers that answer or not, and connections direct or relayed.
+    readonly property color working: "#2E7D4F"
+    readonly property color workingInk: "#2E6B45"
+    readonly property color unreachable: "#A63D2F"
+    readonly property color quiet: "#6B675F"    // secondary text that still reads at 11px
+    readonly property color line: "#8A8378"     // lines on the connection map
+    readonly property color lineFaint: "#C9C3B8"
+    readonly property color directSoft: "#F3F6FE"
+    readonly property color directBorder: "#C9D4F8"
+    readonly property color relay: "#A15C00"
+    readonly property color relayInk: "#8A4E00"
+    readonly property color relaySoft: "#FFF6E8"
+    readonly property color relayBorder: "#E2C08E"
 }

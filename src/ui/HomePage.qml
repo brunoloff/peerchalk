@@ -11,7 +11,7 @@ Item {
     readonly property bool hasProject: Library.currentProjectId.length > 0
 
     signal openBoard(string boardId)
-    signal openSettings()
+    signal openSettings(int tab)
 
     function createBoard(name: string, pages: bool, paper: string, landscape: bool,
                          background: string) {
@@ -35,7 +35,8 @@ Item {
             Layout.preferredWidth: implicitWidth
             onCreateProjectRequested: newProjectDialog.ask("")
             onJoinProjectRequested: joinDialog.ask("")
-            onSettingsRequested: home.openSettings()
+            onSettingsRequested: home.openSettings(0)
+            onNetworkRequested: home.openSettings(1)
             onRequestsRequested: requestsDialog.open()
         }
 

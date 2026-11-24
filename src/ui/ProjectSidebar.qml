@@ -12,6 +12,7 @@ Rectangle {
     signal createProjectRequested()
     signal joinProjectRequested()
     signal settingsRequested()
+    signal networkRequested()
     signal requestsRequested()
 
     color: Theme.surface
@@ -208,6 +209,13 @@ Rectangle {
             primary: true
             text: Network.joinRequestCount === 1 ? qsTr("1 request to join") : qsTr("%1 requests to join").arg(Network.joinRequestCount)
             onClicked: sidebar.requestsRequested()
+        }
+
+        ConnectionChips {
+            objectName: "connectionChips"
+            Layout.fillWidth: true
+            Layout.leftMargin: 6
+            onClicked: sidebar.networkRequested()
         }
 
         NetworkStatus {

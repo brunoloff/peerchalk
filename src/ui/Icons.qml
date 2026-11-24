@@ -31,6 +31,15 @@ QtObject {
     readonly property string browser: "M5 4h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM3 8h18M8 21h8"
     readonly property string bolt: "M13 2L4 14h7l-1 8 9-12h-7z"
     readonly property string relay: "M4 12h5M15 12h5M9 8h6v8H9z"
+    // Kinds of network servers, and this device on the connection map.
+    readonly property string dht: "M5 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM18 2.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM18 16.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM7.2 10.8l8.6-4.6M7.2 13.2l8.6 4.6"
+    readonly property string nostr: "M12 13v8M12 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM8.5 6.5a5 5 0 0 0 0 7M15.5 6.5a5 5 0 0 1 0 7M5.6 3.6a9 9 0 0 0 0 12.8M18.4 3.6a9 9 0 0 1 0 12.8"
+    readonly property string mqtt: "M4.5 4h15A1.5 1.5 0 0 1 21 5.5v3a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 8.5v-3A1.5 1.5 0 0 1 4.5 4zM4.5 14h15a1.5 1.5 0 0 1 1.5 1.5v3a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18.5v-3A1.5 1.5 0 0 1 4.5 14zM7 7h.01M7 17h.01"
+    readonly property string peerjs: "M9 7V3M15 7V3M6 7h12v4a6 6 0 0 1-12 0zM12 17v4"
+    readonly property string stun: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"
+    readonly property string turn: "M6 16.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM18 2.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM8.5 19H15a3.5 3.5 0 0 0 0-7H9a3.5 3.5 0 0 1 0-7h6.5"
+    readonly property string laptop: "M5.5 5h13A1.5 1.5 0 0 1 20 6.5V16H4V6.5A1.5 1.5 0 0 1 5.5 5zM2 19h20"
+    readonly property string reset: "M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"
     // A hand-drawn arrow curving down and to the right.
     readonly property string scribbleArrow: "M2 4c10-1 17 5 18 16M20 20l-5-4M20 20l1.5-6.5"
 }

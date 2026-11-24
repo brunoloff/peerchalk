@@ -1,6 +1,7 @@
 # Qt Quick items and QML exposed as the PeerChalk module. The module is static,
 # so the executable imports its plugin with Q_IMPORT_QML_PLUGIN(PeerChalkPlugin).
-set_source_files_properties(Theme.qml Icons.qml Format.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
+set_source_files_properties(Theme.qml Icons.qml Format.qml NetworkSummary.qml
+    PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 qt_add_library(peerchalk_ui STATIC)
 # Browsers save and choose files through web_files.cpp instead of system dialogs.
 set(peerchalk_native_qml)
@@ -58,7 +59,10 @@ qt_add_qml_module(peerchalk_ui URI PeerChalk VERSION 1.0
         PersonRow.qml VerifyPanel.qml Avatar.qml PaperButton.qml TextInputDialog.qml
         ConfirmDialog.qml CodeDialog.qml Toast.qml MembersDialog.qml RemoteCursor.qml
         NetworkStatus.qml PersonRoleRow.qml RequestsDialog.qml SettingsPage.qml
-        NetworkPane.qml SettingField.qml SettingLines.qml PaperTab.qml ColorPalette.qml
+        NetworkPane.qml NetworkSettingsColumn.qml SettingField.qml PaperTab.qml
+        ServerListSection.qml ServerRow.qml ServerAddForm.qml ServerListFooter.qml ServerKindLabel.qml
+        ServerStatus.qml NetworkSummary.qml NetworkMap.qml MapLines.qml MapLegend.qml MapMethodCard.qml
+        MapDeviceGroup.qml MapAvatar.qml ConnectionChips.qml ColorPalette.qml
         ChoiceChip.qml BoardKindCard.qml NewBoardDialog.qml PagePill.qml PageOverlay.qml
         PageGapControls.qml ColumnMenu.qml ColumnRuler.qml PageBoardChrome.qml
         PageOutline.qml
