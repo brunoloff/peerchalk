@@ -14,7 +14,7 @@ struct NetworkSettings {
     QString dhtNetwork; // OpenDHT network id; empty for the public network
     QString stun;       // host:port, comma separated
     QString turn;       // user:password@host:port, or "none"
-    QString dhtProxy;   // https:// OpenDHT proxy, used by the browser build
+    QString dhtProxy;   // https:// OpenDHT proxies, comma-separated, used by the browser build
 
     // The saved settings, or the defaults when none were saved. Throws
     // std::runtime_error when the file is malformed.

@@ -137,8 +137,7 @@ void Network::start() {
     DiscoveryConfig discovery;
     discovery.network_id = config_.networkId;
     discovery.bootstrap_servers = config_.bootstrap;
-    if (!config_.dhtProxy.empty())
-        discovery.browser_proxy_urls.push_back(config_.dhtProxy);
+    discovery.browser_proxy_urls = config_.dhtProxies;
     discovery.max_connections = 64;
     if (config_.loopbackOnly)
         discovery.bind_addresses = NativeBindAddresses{"127.0.0.1", "::1"};

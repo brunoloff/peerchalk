@@ -3,13 +3,16 @@
 #include <QStringList>
 #include <QUrl>
 
+#include <iterator>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 namespace peerchalk::sync {
 namespace {
 
-const QString defaultBootstrap = QStringLiteral("bootstrap.jami.net:4222");
+// Jami's node, then PeerChalk's own on the relay's server (deploy/dht-proxy/).
+const QString defaultBootstrap = QStringLiteral("bootstrap.jami.net:4222, 89.168.35.4:4222");
 // Free public STUN servers from Cloudflare, with Google's as a fallback.
 const QString defaultStun = QStringLiteral("stun.cloudflare.com:3478, stun.l.google.com:19302");
 
@@ -18,7 +21,10 @@ const QString defaultStun = QStringLiteral("stun.cloudflare.com:3478, stun.l.goo
 const QString defaultTurn = QStringLiteral("peerchalk:peerchalk-open-relay@89.168.35.4:3478");
 const QString noTurn = QStringLiteral("none");
 
-const QString defaultDhtProxy = QStringLiteral("https://dhtproxy.jami.net");
+// Jami's proxy, then PeerChalk's own: Jami's has resolved to a dead address in parts of Asia.
+const QString defaultDhtProxies =
+    QStringLiteral("https://dhtproxy.jami.net, https://89-168-35-4.sslip.io");
+constexpr qsizetype maxDhtProxies = 8; // as p2pdc allows
 
 struct HostPort {
     std::string host;
@@ -44,8 +50,7 @@ p2pdc::TurnServer turnServer(const QString &turn) {
 }
 
 // Browsers only reach a proxy over HTTPS, or plain HTTP on this computer.
-std::string dhtProxyUrl(const QString &text) {
-    const QString value = text.trimmed().isEmpty() ? defaultDhtProxy : text.trimmed();
+std::string dhtProxyUrl(const QString &value) {
     const QUrl url(value, QUrl::StrictMode);
     const bool local =
         url.scheme() == QStringLiteral("http") &&
@@ -54,6 +59,19 @@ std::string dhtProxyUrl(const QString &text) {
         (url.scheme() != QStringLiteral("https") && !local))
         throw std::invalid_argument("DHT proxy must be an https:// address");
     return value.toStdString();
+}
+
+// Comma-separated proxies, tried in order.
+std::vector<std::string> dhtProxyUrls(const QString &text) {
+    const QString list = text.trimmed().isEmpty() ? defaultDhtProxies : text;
+    std::vector<std::string> urls;
+    for (const QString &entry : list.split(QLatin1Char(','), Qt::SkipEmptyParts)) {
+        if (!entry.trimmed().isEmpty())
+            urls.push_back(dhtProxyUrl(entry.trimmed()));
+    }
+    if (urls.empty() || std::ssize(urls) > maxDhtProxies)
+        throw std::invalid_argument("DHT proxy must list 1 to 8 https:// addresses");
+    return urls;
 }
 
 } // namespace
@@ -81,7 +99,7 @@ NetworkConfig NetworkConfig::from(const NetworkSettings &settings) {
     const QString turn = settings.turn.trimmed().isEmpty() ? defaultTurn : settings.turn.trimmed();
     if (turn.compare(noTurn, Qt::CaseInsensitive) != 0)
         config.ice.servers.emplace_back(turnServer(turn));
-    config.dhtProxy = dhtProxyUrl(settings.dhtProxy);
+    config.dhtProxies = dhtProxyUrls(settings.dhtProxy);
     return config;
 }
 

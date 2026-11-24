@@ -12,6 +12,8 @@
 #include <QSysInfo>
 
 #include <exception>
+#include <string>
+#include <vector>
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
@@ -33,6 +35,13 @@ QStringList iceServers(const IceConfig &ice) {
             servers << QStringLiteral("TURN %1:%2").arg(QString::fromStdString(turn->host)).arg(turn->port);
     }
     return servers;
+}
+
+QString joined(const std::vector<std::string> &values) {
+    QStringList list;
+    for (const std::string &value : values)
+        list << QString::fromStdString(value);
+    return list.isEmpty() ? QStringLiteral("none") : list.join(QStringLiteral(", "));
 }
 
 QString platform() {
@@ -64,9 +73,7 @@ void Network::logConfiguration() const {
     logInfo(QStringLiteral("network"),
             QStringLiteral("DHT network %1, bootstrap %2, proxy %3; %4")
                 .arg(config_.networkId)
-                .arg(bootstrap.join(QStringLiteral(", ")),
-                     config_.dhtProxy.empty() ? QStringLiteral("none")
-                                              : QString::fromStdString(config_.dhtProxy),
+                .arg(bootstrap.join(QStringLiteral(", ")), joined(config_.dhtProxies),
                      iceServers(config_.ice).join(QStringLiteral(", "))));
 }
 

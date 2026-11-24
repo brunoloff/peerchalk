@@ -76,8 +76,8 @@ Item {
 
                     visible: pane.inBrowser
                     label: qsTr("OpenDHT proxy")
-                    hint: qsTr("The https:// server this browser finds peers through. Empty uses dhtproxy.jami.net.")
-                    placeholder: "https://dhtproxy.jami.net"
+                    hint: qsTr("The https:// servers this browser finds peers through, separated by commas; the first that works is used. Empty uses dhtproxy.jami.net, then PeerChalk's own.")
+                    placeholder: "https://dhtproxy.jami.net, https://89-168-35-4.sslip.io"
                 }
 
                 SettingField {
@@ -85,8 +85,8 @@ Item {
 
                     visible: !pane.inBrowser
                     label: qsTr("Bootstrap nodes")
-                    hint: qsTr("OpenDHT nodes to start from, as host:port separated by commas. Empty uses bootstrap.jami.net:4222.")
-                    placeholder: "bootstrap.jami.net:4222"
+                    hint: qsTr("OpenDHT nodes to start from, as host:port separated by commas. Empty uses bootstrap.jami.net:4222 and PeerChalk's own.")
+                    placeholder: "bootstrap.jami.net:4222, 89.168.35.4:4222"
                 }
 
                 SettingField {
