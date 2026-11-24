@@ -42,6 +42,8 @@ class Library;
 namespace peerchalk::sync {
 
 class InstanceLink;
+class ServerChecks;
+class ServerList;
 
 // Connects this device with others over p2pdc and keeps shared data in step.
 //
@@ -74,6 +76,12 @@ class Network : public QObject {
     Q_PROPERTY(bool updateNeeded READ updateNeeded NOTIFY updateNeededChanged)
     // Changes when the connection log gets new entries (checked once a second).
     Q_PROPERTY(quint64 logRevision MEMBER logRevision_ NOTIFY logChanged)
+    // Other devices, connected or connecting, one entry each: {device, name, colorIndex,
+    // route}; route is "direct", "relay", "unknown" or "connecting".
+    Q_PROPERTY(QVariantList devices READ devices NOTIFY peersChanged)
+    // What the last server checks found, by "kind address": {state, milliseconds}; state is
+    // "checking", "working" or "unreachable".
+    Q_PROPERTY(QVariantMap serverStatus MEMBER serverStatus_ NOTIFY serverStatusChanged)
 
   public:
     // instanceLink, if any, keeps this device's other app instances in step.
@@ -102,6 +110,17 @@ class Network : public QObject {
     Q_INVOKABLE QVariantMap settings() const;
     // Checks and saves settings for the next start; returns what is wrong, or "".
     Q_INVOKABLE QString saveSettings(const QVariantMap &settings);
+    // The servers of a group ("discovery" or "firewall") as rows {kind, address, isDefault,
+    // browserOnly}; kind is "dht", "nostr", "mqtt", "peerjs", "stun" or "turn".
+    Q_INVOKABLE QVariantList servers(const QString &group) const;
+    // These change the server lists and save them for the next start; each returns what is
+    // wrong, or "".
+    Q_INVOKABLE QString addServer(const QString &kind, const QString &address);
+    Q_INVOKABLE QString removeServer(const QString &group, int index);
+    Q_INVOKABLE QString resetServers(const QString &group);
+    // Checks every server in the saved lists again; results arrive in serverStatus.
+    Q_INVOKABLE void checkServers();
+    [[nodiscard]] QVariantList devices() const;
     // For a project or board you own: connected people without access, {key, name,
     // fingerprint}. They hold its invite; approving makes them members.
     Q_INVOKABLE QVariantList joinRequests(const QString &itemId) const;
@@ -139,12 +158,16 @@ class Network : public QObject {
     void requestsChanged();
     void settingsChanged();
     void updateNeededChanged();
+    void serverStatusChanged();
     // boardAccess may give a different answer now.
     void boardAccessChanged();
     // Someone without access reached a project or board you own.
     void joinRequested(const QString &name, const QString &itemName);
 
   private:
+    // Applies a change to the saved server lists and saves them for the next start.
+    QString changeServers(const std::function<void(ServerList &)> &change);
+
     enum class SpaceKind { Personal, Project, Board };
     struct Space {
         SpaceKind kind{SpaceKind::Personal};
@@ -171,6 +194,7 @@ class Network : public QObject {
     struct Peer {
         QElapsedTimer started;
         QString route; // as last reported, for the troubleshooting summary
+        p2pdc::RouteKind routeKind{p2pdc::RouteKind::Unknown};
         QString space;
         p2pdc::SigningPublicKey device{};
         std::uint64_t generation{0};
@@ -356,6 +380,8 @@ class Network : public QObject {
     quint64 logRevision_{0};
     QTimer downloadTimer_;
     std::map<std::string, Download> downloads_; // by blob hash, one peer each
+    ServerChecks *serverChecks_{nullptr};       // made on the first check
+    QVariantMap serverStatus_;
 };
 
 } // namespace peerchalk::sync

@@ -7,6 +7,8 @@
 
 #include <QtLogging>
 
+#include <utility>
+
 namespace peerchalk::sync {
 
 using namespace p2pdc;
@@ -65,6 +67,8 @@ ConnectionHandlers Network::handlers(PeerId id, std::uint64_t generation) {
         [this, id, generation](RouteInfo route) {
             if (Peer *peer = livePeer(id, generation)) {
                 peer->route = describe(route);
+                if (std::exchange(peer->routeKind, route.current) != route.current)
+                    emit peersChanged();
                 logInfo(connectionArea,
                         QStringLiteral("%1: route %2").arg(peerLabel(id), peer->route));
             }

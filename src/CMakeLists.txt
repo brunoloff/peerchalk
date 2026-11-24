@@ -62,11 +62,12 @@ if(EMSCRIPTEN)
     set(peerchalk_web_files "${CMAKE_CURRENT_SOURCE_DIR}/app/web_files.js")
     set(peerchalk_web_math "${CMAKE_CURRENT_SOURCE_DIR}/app/web_math.js")
     set(peerchalk_web_pdf "${CMAKE_CURRENT_SOURCE_DIR}/app/web_pdf.js")
+    set(peerchalk_web_checks "${CMAKE_CURRENT_SOURCE_DIR}/app/web_checks.js")
     target_link_options(peerchalk PRIVATE -lidbfs.js "SHELL:--pre-js \"${peerchalk_web_storage}\""
         "SHELL:--pre-js \"${peerchalk_web_files}\"" "SHELL:--pre-js \"${peerchalk_web_math}\""
-        "SHELL:--pre-js \"${peerchalk_web_pdf}\"")
+        "SHELL:--pre-js \"${peerchalk_web_pdf}\"" "SHELL:--pre-js \"${peerchalk_web_checks}\"")
     set_property(TARGET peerchalk APPEND PROPERTY LINK_DEPENDS "${peerchalk_web_storage}"
-        "${peerchalk_web_files}" "${peerchalk_web_math}" "${peerchalk_web_pdf}")
+        "${peerchalk_web_files}" "${peerchalk_web_math}" "${peerchalk_web_pdf}" "${peerchalk_web_checks}")
 endif()
 
 if(NOT EMSCRIPTEN)

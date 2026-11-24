@@ -40,7 +40,7 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(PEERCHALK_TEST_OPENDHT REQUIRED IMPORTED_TARGET opendht)
 find_package(msgpack-cxx CONFIG REQUIRED)
 add_executable(peerchalk_network_tests qt_test_main.cpp network_test.cpp messages_test.cpp
-    network_settings_test.cpp live_strokes_test.cpp message_parts_test.cpp
+    network_settings_test.cpp server_list_test.cpp stun_message_test.cpp server_checks_test.cpp live_strokes_test.cpp message_parts_test.cpp
     space_schedule_test.cpp instance_link_test.cpp connection_log_test.cpp)
 target_link_libraries(peerchalk_network_tests PRIVATE peerchalk_ui Qt6::Test GTest::gtest
     PkgConfig::PEERCHALK_TEST_OPENDHT msgpack-cxx)

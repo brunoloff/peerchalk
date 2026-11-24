@@ -5,10 +5,12 @@ qt_add_library(peerchalk_ui STATIC)
 # Browsers save and choose files through web_files.cpp instead of system dialogs.
 set(peerchalk_native_qml)
 set(peerchalk_instance_link ../sync/instance_link_web.cpp)
+set(peerchalk_server_checks ../sync/server_checks_web.cpp)
 set(peerchalk_math_engine_source ../math/math_engine_web.cpp)
 if(NOT EMSCRIPTEN)
     set(peerchalk_native_qml NativeBackupFiles.qml NativeSaveFile.qml NativePdfFile.qml)
     set(peerchalk_instance_link ../sync/instance_link_native.cpp)
+    set(peerchalk_server_checks ../sync/server_checks_native.cpp)
     set(peerchalk_math_engine_source ../math/math_engine_native.cpp)
 endif()
 qt_add_qml_module(peerchalk_ui URI PeerChalk VERSION 1.0
@@ -27,7 +29,10 @@ qt_add_qml_module(peerchalk_ui URI PeerChalk VERSION 1.0
         desktop_launcher.cpp desktop_launcher.hpp app_updater.cpp app_updater.hpp
         library_boards.cpp library_links.cpp board_document.cpp board_document.hpp
         ../sync/messages.cpp ../sync/messages.hpp ../sync/network.cpp ../sync/network.hpp ../sync/network_blobs.cpp
-        ../sync/network_config.cpp ../sync/network_config.hpp ../sync/network_peers.cpp
+        ../sync/network_config.cpp ../sync/network_config.hpp ../sync/network_defaults.hpp
+        ../sync/server_list.cpp ../sync/server_list.hpp ../sync/stun_message.cpp
+        ../sync/stun_message.hpp ../sync/server_checks.hpp ${peerchalk_server_checks}
+        ../sync/network_status.cpp ../sync/network_peers.cpp
         ../sync/network_settings.cpp ../sync/network_settings.hpp ../sync/network_settings_page.cpp
         ../sync/network_live.cpp ../sync/live_strokes.cpp ../sync/live_strokes.hpp
         ../sync/network_sync.cpp ../sync/network_spaces.cpp ../sync/network_boards.cpp
