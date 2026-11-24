@@ -29,6 +29,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <chrono>
 #include <optional>
 #include <set>
 
@@ -78,7 +79,7 @@ class Network : public QObject {
     Q_PROPERTY(quint64 logRevision MEMBER logRevision_ NOTIFY logChanged)
     // Other devices, connected or connecting, one entry each: {device, name, colorIndex,
     // route}; route is "direct", "relay", "unknown" or "connecting".
-    Q_PROPERTY(QVariantList devices READ devices NOTIFY peersChanged)
+    Q_PROPERTY(QVariantList devices READ devices NOTIFY devicesChanged)
     // What the last server checks found, by "kind address": {state, milliseconds}; state is
     // "checking", "working" or "unreachable".
     Q_PROPERTY(QVariantMap serverStatus MEMBER serverStatus_ NOTIFY serverStatusChanged)
@@ -154,6 +155,7 @@ class Network : public QObject {
     void logChanged();
     void statusChanged();
     void peersChanged();
+    void devicesChanged(); // with peersChanged, and when a round-trip time changes
     void presenceChanged();
     void requestsChanged();
     void settingsChanged();
@@ -195,6 +197,7 @@ class Network : public QObject {
         QElapsedTimer started;
         QString route; // as last reported, for the troubleshooting summary
         p2pdc::RouteKind routeKind{p2pdc::RouteKind::Unknown};
+        std::optional<std::chrono::milliseconds> roundTrip; // smoothed, from p2pdc
         QString space;
         p2pdc::SigningPublicKey device{};
         std::uint64_t generation{0};
@@ -286,6 +289,7 @@ class Network : public QObject {
     void connectPeer(const QString &space, const p2pdc::Advertisement &advertisement);
     [[nodiscard]] p2pdc::ConnectionHandlers handlers(PeerId id, std::uint64_t generation);
     void connectionState(const PeerId &id, std::uint64_t generation, p2pdc::ConnectionState state);
+    void routeChanged(const PeerId &id, std::uint64_t generation, const p2pdc::RouteInfo &route);
     void disconnectPeer(const PeerId &id, std::uint64_t generation);
     [[nodiscard]] Peer *livePeer(const PeerId &id, std::uint64_t generation);
     void queue(Peer &peer, const Message &message);

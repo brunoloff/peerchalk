@@ -35,20 +35,38 @@ QString routeName(bool ready, p2pdc::RouteKind kind) {
                                                    : QStringLiteral("unknown");
 }
 
+// Milliseconds, or nothing (undefined in QML) until p2pdc has measured the round trip.
+QVariant milliseconds(std::optional<std::chrono::milliseconds> value) {
+    return value ? QVariant(static_cast<int>(value->count())) : QVariant();
+}
+
+// Whether candidate is a better way to reach a device than existing: a better route, then
+// a shorter round trip.
+bool better(const QVariantMap &candidate, const QVariantMap &existing) {
+    const int was = rank(existing.value(QStringLiteral("route")).toString());
+    const int is = rank(candidate.value(QStringLiteral("route")).toString());
+    if (is != was)
+        return is > was;
+    const QVariant old = existing.value(QStringLiteral("milliseconds"));
+    const QVariant now = candidate.value(QStringLiteral("milliseconds"));
+    return now.isValid() && (!old.isValid() || now.toInt() < old.toInt());
+}
+
 } // namespace
 
 QVariantList Network::devices() const {
     std::map<p2pdc::SigningPublicKey, QVariantMap> byDevice;
     for (const auto &[id, peer] : peers_) {
-        const QString route = routeName(peer->ready && peer->user, peer->routeKind);
+        const bool ready = peer->ready && peer->user;
+        QVariantMap candidate{
+            {QStringLiteral("device"), shortDevice(peer->device)},
+            {QStringLiteral("name"), peer->user ? peer->user->name : QString()},
+            {QStringLiteral("colorIndex"), peer->user ? peer->user->colorIndex : 0},
+            {QStringLiteral("route"), routeName(ready, peer->routeKind)},
+            {QStringLiteral("milliseconds"), milliseconds(ready ? peer->roundTrip : std::nullopt)}};
         QVariantMap &entry = byDevice[peer->device];
-        if (!entry.isEmpty() &&
-            rank(entry.value(QStringLiteral("route")).toString()) >= rank(route))
-            continue;
-        entry = {{QStringLiteral("device"), shortDevice(peer->device)},
-                 {QStringLiteral("name"), peer->user ? peer->user->name : QString()},
-                 {QStringLiteral("colorIndex"), peer->user ? peer->user->colorIndex : 0},
-                 {QStringLiteral("route"), route}};
+        if (entry.isEmpty() || better(candidate, entry))
+            entry = std::move(candidate);
     }
     QVariantList list;
     for (auto &[device, entry] : byDevice)

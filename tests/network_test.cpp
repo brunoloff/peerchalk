@@ -277,6 +277,14 @@ TEST_F(NetworkTest, ProjectMembersShareBoardsLive) {
         << "Bob never received Alice's board";
     EXPECT_EQ(bob.library.workspace().board(QUuid::fromString(board)).name(),
               QStringLiteral("Sketch"));
+    const auto measured = [](const sync::Network &network) { // the other's round-trip time
+        const QVariantList devices = network.devices();
+        return devices.size() == 1 &&
+               devices.front().toMap().value(QStringLiteral("milliseconds")).toInt() >= 0 &&
+               devices.front().toMap().value(QStringLiteral("milliseconds")).isValid();
+    };
+    EXPECT_TRUE(QTest::qWaitFor([&] { return measured(*alice.network) && measured(*bob.network); },
+                                timeoutMs));
 
     bob.draw(board, 50.0F);
     ASSERT_TRUE(QTest::qWaitFor([&] { return alice.strokesOn(board) == 2; }, timeoutMs))

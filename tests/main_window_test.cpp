@@ -271,7 +271,8 @@ TEST_F(MainWindowTest, TheNetworkPageListsServersBesideAMapOfConnections) {
         ADD_FAILURE() << warning.toString().toStdString();
 }
 
-// Twelve devices: nine direct (one with an unknown route), two relayed, one connecting.
+// Twelve devices: nine direct (one with an unknown route), two relayed, one connecting. The
+// first seven direct ones have round-trip times of 10 to 70 ms.
 QVariantList crowd() {
     QVariantList devices;
     const QStringList names{"Ana", "Ben",  "Chloé", "Dev", "Eli",   "Farah",
@@ -281,10 +282,11 @@ QVariantList crowd() {
                               : i == 8 ? "unknown"
                               : i < 11 ? "relay"
                                        : "connecting";
-        devices.push_back(QVariantMap{{"device", QString::number(i)},
-                                      {"name", names[i]},
-                                      {"colorIndex", i},
-                                      {"route", route}});
+        QVariantMap device{
+            {"device", QString::number(i)}, {"name", names[i]}, {"colorIndex", i}, {"route", route}};
+        if (i < 7)
+            device.insert("milliseconds", 10 * (i + 1));
+        devices.push_back(device);
     }
     return devices;
 }
@@ -304,6 +306,13 @@ TEST_F(MainWindowTest, TheConnectionMapGroupsManyDevicesByRoute) {
     EXPECT_EQ(map->property("direct").toList().size(), 9);
     EXPECT_EQ(map->property("relayed").toList().size(), 2);
     EXPECT_EQ(map->property("connecting").toList().size(), 1);
+    QQuickItem *direct = item("directGroup");
+    ASSERT_NE(direct, nullptr);
+    EXPECT_EQ(direct->property("averageMs").toInt(), 40) << "the average of those measured";
+    QVariant latency;
+    QMetaObject::invokeMethod(direct, "latencyOf", Q_RETURN_ARG(QVariant, latency),
+                              Q_ARG(QVariant, crowd().front()));
+    EXPECT_EQ(latency.toString(), QStringLiteral("10 ms"));
     const QQuickItem *showAll = item("showAllDevices");
     ASSERT_NE(showAll, nullptr);
     EXPECT_TRUE(showAll->isVisible()) << "beyond six rows, the rest fold away";

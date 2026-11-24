@@ -134,6 +134,7 @@ Item {
     MapDeviceGroup {
         id: directGroup
 
+        objectName: "directGroup"
         visible: map.direct.length > 0
         route: "direct"
         devices: map.direct

@@ -55,6 +55,7 @@ Network::Network(Library &library, NetworkConfig config, QObject *parent,
     connect(&library_, &Library::boardChanged, this, &Network::boardChanged);
     connect(&library_, &Library::profileChanged, this, &Network::profileChanged);
     connect(this, &Network::peersChanged, this, &Network::requestsChanged);
+    connect(this, &Network::peersChanged, this, &Network::devicesChanged);
     connect(this, &Network::peersChanged, this, &Network::boardAccessChanged);
     connect(&library_, &Library::workspaceChanged, this, &Network::boardAccessChanged);
     connect(&library_, &Library::workspaceChanged, this, &Network::requestsChanged);

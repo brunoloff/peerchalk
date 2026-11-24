@@ -57,6 +57,22 @@ void Network::addPeer(const PeerId &id, std::uint64_t generation,
     peers_[id] = std::move(peer);
 }
 
+// p2pdc reports a route when it or its round-trip time changes; only the former is logged.
+void Network::routeChanged(const PeerId &id, std::uint64_t generation, const RouteInfo &route) {
+    Peer *peer = livePeer(id, generation);
+    if (peer == nullptr)
+        return;
+    const QString described = describe(route);
+    if (std::exchange(peer->route, described) != described)
+        logInfo(connectionArea, QStringLiteral("%1: route %2").arg(peerLabel(id), described));
+    const bool kind = std::exchange(peer->routeKind, route.current) != route.current;
+    const bool time = std::exchange(peer->roundTrip, route.round_trip_time) != route.round_trip_time;
+    if (kind)
+        emit peersChanged();
+    else if (time)
+        emit devicesChanged();
+}
+
 QString Network::peerLabel(const PeerId &id) const {
     return QStringLiteral("%1: device %2").arg(spaceLabel(id.first), shortDevice(id.second));
 }
@@ -64,15 +80,7 @@ QString Network::peerLabel(const PeerId &id) const {
 ConnectionHandlers Network::handlers(PeerId id, std::uint64_t generation) {
     return {
         [this, id, generation](ConnectionState state) { connectionState(id, generation, state); },
-        [this, id, generation](RouteInfo route) {
-            if (Peer *peer = livePeer(id, generation)) {
-                peer->route = describe(route);
-                if (std::exchange(peer->routeKind, route.current) != route.current)
-                    emit peersChanged();
-                logInfo(connectionArea,
-                        QStringLiteral("%1: route %2").arg(peerLabel(id), peer->route));
-            }
-        },
+        [this, id, generation](RouteInfo route) { routeChanged(id, generation, route); },
         [this, id, generation](Bytes message) {
             receive(id, generation,
                     QByteArray(reinterpret_cast<const char *>(message.data()),

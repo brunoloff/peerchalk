@@ -18,8 +18,19 @@ Rectangle {
     readonly property color ink: route === "direct" ? Theme.accent
                                : route === "relay" ? Theme.relayInk : Theme.quiet
 
+    // The average round-trip time of the devices measured so far, or -1.
+    readonly property int averageMs: {
+        const measured = devices.filter(device => typeof device.milliseconds === "number");
+        return measured.length === 0 ? -1
+            : Math.round(measured.reduce((sum, device) => sum + device.milliseconds, 0) / measured.length);
+    }
+
     function nameOf(device) {
         return device.name.length > 0 ? device.name : qsTr("Unknown device");
+    }
+
+    function latencyOf(device) {
+        return typeof device.milliseconds === "number" ? qsTr("%1 ms").arg(device.milliseconds) : "";
     }
 
     implicitHeight: body.implicitHeight + 2
@@ -66,6 +77,7 @@ Rectangle {
                     text: (group.route === "direct" ? qsTr("DIRECT")
                          : group.route === "relay" ? qsTr("VIA RELAY") : qsTr("CONNECTING"))
                           + " · " + group.devices.length
+                          + (group.averageMs >= 0 ? " · " + qsTr("avg %1 ms").arg(group.averageMs) : "")
                 }
             }
         }
@@ -121,7 +133,8 @@ Rectangle {
                     font.pixelSize: 12
                     color: Theme.quiet
                     text: deviceRow.modelData.route === "unknown" ? qsTr("route unknown")
-                        : group.route === "connecting" ? qsTr("finding a route…") : ""
+                        : group.route === "connecting" ? qsTr("finding a route…")
+                        : group.latencyOf(deviceRow.modelData)
                 }
             }
         }
