@@ -41,7 +41,8 @@ TEST(ServerListTest, AddsAndRemovesServersAndSavesDefaultsAsEmpty) {
     EXPECT_EQ(
         list.settings().discovery,
         "opendht https://dhtproxy.jami.net https://89-168-35-4.sslip.io https://proxy.example\n"
-        "nostr wss://nos.lol\nnostr wss://relay.primal.net\nmqtt wss://broker.example:8884/mqtt");
+        "nostr wss://nos.lol\nnostr wss://relay.primal.net\nmqtt wss://broker.hivemq.com:8884/mqtt\n"
+        "peerjs wss://0.peerjs.com/peerjs peerjs\nmqtt wss://broker.example:8884/mqtt");
     const auto rows = list.entries(ServerGroup::Discovery);
     EXPECT_FALSE(rows.back().isDefault);
     list.remove(ServerGroup::Discovery, rows.size() - 1);
@@ -74,7 +75,7 @@ TEST(ServerListTest, RefusesWhatWouldNotWork) {
     list.remove(ServerGroup::Discovery, 0);
     EXPECT_THROW(list.remove(ServerGroup::Discovery, 0), std::invalid_argument)
         << "the last DHT node stays";
-    EXPECT_EQ(list.entries(ServerGroup::Discovery).size(), 3U);
+    EXPECT_EQ(list.entries(ServerGroup::Discovery).size(), 5U);
 }
 
 } // namespace

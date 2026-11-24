@@ -256,8 +256,8 @@ TEST_F(MainWindowTest, TheNetworkPageListsServersBesideAMapOfConnections) {
     ASSERT_TRUE(QTest::qWaitFor([this] { return !item("stack")->property("busy").toBool(); }));
     EXPECT_TRUE(item("discoveryServers")->isVisible());
     EXPECT_TRUE(item("firewallServers")->isVisible());
-    EXPECT_EQ(item("discoveryServers")->property("servers").toList().size(), 4)
-        << "two DHT nodes, then two Nostr relays for browsers";
+    EXPECT_EQ(item("discoveryServers")->property("servers").toList().size(), 6)
+        << "two DHT nodes, then two Nostr relays, MQTT and PeerJS for browsers";
     EXPECT_EQ(item("firewallServers")->property("servers").toList().size(), 3)
         << "two STUN servers and PeerChalk's relay";
     const QQuickItem *map = item("networkMap");
