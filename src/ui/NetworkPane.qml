@@ -76,8 +76,8 @@ Item {
 
                     visible: pane.inBrowser
                     label: qsTr("Discovery servers")
-                    hint: qsTr("Where this browser finds other devices, one per line, all used at once: \"opendht\" and https:// proxies into the same DHT, \"nostr\" and a wss:// relay, \"mqtt\" and a wss:// broker, or \"peerjs\" and your own PeerJS server. Devices meet through any server both use. Empty uses Jami's DHT proxy, PeerChalk's own and two Nostr relays.")
-                    placeholder: "opendht https://dhtproxy.jami.net https://89-168-35-4.sslip.io\nnostr wss://nos.lol\nnostr wss://relay.primal.net"
+                    hint: qsTr("Where this browser finds other devices, one per line, all used at once: \"opendht\" and https:// proxies into the same DHT, \"nostr\" and a wss:// relay, \"mqtt\" and a wss:// broker, or \"peerjs\" and a PeerJS server. Devices meet through any server both use. Empty uses Jami's DHT proxy, PeerChalk's own, two Nostr relays, HiveMQ's MQTT broker and the public PeerJS server.")
+                    placeholder: "opendht https://dhtproxy.jami.net https://89-168-35-4.sslip.io\nnostr wss://nos.lol\nnostr wss://relay.primal.net\nmqtt wss://broker.hivemq.com:8884/mqtt\npeerjs wss://0.peerjs.com/peerjs peerjs"
                 }
 
                 SettingField {

@@ -22,11 +22,15 @@ const QString noTurn = QStringLiteral("none");
 
 // Where the browser build meets other devices (p2pdc's discovery backends), one per line:
 // Jami's DHT proxy, then PeerChalk's own (Jami's has resolved to a dead address in parts of
-// Asia), and two Nostr relays, which work over WebSocket where streaming HTTP is blocked.
+// Asia); two Nostr relays and HiveMQ's public MQTT broker, which work over WebSocket where
+// streaming HTTP is blocked; and the public PeerJS server, which only relays WebRTC
+// signalling between browsers.
 const QString defaultDiscovery = QStringLiteral(
     "opendht https://dhtproxy.jami.net https://89-168-35-4.sslip.io\n"
     "nostr wss://nos.lol\n"
-    "nostr wss://relay.primal.net");
+    "nostr wss://relay.primal.net\n"
+    "mqtt wss://broker.hivemq.com:8884/mqtt\n"
+    "peerjs wss://0.peerjs.com/peerjs peerjs");
 
 struct HostPort {
     std::string host;

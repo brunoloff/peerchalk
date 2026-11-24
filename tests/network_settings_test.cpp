@@ -45,7 +45,9 @@ TEST_F(NetworkSettingsTest, DefaultsToThePublicNetwork) {
     EXPECT_EQ(config.browserBackends,
               (std::vector<p2pdc::BrowserBackend>{
                   p2pdc::OpenDhtProxies{{"https://dhtproxy.jami.net", "https://89-168-35-4.sslip.io"}},
-                  p2pdc::NostrRelay{"wss://nos.lol"}, p2pdc::NostrRelay{"wss://relay.primal.net"}}));
+                  p2pdc::NostrRelay{"wss://nos.lol"}, p2pdc::NostrRelay{"wss://relay.primal.net"},
+                  p2pdc::MqttBroker{"wss://broker.hivemq.com:8884/mqtt"},
+                  p2pdc::PeerJsServer{"wss://0.peerjs.com/peerjs", "peerjs"}}));
 }
 
 TEST_F(NetworkSettingsTest, NoneTurnsTheRelayOff) {
