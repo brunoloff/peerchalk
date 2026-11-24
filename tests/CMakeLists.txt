@@ -54,3 +54,7 @@ add_executable(peerchalk_page_bench page_board_bench.cpp)
 target_link_libraries(peerchalk_page_bench PRIVATE peerchalk_ui peerchalk_pdf)
 target_compile_options(peerchalk_page_bench PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:${peerchalk_warning_flags}>)
+
+# The version a build shows, from VERSION and git (cmake/BuildStamp.cmake).
+add_test(NAME BuildStamp COMMAND ${CMAKE_COMMAND} -DSCRIPT=${PROJECT_SOURCE_DIR}/cmake/BuildStamp.cmake
+    -DWORK=${CMAKE_CURRENT_BINARY_DIR} -P ${CMAKE_CURRENT_SOURCE_DIR}/build_stamp_test.cmake)

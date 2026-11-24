@@ -218,7 +218,7 @@ TEST_F(MainWindowTest, TheSidebarShowsTheVersionBesideTheName) {
         version = item("appVersion");
         return version != nullptr && version->isVisible() && version->width() > 0;
     }));
-    EXPECT_TRUE(QRegularExpression(QStringLiteral("^\\d+\\.\\d+(\\.\\d+)?$"))
+    EXPECT_TRUE(QRegularExpression(QStringLiteral("^\\d+\\.\\d+\\.\\d+(\\+\\d+)?$"))
                     .match(version->property("text").toString())
                     .hasMatch());
 }

@@ -7,7 +7,7 @@ set -euo pipefail
 readonly minimum_macos=13.0
 root=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
 readonly root qt=$HOME/Qt/6.11.2/macos arch=$(uname -m)
-version=$(sed -n 's/^project(PeerChalk VERSION \([0-9.]*\).*/\1/p' "$root/CMakeLists.txt")
+version=$(cat "$root/VERSION")
 readonly version name="peerchalk-$version-macos-$arch"
 
 fail() {

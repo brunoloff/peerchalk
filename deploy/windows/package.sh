@@ -5,7 +5,7 @@ set -euo pipefail
 
 root=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
 readonly root prefix=$root/build/prefix-windows
-version=$(sed -n 's/^project(PeerChalk VERSION \([0-9.]*\).*/\1/p' "$root/CMakeLists.txt")
+version=$(cat "$root/VERSION")
 readonly version name="peerchalk-$version-windows-x64"
 
 deploy_qt() {

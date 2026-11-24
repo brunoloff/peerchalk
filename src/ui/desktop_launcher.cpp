@@ -1,5 +1,7 @@
 #include "ui/desktop_launcher.hpp"
 
+#include "peerchalk_build.hpp"
+
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -58,6 +60,8 @@ DesktopLauncher *DesktopLauncher::create(QQmlEngine *, QJSEngine *) {
 }
 
 QString DesktopLauncher::appVersion() { return QStringLiteral(PEERCHALK_VERSION); }
+
+QString DesktopLauncher::appBuild() { return QStringLiteral(PEERCHALK_BUILD); }
 
 QString DesktopLauncher::desktopFilePath() const {
     return QDir(dataHome_).filePath(QStringLiteral("applications/%1.desktop").arg(appId));

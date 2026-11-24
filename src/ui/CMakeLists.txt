@@ -90,5 +90,14 @@ if(NOT EMSCRIPTEN)
     target_link_libraries(peerchalk_ui PRIVATE peerchalk_math_engine)
 endif()
 target_compile_definitions(peerchalk_ui PRIVATE PEERCHALK_VERSION="${PROJECT_VERSION}")
+# peerchalk_build.hpp: this build's version, from VERSION and git, refreshed on every build.
+set(peerchalk_build_header "${CMAKE_BINARY_DIR}/generated/peerchalk_build.hpp")
+add_custom_target(peerchalk_build_stamp ALL
+    COMMAND ${CMAKE_COMMAND} -DVERSION=${PROJECT_VERSION} -DSOURCE_DIR=${PROJECT_SOURCE_DIR}
+        -DOUTPUT=${peerchalk_build_header} -P ${PROJECT_SOURCE_DIR}/cmake/BuildStamp.cmake
+    BYPRODUCTS ${peerchalk_build_header}
+    COMMENT "Stamping the build's version")
+add_dependencies(peerchalk_ui peerchalk_build_stamp)
+target_include_directories(peerchalk_ui PRIVATE "${CMAKE_BINARY_DIR}/generated")
 target_compile_options(peerchalk_ui PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:${peerchalk_warning_flags}>)

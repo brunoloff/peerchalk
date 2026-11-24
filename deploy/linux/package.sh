@@ -6,7 +6,7 @@ set -euo pipefail
 readonly linuxdeploy_tag=1-alpha-20251107-1 plugin_tag=1-alpha-20250213-1
 root=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
 readonly root arch=$(uname -m) tools=$root/.tools/linuxdeploy
-version=$(sed -n 's/^project(PeerChalk VERSION \([0-9.]*\).*/\1/p' "$root/CMakeLists.txt")
+version=$(cat "$root/VERSION")
 readonly version name="peerchalk-$version-linux-$arch"
 
 fetch() { # fetch REPOSITORY TAG FILE
