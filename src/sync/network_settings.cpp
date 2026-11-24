@@ -34,7 +34,7 @@ NetworkSettings NetworkSettings::load(const QString &directory) {
     settings.dhtNetwork = root->value(QStringLiteral("dhtNetwork")).toString();
     settings.stun = root->value(QStringLiteral("stun")).toString();
     settings.turn = root->value(QStringLiteral("turn")).toString();
-    settings.dhtProxy = root->value(QStringLiteral("dhtProxy")).toString();
+    settings.discovery = root->value(QStringLiteral("discovery")).toString();
     return settings;
 }
 
@@ -45,7 +45,7 @@ void NetworkSettings::save(const QString &directory) const {
                            {QStringLiteral("dhtNetwork"), dhtNetwork.trimmed()},
                            {QStringLiteral("stun"), stun.trimmed()},
                            {QStringLiteral("turn"), turn.trimmed()},
-                           {QStringLiteral("dhtProxy"), dhtProxy.trimmed()}};
+                           {QStringLiteral("discovery"), discovery.trimmed()}};
     writeJsonObject(settingsPath(directory), root, fileVersion, true);
 }
 
@@ -57,14 +57,14 @@ NetworkSettings NetworkSettings::withEnvironment() const {
     override(result.dhtNetwork, "PEERCHALK_DHT_NETWORK");
     override(result.stun, "PEERCHALK_STUN");
     override(result.turn, "PEERCHALK_TURN");
-    override(result.dhtProxy, "PEERCHALK_DHT_PROXY");
+    override(result.discovery, "PEERCHALK_DISCOVERY");
     return result;
 }
 
 bool NetworkSettings::environmentOverrides() {
     constexpr std::array variables = {"PEERCHALK_NETWORK",     "PEERCHALK_BOOTSTRAP",
                                       "PEERCHALK_DHT_NETWORK", "PEERCHALK_STUN",
-                                      "PEERCHALK_TURN",        "PEERCHALK_DHT_PROXY"};
+                                      "PEERCHALK_TURN",        "PEERCHALK_DISCOVERY"};
     for (const char *variable : variables)
         if (qEnvironmentVariableIsSet(variable))
             return true;

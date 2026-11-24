@@ -20,7 +20,7 @@ Item {
         dhtField.text = saved.dhtNetwork;
         stunField.text = saved.stun;
         turnField.text = saved.turn;
-        proxyField.text = saved.dhtProxy;
+        discoveryField.text = saved.discovery;
         error = "";
     }
 
@@ -31,7 +31,7 @@ Item {
             dhtNetwork: dhtField.text,
             stun: stunField.text,
             turn: turnField.text,
-            dhtProxy: proxyField.text
+            discovery: discoveryField.text
         });
     }
 
@@ -71,13 +71,13 @@ Item {
                     text: qsTr("Connect to other devices")
                 }
 
-                SettingField {
-                    id: proxyField
+                SettingLines {
+                    id: discoveryField
 
                     visible: pane.inBrowser
-                    label: qsTr("OpenDHT proxy")
-                    hint: qsTr("The https:// servers this browser finds peers through, separated by commas; the first that works is used. Empty uses dhtproxy.jami.net, then PeerChalk's own.")
-                    placeholder: "https://dhtproxy.jami.net, https://89-168-35-4.sslip.io"
+                    label: qsTr("Discovery servers")
+                    hint: qsTr("Where this browser finds other devices, one per line, all used at once: \"opendht\" and https:// proxies into the same DHT, \"nostr\" and a wss:// relay, \"mqtt\" and a wss:// broker, or \"peerjs\" and your own PeerJS server. Devices meet through any server both use. Empty uses Jami's DHT proxy, PeerChalk's own and two Nostr relays.")
+                    placeholder: "opendht https://dhtproxy.jami.net https://89-168-35-4.sslip.io\nnostr wss://nos.lol\nnostr wss://relay.primal.net"
                 }
 
                 SettingField {

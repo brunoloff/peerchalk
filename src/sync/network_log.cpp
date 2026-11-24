@@ -37,11 +37,11 @@ QStringList iceServers(const IceConfig &ice) {
     return servers;
 }
 
-QString joined(const std::vector<std::string> &values) {
+QString joined(const std::vector<p2pdc::BrowserBackend> &backends) {
     QStringList list;
-    for (const std::string &value : values)
-        list << QString::fromStdString(value);
-    return list.isEmpty() ? QStringLiteral("none") : list.join(QStringLiteral(", "));
+    for (const auto &backend : backends)
+        list << QString::fromStdString(p2pdc::to_string(backend));
+    return list.isEmpty() ? QStringLiteral("none") : list.join(QStringLiteral("; "));
 }
 
 QString platform() {
@@ -71,9 +71,9 @@ void Network::logConfiguration() const {
             QStringLiteral("Starting PeerChalk %1 on %2 with Qt %3")
                 .arg(QStringLiteral(PEERCHALK_VERSION), platform(), QString::fromLatin1(qVersion())));
     logInfo(QStringLiteral("network"),
-            QStringLiteral("DHT network %1, bootstrap %2, proxy %3; %4")
+            QStringLiteral("DHT network %1, bootstrap %2, discovery %3; %4")
                 .arg(config_.networkId)
-                .arg(bootstrap.join(QStringLiteral(", ")), joined(config_.dhtProxies),
+                .arg(bootstrap.join(QStringLiteral(", ")), joined(config_.browserBackends),
                      iceServers(config_.ice).join(QStringLiteral(", "))));
 }
 

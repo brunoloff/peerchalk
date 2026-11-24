@@ -53,7 +53,7 @@ qt_add_qml_module(peerchalk_ui URI PeerChalk VERSION 1.0
         PersonRow.qml VerifyPanel.qml Avatar.qml PaperButton.qml TextInputDialog.qml
         ConfirmDialog.qml CodeDialog.qml Toast.qml MembersDialog.qml RemoteCursor.qml
         NetworkStatus.qml PersonRoleRow.qml RequestsDialog.qml SettingsPage.qml
-        NetworkPane.qml SettingField.qml PaperTab.qml ColorPalette.qml
+        NetworkPane.qml SettingField.qml SettingLines.qml PaperTab.qml ColorPalette.qml
         ChoiceChip.qml BoardKindCard.qml NewBoardDialog.qml PagePill.qml PageOverlay.qml
         PageGapControls.qml ColumnMenu.qml ColumnRuler.qml PageBoardChrome.qml
         PageOutline.qml

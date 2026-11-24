@@ -1,9 +1,8 @@
 #include "sync/network_config.hpp"
 
+#include <QRegularExpression>
 #include <QStringList>
-#include <QUrl>
 
-#include <iterator>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -21,10 +20,13 @@ const QString defaultStun = QStringLiteral("stun.cloudflare.com:3478, stun.l.goo
 const QString defaultTurn = QStringLiteral("peerchalk:peerchalk-open-relay@89.168.35.4:3478");
 const QString noTurn = QStringLiteral("none");
 
-// Jami's proxy, then PeerChalk's own: Jami's has resolved to a dead address in parts of Asia.
-const QString defaultDhtProxies =
-    QStringLiteral("https://dhtproxy.jami.net, https://89-168-35-4.sslip.io");
-constexpr qsizetype maxDhtProxies = 8; // as p2pdc allows
+// Where the browser build meets other devices (p2pdc's discovery backends), one per line:
+// Jami's DHT proxy, then PeerChalk's own (Jami's has resolved to a dead address in parts of
+// Asia), and two Nostr relays, which work over WebSocket where streaming HTTP is blocked.
+const QString defaultDiscovery = QStringLiteral(
+    "opendht https://dhtproxy.jami.net https://89-168-35-4.sslip.io\n"
+    "nostr wss://nos.lol\n"
+    "nostr wss://relay.primal.net");
 
 struct HostPort {
     std::string host;
@@ -49,29 +51,25 @@ p2pdc::TurnServer turnServer(const QString &turn) {
     return {server.host, server.port, credentials[0].toStdString(), credentials[1].toStdString()};
 }
 
-// Browsers only reach a proxy over HTTPS, or plain HTTP on this computer.
-std::string dhtProxyUrl(const QString &value) {
-    const QUrl url(value, QUrl::StrictMode);
-    const bool local =
-        url.scheme() == QStringLiteral("http") &&
-        (url.host() == QStringLiteral("localhost") || url.host() == QStringLiteral("127.0.0.1"));
-    if (!url.isValid() || url.host().isEmpty() ||
-        (url.scheme() != QStringLiteral("https") && !local))
-        throw std::invalid_argument("DHT proxy must be an https:// address");
-    return value.toStdString();
-}
-
-// Comma-separated proxies, tried in order.
-std::vector<std::string> dhtProxyUrls(const QString &text) {
-    const QString list = text.trimmed().isEmpty() ? defaultDhtProxies : text;
-    std::vector<std::string> urls;
-    for (const QString &entry : list.split(QLatin1Char(','), Qt::SkipEmptyParts)) {
-        if (!entry.trimmed().isEmpty())
-            urls.push_back(dhtProxyUrl(entry.trimmed()));
+// One backend per line (or separated by ';'), in p2pdc's one-line form; blank lines and lines
+// starting with '#' are skipped.
+std::vector<p2pdc::BrowserBackend> discoveryBackends(const QString &text) {
+    const QString list = text.trimmed().isEmpty() ? defaultDiscovery : text;
+    std::vector<p2pdc::BrowserBackend> backends;
+    for (const QString &line : list.split(QRegularExpression(QStringLiteral("[\\n;]")))) {
+        const QString entry = line.trimmed();
+        if (entry.isEmpty() || entry.startsWith(QLatin1Char('#')))
+            continue;
+        const auto backend = p2pdc::parse_browser_backend(entry.toStdString());
+        if (!backend)
+            throw std::invalid_argument("Discovery servers: \"" + entry.toStdString() +
+                                        "\" is not \"opendht URL...\", \"nostr URL\", \"mqtt URL\" or "
+                                        "\"peerjs URL [key]\"");
+        backends.push_back(*backend);
     }
-    if (urls.empty() || std::ssize(urls) > maxDhtProxies)
-        throw std::invalid_argument("DHT proxy must list 1 to 8 https:// addresses");
-    return urls;
+    if (backends.empty() || backends.size() > p2pdc::max_browser_backends)
+        throw std::invalid_argument("Discovery servers must list 1 to 8 servers");
+    return backends;
 }
 
 } // namespace
@@ -99,7 +97,7 @@ NetworkConfig NetworkConfig::from(const NetworkSettings &settings) {
     const QString turn = settings.turn.trimmed().isEmpty() ? defaultTurn : settings.turn.trimmed();
     if (turn.compare(noTurn, Qt::CaseInsensitive) != 0)
         config.ice.servers.emplace_back(turnServer(turn));
-    config.dhtProxies = dhtProxyUrls(settings.dhtProxy);
+    config.browserBackends = discoveryBackends(settings.discovery);
     return config;
 }
 

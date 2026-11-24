@@ -42,8 +42,10 @@ TEST_F(NetworkSettingsTest, DefaultsToThePublicNetwork) {
     EXPECT_EQ(turn->host, "89.168.35.4");
     EXPECT_EQ(turn->port, 3478);
     EXPECT_EQ(turn->username, "peerchalk");
-    EXPECT_EQ(config.dhtProxies, (std::vector<std::string>{"https://dhtproxy.jami.net",
-                                                           "https://89-168-35-4.sslip.io"}));
+    EXPECT_EQ(config.browserBackends,
+              (std::vector<p2pdc::BrowserBackend>{
+                  p2pdc::OpenDhtProxies{{"https://dhtproxy.jami.net", "https://89-168-35-4.sslip.io"}},
+                  p2pdc::NostrRelay{"wss://nos.lol"}, p2pdc::NostrRelay{"wss://relay.primal.net"}}));
 }
 
 TEST_F(NetworkSettingsTest, NoneTurnsTheRelayOff) {
@@ -57,34 +59,33 @@ TEST_F(NetworkSettingsTest, NoneTurnsTheRelayOff) {
     EXPECT_EQ(NetworkSettings::load(dir_.path()).turn, QStringLiteral("None"));
 }
 
-TEST_F(NetworkSettingsTest, SeveralDhtProxiesAreTriedInTheOrderGiven) {
+TEST_F(NetworkSettingsTest, DiscoveryServersAreReadOnePerLine) {
     NetworkSettings settings;
-    settings.dhtProxy = QStringLiteral(" https://one.example ,https://two.example/base,, ");
-    EXPECT_EQ(NetworkConfig::from(settings).dhtProxies,
-              (std::vector<std::string>{"https://one.example", "https://two.example/base"}));
-    QStringList nine;
-    for (int i = 0; i < 9; ++i)
-        nine << QStringLiteral("https://p%1.example").arg(i);
-    settings.dhtProxy = nine.join(QLatin1Char(','));
-    EXPECT_THROW(static_cast<void>(NetworkConfig::from(settings)), std::invalid_argument);
+    settings.discovery = QStringLiteral(
+        "  opendht https://one.example https://two.example/base\n\n# a comment\nmqtt wss://broker.example/mqtt ; "
+        "peerjs ws://127.0.0.1:9000/peerjs key\n");
+    EXPECT_EQ(NetworkConfig::from(settings).browserBackends,
+              (std::vector<p2pdc::BrowserBackend>{
+                  p2pdc::OpenDhtProxies{{"https://one.example", "https://two.example/base"}},
+                  p2pdc::MqttBroker{"wss://broker.example/mqtt"},
+                  p2pdc::PeerJsServer{"ws://127.0.0.1:9000/peerjs", "key"}}));
+    settings.save(dir_.path());
+    EXPECT_EQ(NetworkSettings::load(dir_.path()).discovery, settings.discovery.trimmed());
 }
 
-TEST_F(NetworkSettingsTest, DhtProxyIsSavedAndMustBeSecureUnlessLocal) {
+TEST_F(NetworkSettingsTest, DiscoveryServersMustBeOnesABrowserCanUse) {
     NetworkSettings settings;
-    settings.dhtProxy = QStringLiteral(" https://proxy.example:8443 ");
-    settings.save(dir_.path());
-    const NetworkSettings loaded = NetworkSettings::load(dir_.path());
-    EXPECT_EQ(NetworkConfig::from(loaded).dhtProxies,
-              std::vector<std::string>{"https://proxy.example:8443"});
-    settings.dhtProxy = QStringLiteral("http://127.0.0.1:8080");
-    EXPECT_EQ(NetworkConfig::from(settings).dhtProxies,
-              std::vector<std::string>{"http://127.0.0.1:8080"});
-    for (const char *rejected : {"http://proxy.example", "proxy.example", "https://", " , ",
-                                 "https://one.example, http://two.example"}) {
-        settings.dhtProxy = QString::fromLatin1(rejected);
-        EXPECT_THROW(static_cast<void>(NetworkConfig::from(settings)), std::invalid_argument)
-            << rejected;
+    for (const char *rejected : {"https://proxy.example", "nostr https://relay.example",
+                                 "opendht http://proxy.example", "mqtt", "# only a comment",
+                                 "smoke wss://signals.example"}) {
+        settings.discovery = QString::fromLatin1(rejected);
+        EXPECT_THROW(static_cast<void>(NetworkConfig::from(settings)), std::invalid_argument) << rejected;
     }
+    QStringList nine;
+    for (int i = 0; i < 9; ++i)
+        nine << QStringLiteral("nostr wss://r%1.example").arg(i);
+    settings.discovery = nine.join(QLatin1Char('\n'));
+    EXPECT_THROW(static_cast<void>(NetworkConfig::from(settings)), std::invalid_argument);
 }
 
 TEST_F(NetworkSettingsTest, SavedSettingsAreLoadedAgain) {
