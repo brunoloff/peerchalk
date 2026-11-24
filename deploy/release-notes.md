@@ -1,6 +1,16 @@
 A whiteboard that people share directly, computer to computer, with no account and no server
 holding the boards. You can also [try it in the browser](https://brunoloff.github.io/peerchalk/).
 
+## New in 0.2.3
+
+- In the browser, strokes on a busy page no longer stop appearing after a few dozen. They
+  were saved and shared all along; now they are drawn too.
+- Browsers find each other through Nostr relays as well as the DHT, which helps on networks
+  that block the DHT. Settings → Network → Discovery servers lists where they look.
+- Wacom pens: hold the lower side button to pan; the eraser end or the upper side button
+  erases.
+- The version number is shown beside the name.
+
 ## New in 0.2.2
 
 - Devices behind strict networks now reach each other through PeerChalk's own relay, with
