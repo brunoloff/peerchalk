@@ -7,6 +7,7 @@
 #include <QColor>
 #include <QMatrix4x4>
 
+#include <cstddef>
 #include <vector>
 
 class QSGNode;
@@ -30,12 +31,15 @@ enum class StrokeSelection {
 [[nodiscard]] QColor strokeColor(const Stroke &stroke, StrokeSelection selection);
 [[nodiscard]] bool selects(StrokeSelection selection, const Stroke &stroke);
 [[nodiscard]] QSGGeometryNode *createStrokeNode(const Stroke &stroke, const QColor &color);
-// The selected strokes merged into one node with a colour per vertex, so that a whole page
-// is one draw call; null when nothing is selected. With minSpacing, strokes are drawn with
+// Most vertices one merged mesh holds. WebGL draws only the first 65,536 vertices of a
+// larger mesh, so busier pages are split; a multiple of 3, so pieces end on a triangle.
+inline constexpr std::size_t maxMergedVertices = 60000;
+// The selected strokes merged into a few meshes with a colour per vertex, so that a whole
+// page takes few draw calls: a node whose children are meshes of at most
+// maxMergedVertices; null when nothing is selected. With minSpacing, strokes are drawn with
 // points that far apart (see simplifiedStroke), for small views.
-[[nodiscard]] QSGGeometryNode *createMergedStrokesNode(const std::vector<Stroke> &strokes,
-                                                       StrokeSelection selection,
-                                                       float minSpacing = 0.0F);
+[[nodiscard]] QSGNode *createMergedStrokesNode(const std::vector<Stroke> &strokes,
+                                               StrokeSelection selection, float minSpacing = 0.0F);
 // Square dots of the given size centred on each point.
 [[nodiscard]] QSGGeometryNode *createDotsNode(const std::vector<Point> &centres, float size,
                                               const QColor &color);

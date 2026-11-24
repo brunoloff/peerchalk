@@ -69,37 +69,59 @@ QSGGeometryNode *createStrokeNode(const Stroke &stroke, const QColor &color) {
     return createNode(geometry, color);
 }
 
-QSGGeometryNode *createMergedStrokesNode(const std::vector<Stroke> &strokes,
-                                         StrokeSelection selection, float minSpacing) {
-    std::vector<QSGGeometry::ColoredPoint2D> vertices;
-    for (const Stroke &stroke : strokes) {
-        if (!selects(selection, stroke) || stroke.points().empty())
-            continue;
-        const QColor color = strokeColor(stroke, selection);
-        const float alpha = static_cast<float>(color.alphaF());
-        const auto channel = [alpha](int value) {
-            return static_cast<unsigned char>(std::lround(static_cast<float>(value) * alpha));
-        };
-        QSGGeometry::ColoredPoint2D vertex{};
-        const std::vector<MeshVertex> mesh =
-            buildStrokeMesh(minSpacing > 0.0F ? simplifiedStroke(stroke, minSpacing) : stroke);
-        for (const MeshVertex &point : mesh) {
-            // The vertex colour material expects premultiplied colours.
-            vertex.set(point.x, point.y, channel(color.red()), channel(color.green()),
-                       channel(color.blue()), static_cast<unsigned char>(color.alpha()));
-            vertices.push_back(vertex);
-        }
+namespace {
+
+using ColoredVertices = std::vector<QSGGeometry::ColoredPoint2D>;
+
+void appendStrokeVertices(ColoredVertices &vertices, const Stroke &stroke,
+                          StrokeSelection selection, float minSpacing) {
+    const QColor color = strokeColor(stroke, selection);
+    const float alpha = static_cast<float>(color.alphaF());
+    const auto channel = [alpha](int value) {
+        return static_cast<unsigned char>(std::lround(static_cast<float>(value) * alpha));
+    };
+    QSGGeometry::ColoredPoint2D vertex{};
+    const std::vector<MeshVertex> mesh =
+        buildStrokeMesh(minSpacing > 0.0F ? simplifiedStroke(stroke, minSpacing) : stroke);
+    for (const MeshVertex &point : mesh) {
+        // The vertex colour material expects premultiplied colours.
+        vertex.set(point.x, point.y, channel(color.red()), channel(color.green()),
+                   channel(color.blue()), static_cast<unsigned char>(color.alpha()));
+        vertices.push_back(vertex);
     }
-    if (vertices.empty())
-        return nullptr;
-    auto *geometry = new QSGGeometry(QSGGeometry::defaultAttributes_ColoredPoint2D(),
-                                     static_cast<int>(vertices.size()));
+}
+
+QSGGeometryNode *createColoredTriangles(ColoredVertices::const_iterator first, std::size_t count) {
+    auto *geometry =
+        new QSGGeometry(QSGGeometry::defaultAttributes_ColoredPoint2D(), static_cast<int>(count));
     geometry->setDrawingMode(QSGGeometry::DrawTriangles);
-    std::ranges::copy(vertices, geometry->vertexDataAsColoredPoint2D());
+    std::copy_n(first, count, geometry->vertexDataAsColoredPoint2D());
     auto *node = new QSGGeometryNode;
     node->setGeometry(geometry);
     node->setMaterial(new QSGVertexColorMaterial);
     node->setFlags(QSGNode::OwnsGeometry | QSGNode::OwnsMaterial);
+    return node;
+}
+
+} // namespace
+
+QSGNode *createMergedStrokesNode(const std::vector<Stroke> &strokes, StrokeSelection selection,
+                                 float minSpacing) {
+    ColoredVertices vertices;
+    for (const Stroke &stroke : strokes) {
+        if (selects(selection, stroke) && !stroke.points().empty())
+            appendStrokeVertices(vertices, stroke, selection, minSpacing);
+    }
+    if (vertices.empty())
+        return nullptr;
+    // Meshes are whole triangles, and maxMergedVertices is a multiple of 3, so every piece
+    // ends on a triangle.
+    auto *node = new QSGNode;
+    for (std::size_t first = 0; first < vertices.size(); first += maxMergedVertices) {
+        const std::size_t count = std::min<std::size_t>(maxMergedVertices, vertices.size() - first);
+        node->appendChildNode(
+            createColoredTriangles(vertices.cbegin() + static_cast<std::ptrdiff_t>(first), count));
+    }
     return node;
 }
 

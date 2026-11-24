@@ -1,5 +1,6 @@
 #include "board/board_pages.hpp"
 #include "ui/board_canvas.hpp"
+#include "ui/scene_nodes.hpp"
 
 #include <QQuickWindow>
 #include <QSGGeometryNode>
@@ -10,6 +11,8 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <memory>
+#include <vector>
 
 namespace peerchalk {
 namespace {
@@ -21,12 +24,19 @@ Stroke strokeAt(float x, float y) {
     return stroke;
 }
 
-// The vertices of a page node's mesh: page transform, clip, then the merged mesh.
+// The vertices of a merged node's meshes.
+int mergedVertices(const QSGNode *merged) {
+    int count = 0;
+    for (const QSGNode *mesh = merged != nullptr ? merged->firstChild() : nullptr; mesh != nullptr;
+         mesh = mesh->nextSibling())
+        count += static_cast<const QSGGeometryNode *>(mesh)->geometry()->vertexCount();
+    return count;
+}
+
+// The vertices of a page node's meshes: page transform, clip, then the merged node.
 int meshVertices(const QSGNode *page) {
     const QSGNode *clip = page != nullptr ? page->firstChild() : nullptr;
-    const auto *mesh =
-        clip != nullptr ? static_cast<const QSGGeometryNode *>(clip->firstChild()) : nullptr;
-    return mesh != nullptr ? mesh->geometry()->vertexCount() : 0;
+    return mergedVertices(clip != nullptr ? clip->firstChild() : nullptr);
 }
 
 class BoardCanvasPagesTest : public ::testing::Test {
@@ -287,6 +297,26 @@ TEST(PageStrokeNodes, KeepsNodesForPagesInViewAndRebuildsChangedOnes) {
     EXPECT_EQ(root.childCount(), 0);
     nodes.update(&root, board, map, {near.show, near.keep, 0.001F}, StrokeSelection::Pens);
     EXPECT_EQ(root.childCount(), 0); // too small on screen to show strokes
+}
+
+TEST(MergedStrokesNode, SplitsBusyPagesIntoMeshesWebGlCanDrawWhole) {
+    const Stroke one = strokeAt(0.0F, 0.0F);
+    const std::unique_ptr<QSGNode> single(createMergedStrokesNode({one}, StrokeSelection::All));
+    ASSERT_NE(single, nullptr);
+    const int perStroke = mergedVertices(single.get());
+    ASSERT_GT(perStroke, 0);
+    const int strokes = static_cast<int>(2 * maxMergedVertices) / perStroke + 1;
+    const std::vector<Stroke> page(static_cast<std::size_t>(strokes), one);
+    const std::unique_ptr<QSGNode> merged(createMergedStrokesNode(page, StrokeSelection::All));
+    ASSERT_NE(merged, nullptr);
+    EXPECT_EQ(merged->childCount(), 3);
+    EXPECT_EQ(mergedVertices(merged.get()), strokes * perStroke);
+    for (const QSGNode *mesh = merged->firstChild(); mesh != nullptr; mesh = mesh->nextSibling()) {
+        const int count = static_cast<const QSGGeometryNode *>(mesh)->geometry()->vertexCount();
+        EXPECT_LE(count, static_cast<int>(maxMergedVertices));
+        EXPECT_EQ(count % 3, 0); // whole triangles
+    }
+    EXPECT_EQ(createMergedStrokesNode(page, StrokeSelection::HighlightersOpaque), nullptr);
 }
 
 } // namespace

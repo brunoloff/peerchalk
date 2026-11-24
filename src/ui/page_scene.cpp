@@ -3,7 +3,6 @@
 #include "board/board_pages.hpp"
 
 #include <QSGClipNode>
-#include <QSGGeometryNode>
 #include <QSGTransformNode>
 
 #include <cmath>
@@ -28,7 +27,7 @@ QSGNode *createPageNode(const Board &board, const PlacedPage &page, StrokeSelect
     QMatrix4x4 offset;
     offset.translate(page.bounds.left, page.bounds.top);
     move->setMatrix(offset);
-    QSGGeometryNode *mesh =
+    QSGNode *mesh =
         createMergedStrokesNode(board.pages().strokes(page.id), selection, pointSpacing(detail));
     if (mesh == nullptr)
         return move;
