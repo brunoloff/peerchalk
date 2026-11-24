@@ -80,13 +80,23 @@ ColumnLayout {
             Layout.fillWidth: true
             spacing: 14
 
-            Label {
-                text: "PeerChalk"
-                font.family: Theme.headingFont
-                font.pixelSize: logo.titleSize
-                font.weight: Font.Bold
-                font.letterSpacing: -logo.titleSize * 0.02
-                color: Theme.ink
+            RowLayout {
+                spacing: Math.round(logo.titleSize * 0.12)
+
+                Label {
+                    text: "PeerChalk"
+                    font.family: Theme.headingFont
+                    font.pixelSize: logo.titleSize
+                    font.weight: Font.Bold
+                    font.letterSpacing: -logo.titleSize * 0.02
+                    color: Theme.ink
+                }
+
+                VersionLabel {
+                    Layout.alignment: Qt.AlignBaseline
+                    objectName: "welcomeVersion"
+                    size: Math.round(logo.titleSize * 0.25)
+                }
             }
 
             Label {

@@ -4,6 +4,7 @@
 #include <QQmlError>
 #include <QQuickItem>
 #include <QQuickWindow>
+#include <QRegularExpression>
 #include <QTemporaryDir>
 #include <QTest>
 
@@ -55,6 +56,21 @@ TEST_F(AccountsWindowTest, OffersTheAccountOpenedLastAsTheLargeButton) {
     EXPECT_EQ(button->property("account").toMap().value(QStringLiteral("name")),
               QStringLiteral("Ben"));
     EXPECT_EQ(item("aboutToggle"), nullptr); // a wide window shows the explanation beside it
+    EXPECT_TRUE(warnings_.isEmpty()) << warnings_.front().toString().toStdString();
+}
+
+TEST_F(AccountsWindowTest, ShowsTheVersionBesideTheNameOnWideAndNarrowWindows) {
+    const auto shownVersion = [this] {
+        QQuickItem *version = item("welcomeVersion");
+        return version != nullptr && version->isVisible() && version->width() > 0 &&
+               QRegularExpression(QStringLiteral("^\\d+\\.\\d+(\\.\\d+)?$"))
+                   .match(version->property("text").toString())
+                   .hasMatch();
+    };
+    EXPECT_TRUE(QTest::qWaitFor(shownVersion));
+    window_->resize(390, 844);
+    ASSERT_TRUE(QTest::qWaitFor([&] { return item("aboutToggle") != nullptr; }));
+    EXPECT_TRUE(QTest::qWaitFor(shownVersion));
     EXPECT_TRUE(warnings_.isEmpty()) << warnings_.front().toString().toStdString();
 }
 
