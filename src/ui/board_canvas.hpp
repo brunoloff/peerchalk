@@ -203,8 +203,10 @@ class BoardCanvas : public QQuickItem {
   private:
     enum class Gesture { None, Drawing, Erasing, Panning };
 
-    // pressure is empty for devices without a pressure sensor.
-    void pointerPressed(QPointF position, std::optional<float> pressure, bool forcePan);
+    // pressure is empty for devices without a pressure sensor; toolOverride replaces the
+    // current tool for this gesture only.
+    void pointerPressed(QPointF position, std::optional<float> pressure,
+                        std::optional<Tool> toolOverride);
     void pointerMoved(QPointF position, std::optional<float> pressure);
     void pointerReleased(QPointF position, std::optional<float> pressure);
     void pointerCancelled();

@@ -38,6 +38,28 @@ class BoardCanvasTest : public ::testing::Test {
         QGuiApplication::sendEvent(&window_, &event);
     }
 
+    // Sends a mouse event as Qt synthesises it from a tablet, from `device`.
+    void sendPen(const QPointingDevice &device, QEvent::Type type, QPointF at,
+                 Qt::MouseButton button, Qt::MouseButtons held) {
+        QMouseEvent event(type, at, at, window_.mapToGlobal(at), button, held, Qt::NoModifier,
+                          &device);
+        QGuiApplication::sendEvent(&window_, &event);
+    }
+
+    // Drags `device` from `from` to `to` with `button`.
+    void penDrag(const QPointingDevice &device, QPointF from, QPointF to,
+                 Qt::MouseButton button = Qt::LeftButton) {
+        sendPen(device, QEvent::MouseButtonPress, from, button, button);
+        sendPen(device, QEvent::MouseMove, (from + to) / 2, Qt::NoButton, button);
+        sendPen(device, QEvent::MouseButtonRelease, to, button, Qt::NoButton);
+    }
+
+    static QPointingDevice tabletDevice(QPointingDevice::PointerType pointerType) {
+        return QPointingDevice("test tablet", 4243 + static_cast<qint64>(pointerType),
+                               QInputDevice::DeviceType::Stylus, pointerType,
+                               QInputDevice::Capability::Position, 1, 3);
+    }
+
     QQuickWindow window_;
     BoardCanvas canvas_;
 };
@@ -178,6 +200,51 @@ TEST_F(BoardCanvasTest, EraserRemovesStrokesAndUndoRestoresThem) {
     EXPECT_EQ(canvas_.strokeCount(), 0);
     canvas_.undo();
     EXPECT_EQ(canvas_.strokeCount(), 2);
+}
+
+TEST_F(BoardCanvasTest, PenSideButtonPansWhileUsingThePen) {
+    const QPointingDevice pen = tabletDevice(QPointingDevice::PointerType::Pen);
+    penDrag(pen, {100, 100}, {150, 100}, Qt::MiddleButton);
+    EXPECT_EQ(canvas_.strokeCount(), 0);
+    EXPECT_DOUBLE_EQ(canvas_.viewCenter().x(), 50.0);
+}
+
+// The side button may be held before the tip touches, and stay held after it lifts.
+TEST_F(BoardCanvasTest, PenTipPansWhileTheSideButtonIsHeld) {
+    const QPointingDevice pen = tabletDevice(QPointingDevice::PointerType::Pen);
+    const Qt::MouseButtons both = Qt::LeftButton | Qt::MiddleButton;
+    sendPen(pen, QEvent::MouseButtonPress, {100, 100}, Qt::LeftButton, both);
+    sendPen(pen, QEvent::MouseButtonRelease, {120, 100}, Qt::LeftButton, Qt::MiddleButton);
+    sendPen(pen, QEvent::MouseMove, {150, 100}, Qt::NoButton, Qt::MiddleButton);
+    sendPen(pen, QEvent::MouseButtonRelease, {150, 100}, Qt::MiddleButton, Qt::NoButton);
+    EXPECT_EQ(canvas_.strokeCount(), 0);
+    EXPECT_DOUBLE_EQ(canvas_.viewCenter().x(), 50.0);
+}
+
+TEST_F(BoardCanvasTest, PenEraserEndErasesThenThePenDrawsAgain) {
+    drag({20, 50}, {180, 50});
+    penDrag(tabletDevice(QPointingDevice::PointerType::Eraser), {100, 30}, {100, 70});
+    EXPECT_EQ(canvas_.strokeCount(), 0);
+    EXPECT_EQ(canvas_.tool(), BoardCanvas::Tool::Pen);
+    penDrag(tabletDevice(QPointingDevice::PointerType::Pen), {20, 150}, {180, 150});
+    EXPECT_EQ(canvas_.strokeCount(), 1);
+}
+
+TEST_F(BoardCanvasTest, PenEraserButtonErasesWithTheHighlighter) {
+    canvas_.setTool(BoardCanvas::Tool::Highlighter);
+    drag({20, 50}, {180, 50});
+    const QPointingDevice pen = tabletDevice(QPointingDevice::PointerType::Pen);
+    penDrag(pen, {100, 30}, {100, 70}, Qt::RightButton);
+    EXPECT_EQ(canvas_.strokeCount(), 0);
+    EXPECT_DOUBLE_EQ(canvas_.viewCenter().y(), 100.0);
+    EXPECT_EQ(canvas_.tool(), BoardCanvas::Tool::Highlighter);
+}
+
+TEST_F(BoardCanvasTest, ReadOnlyBoardsIgnoreThePenEraser) {
+    drag({20, 50}, {180, 50});
+    canvas_.setReadOnly(true);
+    penDrag(tabletDevice(QPointingDevice::PointerType::Eraser), {100, 30}, {100, 70});
+    EXPECT_EQ(canvas_.strokeCount(), 1);
 }
 
 TEST_F(BoardCanvasTest, CtrlWheelZoomsAroundTheCursor) {

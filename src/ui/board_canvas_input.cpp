@@ -30,12 +30,33 @@ std::optional<float> pressureOf(const QEventPoint &point) {
     return std::clamp(static_cast<float>(point.pressure()), 0.0F, 1.0F);
 }
 
+bool isPen(const QPointingDevice *device) {
+    return device != nullptr && device->type() == QInputDevice::DeviceType::Stylus;
+}
+
+// The tool a press uses instead of the current one, if any. A pen's eraser end erases; its
+// first side button pans and its second (the eraser button on pens that have one) erases.
+// The mouse's middle and right buttons pan. Buttons held before the tip touched count too.
+std::optional<BoardCanvas::Tool> toolOverrideFor(const QMouseEvent &event) {
+    using Tool = BoardCanvas::Tool;
+    const Qt::MouseButtons held = event.buttons() | event.button();
+    const QPointingDevice *device = event.pointingDevice();
+    if (device != nullptr && device->pointerType() == QPointingDevice::PointerType::Eraser)
+        return Tool::Eraser;
+    if (held.testFlag(Qt::MiddleButton))
+        return Tool::Pan;
+    if (held.testFlag(Qt::RightButton))
+        return isPen(device) ? Tool::Eraser : Tool::Pan;
+    return std::nullopt;
+}
+
 } // namespace
 
-void BoardCanvas::pointerPressed(QPointF position, std::optional<float> pressure, bool forcePan) {
+void BoardCanvas::pointerPressed(QPointF position, std::optional<float> pressure,
+                                 std::optional<Tool> toolOverride) {
     if (gesture_ != Gesture::None)
         return;
-    const Tool tool = forcePan ? Tool::Pan : tool_;
+    const Tool tool = toolOverride.value_or(tool_);
     const bool wasEditing = !editingTextBox_.isEmpty();
     finishTextEditing();
     if (readOnly_ && tool != Tool::Pan)
@@ -129,9 +150,7 @@ void BoardCanvas::eraseAlong(QPointF from, QPointF to) {
 }
 
 void BoardCanvas::mousePressEvent(QMouseEvent *event) {
-    // The middle and right buttons pan whatever the current tool is.
-    const bool pan = event->button() == Qt::MiddleButton || event->button() == Qt::RightButton;
-    pointerPressed(event->position(), pressureOf(event->point(0)), pan);
+    pointerPressed(event->position(), pressureOf(event->point(0)), toolOverrideFor(*event));
     event->accept();
 }
 
@@ -141,6 +160,13 @@ void BoardCanvas::mouseMoveEvent(QMouseEvent *event) {
 }
 
 void BoardCanvas::mouseReleaseEvent(QMouseEvent *event) {
+    // The gesture lasts while any button is held, e.g. a pen's side button after its tip
+    // lifts.
+    if (event->buttons() != Qt::NoButton) {
+        pointerMoved(event->position(), pressureOf(event->point(0)));
+        event->accept();
+        return;
+    }
     pointerReleased(event->position(), pressureOf(event->point(0)));
     event->accept();
 }
@@ -154,7 +180,7 @@ void BoardCanvas::touchEvent(QTouchEvent *event) {
     }
     const QEventPoint &point = event->points().front();
     if (point.state() == QEventPoint::Pressed)
-        pointerPressed(point.position(), pressureOf(point), false);
+        pointerPressed(point.position(), pressureOf(point), std::nullopt);
     else if (point.state() == QEventPoint::Updated)
         pointerMoved(point.position(), pressureOf(point));
     else if (point.state() == QEventPoint::Released)
