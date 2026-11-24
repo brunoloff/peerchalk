@@ -84,12 +84,10 @@ jobs:
           path: build/web/site
 
   publish:
-    # A web-only run skips the Linux job, which then does not hold publishing back.
-    if: >-
-      ${{ always() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' &&
-      needs.web.result == 'success' &&
-      (needs.linux.result == 'success' || needs.linux.result == 'skipped') }}
-    needs: [linux, web]
+    # The browser version goes out as soon as its own build and checks pass; the Linux job
+    # runs alongside and reports its own result without holding the site back.
+    if: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+    needs: [web]
     runs-on: ubuntu-24.04
     permissions:
       pages: write
