@@ -1,14 +1,17 @@
 # Qt Quick items and QML exposed as the PeerChalk module. The module is static,
 # so the executable imports its plugin with Q_IMPORT_QML_PLUGIN(PeerChalkPlugin).
-set_source_files_properties(Theme.qml Icons.qml Format.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
+set_source_files_properties(Theme.qml Icons.qml Format.qml NetworkSummary.qml
+    PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 qt_add_library(peerchalk_ui STATIC)
 # Browsers save and choose files through web_files.cpp instead of system dialogs.
 set(peerchalk_native_qml)
 set(peerchalk_instance_link ../sync/instance_link_web.cpp)
+set(peerchalk_server_checks ../sync/server_checks_web.cpp)
 set(peerchalk_math_engine_source ../math/math_engine_web.cpp)
 if(NOT EMSCRIPTEN)
     set(peerchalk_native_qml NativeBackupFiles.qml NativeSaveFile.qml NativePdfFile.qml)
     set(peerchalk_instance_link ../sync/instance_link_native.cpp)
+    set(peerchalk_server_checks ../sync/server_checks_native.cpp)
     set(peerchalk_math_engine_source ../math/math_engine_native.cpp)
 endif()
 qt_add_qml_module(peerchalk_ui URI PeerChalk VERSION 1.0
@@ -27,7 +30,10 @@ qt_add_qml_module(peerchalk_ui URI PeerChalk VERSION 1.0
         desktop_launcher.cpp desktop_launcher.hpp app_updater.cpp app_updater.hpp
         library_boards.cpp library_links.cpp board_document.cpp board_document.hpp
         ../sync/messages.cpp ../sync/messages.hpp ../sync/network.cpp ../sync/network.hpp ../sync/network_blobs.cpp
-        ../sync/network_config.cpp ../sync/network_config.hpp ../sync/network_peers.cpp
+        ../sync/network_config.cpp ../sync/network_config.hpp ../sync/network_defaults.hpp
+        ../sync/server_list.cpp ../sync/server_list.hpp ../sync/stun_message.cpp
+        ../sync/stun_message.hpp ../sync/server_checks.hpp ${peerchalk_server_checks}
+        ../sync/network_status.cpp ../sync/network_peers.cpp
         ../sync/network_settings.cpp ../sync/network_settings.hpp ../sync/network_settings_page.cpp
         ../sync/network_live.cpp ../sync/live_strokes.cpp ../sync/live_strokes.hpp
         ../sync/network_sync.cpp ../sync/network_spaces.cpp ../sync/network_boards.cpp
@@ -53,7 +59,10 @@ qt_add_qml_module(peerchalk_ui URI PeerChalk VERSION 1.0
         PersonRow.qml VerifyPanel.qml Avatar.qml PaperButton.qml TextInputDialog.qml
         ConfirmDialog.qml CodeDialog.qml Toast.qml MembersDialog.qml RemoteCursor.qml
         NetworkStatus.qml PersonRoleRow.qml RequestsDialog.qml SettingsPage.qml
-        NetworkPane.qml SettingField.qml SettingLines.qml PaperTab.qml ColorPalette.qml
+        NetworkPane.qml NetworkSettingsColumn.qml SettingField.qml PaperTab.qml
+        ServerListSection.qml ServerRow.qml ServerAddForm.qml ServerListFooter.qml ServerKindLabel.qml
+        ServerStatus.qml NetworkSummary.qml NetworkMap.qml MapLines.qml MapLegend.qml MapMethodCard.qml
+        MapDeviceGroup.qml MapAvatar.qml ConnectionChips.qml ColorPalette.qml
         ChoiceChip.qml BoardKindCard.qml NewBoardDialog.qml PagePill.qml PageOverlay.qml
         PageGapControls.qml ColumnMenu.qml ColumnRuler.qml PageBoardChrome.qml
         PageOutline.qml
@@ -81,5 +90,14 @@ if(NOT EMSCRIPTEN)
     target_link_libraries(peerchalk_ui PRIVATE peerchalk_math_engine)
 endif()
 target_compile_definitions(peerchalk_ui PRIVATE PEERCHALK_VERSION="${PROJECT_VERSION}")
+# peerchalk_build.hpp: this build's version, from VERSION and git, refreshed on every build.
+set(peerchalk_build_header "${CMAKE_BINARY_DIR}/generated/peerchalk_build.hpp")
+add_custom_target(peerchalk_build_stamp ALL
+    COMMAND ${CMAKE_COMMAND} -DVERSION=${PROJECT_VERSION} -DSOURCE_DIR=${PROJECT_SOURCE_DIR}
+        -DOUTPUT=${peerchalk_build_header} -P ${PROJECT_SOURCE_DIR}/cmake/BuildStamp.cmake
+    BYPRODUCTS ${peerchalk_build_header}
+    COMMENT "Stamping the build's version")
+add_dependencies(peerchalk_ui peerchalk_build_stamp)
+target_include_directories(peerchalk_ui PRIVATE "${CMAKE_BINARY_DIR}/generated")
 target_compile_options(peerchalk_ui PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:${peerchalk_warning_flags}>)

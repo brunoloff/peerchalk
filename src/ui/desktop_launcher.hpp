@@ -20,6 +20,8 @@ class DesktopLauncher : public QObject {
     Q_PROPERTY(bool available READ available CONSTANT)
     Q_PROPERTY(State state READ state NOTIFY stateChanged)
     Q_PROPERTY(QString version READ appVersion CONSTANT)
+    // The release, or how far a development build is past it: "0.2.3" or "0.2.3+7".
+    Q_PROPERTY(QString build READ appBuild CONSTANT)
 
   public:
     // Missing: no launcher; Current: it starts this AppImage at this version; Outdated: it
@@ -33,6 +35,7 @@ class DesktopLauncher : public QObject {
     static DesktopLauncher *create(QQmlEngine *engine, QJSEngine *scriptEngine);
 
     [[nodiscard]] static QString appVersion();
+    [[nodiscard]] static QString appBuild();
     [[nodiscard]] bool available() const { return !appImage_.isEmpty(); }
     [[nodiscard]] State state() const;
     [[nodiscard]] QString desktopFilePath() const;

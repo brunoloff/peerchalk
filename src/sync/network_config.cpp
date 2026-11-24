@@ -1,5 +1,7 @@
 #include "sync/network_config.hpp"
 
+#include "sync/network_defaults.hpp"
+
 #include <QRegularExpression>
 #include <QStringList>
 
@@ -9,28 +11,6 @@
 
 namespace peerchalk::sync {
 namespace {
-
-// Jami's node, then PeerChalk's own on the relay's server (deploy/dht-proxy/).
-const QString defaultBootstrap = QStringLiteral("bootstrap.jami.net:4222, 89.168.35.4:4222");
-// Free public STUN servers from Cloudflare, with Google's as a fallback.
-const QString defaultStun = QStringLiteral("stun.cloudflare.com:3478, stun.l.google.com:19302");
-
-// PeerChalk's open relay (deploy/coturn/), limited per IP address; its login is meant to be
-// shared, like a public STUN server.
-const QString defaultTurn = QStringLiteral("peerchalk:peerchalk-open-relay@89.168.35.4:3478");
-const QString noTurn = QStringLiteral("none");
-
-// Where the browser build meets other devices (p2pdc's discovery backends), one per line:
-// Jami's DHT proxy, then PeerChalk's own (Jami's has resolved to a dead address in parts of
-// Asia); two Nostr relays and HiveMQ's public MQTT broker, which work over WebSocket where
-// streaming HTTP is blocked; and the public PeerJS server, which only relays WebRTC
-// signalling between browsers.
-const QString defaultDiscovery = QStringLiteral(
-    "opendht https://dhtproxy.jami.net https://89-168-35-4.sslip.io\n"
-    "nostr wss://nos.lol\n"
-    "nostr wss://relay.primal.net\n"
-    "mqtt wss://broker.hivemq.com:8884/mqtt\n"
-    "peerjs wss://0.peerjs.com/peerjs peerjs");
 
 struct HostPort {
     std::string host;
@@ -58,7 +38,8 @@ p2pdc::TurnServer turnServer(const QString &turn) {
 // One backend per line (or separated by ';'), in p2pdc's one-line form; blank lines and lines
 // starting with '#' are skipped.
 std::vector<p2pdc::BrowserBackend> discoveryBackends(const QString &text) {
-    const QString list = text.trimmed().isEmpty() ? defaultDiscovery : text;
+    const QString list =
+        text.trimmed().isEmpty() ? defaults::discovery().join(QLatin1Char('\n')) : text;
     std::vector<p2pdc::BrowserBackend> backends;
     for (const QString &line : list.split(QRegularExpression(QStringLiteral("[\\n;]")))) {
         const QString entry = line.trimmed();
@@ -66,9 +47,10 @@ std::vector<p2pdc::BrowserBackend> discoveryBackends(const QString &text) {
             continue;
         const auto backend = p2pdc::parse_browser_backend(entry.toStdString());
         if (!backend)
-            throw std::invalid_argument("Discovery servers: \"" + entry.toStdString() +
-                                        "\" is not \"opendht URL...\", \"nostr URL\", \"mqtt URL\" or "
-                                        "\"peerjs URL [key]\"");
+            throw std::invalid_argument(
+                "Discovery servers: \"" + entry.toStdString() +
+                "\" is not \"opendht URL...\", \"nostr URL\", \"mqtt URL\" or "
+                "\"peerjs URL [key]\"");
         backends.push_back(*backend);
     }
     if (backends.empty() || backends.size() > p2pdc::max_browser_backends)
@@ -81,8 +63,9 @@ std::vector<p2pdc::BrowserBackend> discoveryBackends(const QString &text) {
 NetworkConfig NetworkConfig::from(const NetworkSettings &settings) {
     NetworkConfig config;
     config.enabled = settings.enabled;
-    const QString bootstrap =
-        settings.bootstrap.trimmed().isEmpty() ? defaultBootstrap : settings.bootstrap;
+    const QString bootstrap = settings.bootstrap.trimmed().isEmpty()
+                                  ? defaults::bootstrap().join(QLatin1Char(','))
+                                  : settings.bootstrap;
     for (const QString &entry : bootstrap.split(QLatin1Char(','), Qt::SkipEmptyParts)) {
         const HostPort server = hostPort(entry.trimmed(), "Bootstrap node");
         config.bootstrap.push_back({server.host, server.port});
@@ -93,14 +76,18 @@ NetworkConfig NetworkConfig::from(const NetworkSettings &settings) {
         if (!ok)
             throw std::invalid_argument("DHT network must be a number");
     }
-    const QString stun = settings.stun.trimmed().isEmpty() ? defaultStun : settings.stun;
+    const QString stun =
+        settings.stun.trimmed().isEmpty() ? defaults::stun().join(QLatin1Char(',')) : settings.stun;
     for (const QString &entry : stun.split(QLatin1Char(','), Qt::SkipEmptyParts)) {
         const HostPort server = hostPort(entry.trimmed(), "STUN server");
         config.ice.servers.emplace_back(p2pdc::StunServer{server.host, server.port});
     }
-    const QString turn = settings.turn.trimmed().isEmpty() ? defaultTurn : settings.turn.trimmed();
-    if (turn.compare(noTurn, Qt::CaseInsensitive) != 0)
-        config.ice.servers.emplace_back(turnServer(turn));
+    const QString turn = settings.turn.trimmed().isEmpty() ? defaults::turn().join(QLatin1Char(','))
+                                                           : settings.turn.trimmed();
+    if (turn.compare(defaults::noTurn(), Qt::CaseInsensitive) != 0) {
+        for (const QString &entry : turn.split(QLatin1Char(','), Qt::SkipEmptyParts))
+            config.ice.servers.emplace_back(turnServer(entry.trimmed()));
+    }
     config.browserBackends = discoveryBackends(settings.discovery);
     return config;
 }

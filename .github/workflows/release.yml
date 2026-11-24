@@ -33,6 +33,8 @@ jobs:
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check the version is the same everywhere
+        run: tools/check-version.sh ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
       - name: Install system packages
         run: |
           sudo apt-get update
@@ -229,7 +231,7 @@ jobs:
           flatpak-builder --user --install-deps-from=flathub --disable-rofiles-fuse --force-clean \
             --state-dir="$RUNNER_TEMP/state" --repo="$RUNNER_TEMP/repo" "$RUNNER_TEMP/build" ci.yml
           mkdir -p ../../dist
-          version=$(sed -n 's/^project(PeerChalk VERSION \([0-9.]*\).*/\1/p' ../../CMakeLists.txt)
+          version=$(cat ../../VERSION)
           # The bundle names Flathub, so installing it also fetches the KDE runtime it needs.
           flatpak build-bundle --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo \
             "$RUNNER_TEMP/repo" "../../dist/peerchalk-$version-linux-$(uname -m).flatpak" \
@@ -293,8 +295,9 @@ jobs:
           path: linux
       - name: Build both packages from this commit
         run: |
-          version=$(sed -n 's/^pkgver=//p' source/deploy/aur/peerchalk/PKGBUILD)
+          version=$(cat source/VERSION)
           mkdir -p /tmp/aur && cp -r source/deploy/aur/. /tmp/aur/
+          sed -i "s/@VERSION@/$version/" /tmp/aur/*/PKGBUILD
           tar -C source --exclude=.git --transform "s,^\.,peerchalk-$version," -czf /tmp/aur/peerchalk/peerchalk-$version.tar.gz .
           sed -i "s|^source=.*|source=("peerchalk-$version.tar.gz")|" /tmp/aur/peerchalk/PKGBUILD
           cp linux/*-linux-x86_64.tar.gz /tmp/aur/peerchalk-bin/

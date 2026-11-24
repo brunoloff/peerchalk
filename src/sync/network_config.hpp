@@ -25,7 +25,7 @@ struct NetworkConfig {
 
     // The configuration the settings describe, defaulting to the public OpenDHT network
     // through Jami's bootstrap node and proxy, then PeerChalk's own (deploy/dht-proxy/), and
-    // in browsers also two Nostr relays,
+    // in browsers also two Nostr relays, HiveMQ's MQTT broker and the public PeerJS server;
     // Cloudflare's and Google's public STUN servers and PeerChalk's relay as TURN server ("none"
     // for no TURN server). Throws std::invalid_argument naming the setting when a value is
     // malformed.

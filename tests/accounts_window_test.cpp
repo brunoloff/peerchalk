@@ -63,7 +63,7 @@ TEST_F(AccountsWindowTest, ShowsTheVersionBesideTheNameOnWideAndNarrowWindows) {
     const auto shownVersion = [this] {
         QQuickItem *version = item("welcomeVersion");
         return version != nullptr && version->isVisible() && version->width() > 0 &&
-               QRegularExpression(QStringLiteral("^\\d+\\.\\d+(\\.\\d+)?$"))
+               QRegularExpression(QStringLiteral("^\\d+\\.\\d+\\.\\d+(\\+\\d+)?$"))
                    .match(version->property("text").toString())
                    .hasMatch();
     };

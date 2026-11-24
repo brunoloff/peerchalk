@@ -40,7 +40,7 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(PEERCHALK_TEST_OPENDHT REQUIRED IMPORTED_TARGET opendht)
 find_package(msgpack-cxx CONFIG REQUIRED)
 add_executable(peerchalk_network_tests qt_test_main.cpp network_test.cpp messages_test.cpp
-    network_settings_test.cpp live_strokes_test.cpp message_parts_test.cpp
+    network_settings_test.cpp server_list_test.cpp stun_message_test.cpp server_checks_test.cpp live_strokes_test.cpp message_parts_test.cpp
     space_schedule_test.cpp instance_link_test.cpp connection_log_test.cpp)
 target_link_libraries(peerchalk_network_tests PRIVATE peerchalk_ui Qt6::Test GTest::gtest
     PkgConfig::PEERCHALK_TEST_OPENDHT msgpack-cxx)
@@ -54,3 +54,7 @@ add_executable(peerchalk_page_bench page_board_bench.cpp)
 target_link_libraries(peerchalk_page_bench PRIVATE peerchalk_ui peerchalk_pdf)
 target_compile_options(peerchalk_page_bench PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:${peerchalk_warning_flags}>)
+
+# The version a build shows, from VERSION and git (cmake/BuildStamp.cmake).
+add_test(NAME BuildStamp COMMAND ${CMAKE_COMMAND} -DSCRIPT=${PROJECT_SOURCE_DIR}/cmake/BuildStamp.cmake
+    -DWORK=${CMAKE_CURRENT_BINARY_DIR} -P ${CMAKE_CURRENT_SOURCE_DIR}/build_stamp_test.cmake)

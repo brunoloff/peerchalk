@@ -43,7 +43,7 @@ ApplicationWindow {
         anchors.fill: parent
         initialItem: HomePage {
             onOpenBoard: boardId => window.openBoard(boardId)
-            onOpenSettings: window.openSettings(0)
+            onOpenSettings: tab => window.openSettings(tab)
         }
     }
 

@@ -4,12 +4,15 @@
 #include <QPointer>
 #include <QQmlApplicationEngine>
 #include <QQmlError>
+#include <QQmlProperty>
 #include <QQuickItem>
 #include <QQuickStyle>
 #include <QQuickWindow>
 #include <QRegularExpression>
 #include <QTemporaryDir>
 #include <QTest>
+#include <QVariantList>
+#include <QVariantMap>
 #include <QtQml/qqmlextensionplugin.h>
 
 #include <gtest/gtest.h>
@@ -215,7 +218,7 @@ TEST_F(MainWindowTest, TheSidebarShowsTheVersionBesideTheName) {
         version = item("appVersion");
         return version != nullptr && version->isVisible() && version->width() > 0;
     }));
-    EXPECT_TRUE(QRegularExpression(QStringLiteral("^\\d+\\.\\d+(\\.\\d+)?$"))
+    EXPECT_TRUE(QRegularExpression(QStringLiteral("^\\d+\\.\\d+\\.\\d+(\\+\\d+)?$"))
                     .match(version->property("text").toString())
                     .hasMatch());
 }
@@ -242,6 +245,73 @@ TEST_F(MainWindowTest, TheSettingsPageOpensOnTheChosenTab) {
     EXPECT_TRUE(item("networkPane")->isVisible());
     item("settingsPage")->setProperty("currentTab", 0);
     EXPECT_FALSE(item("networkPane")->isVisible());
+}
+
+TEST_F(MainWindowTest, TheNetworkPageListsServersBesideAMapOfConnections) {
+    ASSERT_TRUE(QTest::qWaitFor([this] { return item("connectionChips") != nullptr; }));
+    EXPECT_TRUE(item("connectionChips")->isVisible());
+    window_->resize(1440, 900);
+    QMetaObject::invokeMethod(window_, "openSettings", Q_ARG(int, 1));
+    ASSERT_TRUE(QTest::qWaitFor([this] { return item("networkMap") != nullptr; }));
+    ASSERT_TRUE(QTest::qWaitFor([this] { return !item("stack")->property("busy").toBool(); }));
+    EXPECT_TRUE(item("discoveryServers")->isVisible());
+    EXPECT_TRUE(item("firewallServers")->isVisible());
+    EXPECT_EQ(item("discoveryServers")->property("servers").toList().size(), 4)
+        << "two DHT nodes, then two Nostr relays for browsers";
+    EXPECT_EQ(item("firewallServers")->property("servers").toList().size(), 3)
+        << "two STUN servers and PeerChalk's relay";
+    const QQuickItem *map = item("networkMap");
+    EXPECT_GT(map->mapToScene({}).x(), item("discoveryServers")->mapToScene({}).x())
+        << "wide windows show the map beside the settings";
+    window_->resize(1000, 800);
+    ASSERT_TRUE(QTest::qWaitFor([&] {
+        return map->mapToScene({}).y() < item("discoveryServers")->mapToScene({}).y();
+    })) << "narrower windows show it above them";
+    for (const QQmlError &warning : warnings_)
+        ADD_FAILURE() << warning.toString().toStdString();
+}
+
+// Twelve devices: nine direct (one with an unknown route), two relayed, one connecting.
+QVariantList crowd() {
+    QVariantList devices;
+    const QStringList names{"Ana", "Ben",  "Chloé", "Dev", "Eli",   "Farah",
+                            "Gus", "Hana", "Ivo",   "Sam", "Tomás", "Yara"};
+    for (int i = 0; i < names.size(); ++i) {
+        const QString route = i < 8    ? "direct"
+                              : i == 8 ? "unknown"
+                              : i < 11 ? "relay"
+                                       : "connecting";
+        devices.push_back(QVariantMap{{"device", QString::number(i)},
+                                      {"name", names[i]},
+                                      {"colorIndex", i},
+                                      {"route", route}});
+    }
+    return devices;
+}
+
+TEST_F(MainWindowTest, TheConnectionMapGroupsManyDevicesByRoute) {
+    window_->resize(1440, 900);
+    QMetaObject::invokeMethod(window_, "openSettings", Q_ARG(int, 1));
+    ASSERT_TRUE(QTest::qWaitFor([this] { return item("networkMap") != nullptr; }));
+    QQuickItem *map = item("networkMap");
+    QQmlProperty::write(
+        map, QStringLiteral("methods"),
+        QVariantList{QVariantMap{{"kind", "dht"}, {"state", "working"}, {"count", 2}},
+                     QVariantMap{{"kind", "nostr"}, {"state", "working"}, {"count", 2}},
+                     QVariantMap{{"kind", "mqtt"}, {"state", "unreachable"}, {"count", 1}},
+                     QVariantMap{{"kind", "peerjs"}, {"state", "checking"}, {"count", 1}}});
+    QQmlProperty::write(map, QStringLiteral("devices"), crowd());
+    EXPECT_EQ(map->property("direct").toList().size(), 9);
+    EXPECT_EQ(map->property("relayed").toList().size(), 2);
+    EXPECT_EQ(map->property("connecting").toList().size(), 1);
+    const QQuickItem *showAll = item("showAllDevices");
+    ASSERT_NE(showAll, nullptr);
+    EXPECT_TRUE(showAll->isVisible()) << "beyond six rows, the rest fold away";
+    window_->resize(1000, 900);
+    ASSERT_TRUE(QTest::qWaitFor([&] { return map->property("wide").toBool(); }));
+    EXPECT_FALSE(showAll->isVisible()) << "wide maps show avatars instead of rows";
+    for (const QQmlError &warning : warnings_)
+        ADD_FAILURE() << warning.toString().toStdString();
 }
 
 TEST_F(MainWindowTest, ThePaletteShowsCustomColoursBeforeTheAddButton) {

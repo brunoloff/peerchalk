@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
-project(PeerChalk VERSION 0.2.3 LANGUAGES CXX)
+# The release version lives in VERSION alone; builds add how far they are past it (BuildStamp).
+file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" peerchalk_version LIMIT_COUNT 1)
+project(PeerChalk VERSION ${peerchalk_version} LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
