@@ -1,14 +1,12 @@
-name: CI
+name: Browser
 
+# Builds and checks the browser version and, on main, publishes the site as soon as that
+# passes, without waiting for any other platform. Run it by hand to publish the site again:
+#   gh workflow run web.yml --ref main
 on:
   push:
   pull_request:
   workflow_dispatch:
-    inputs:
-      web_only:
-        description: Build and publish only the browser version
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -17,37 +15,6 @@ env:
   CMAKE_BUILD_PARALLEL_LEVEL: 4
 
 jobs:
-  linux:
-    if: ${{ !inputs.web_only }}
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Install system packages
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ninja-build pkg-config meson python3-venv libglib2.0-dev \
-            libssl-dev libgnutls28-dev nettle-dev libargon2-dev libfmt-dev libgtest-dev \
-            libgmock-dev libgl1-mesa-dev libegl1 libxkbcommon-dev libvulkan-dev libdbus-1-3 libfontconfig1 \
-            libfreetype6
-      - name: Restore Qt
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ~/Qt
-          key: qt-linux-${{ hashFiles('tools/setup.sh') }}
-      - name: Install toolchains
-        run: tools/setup.sh desktop
-      - name: Restore dependencies
-        id: deps
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: build/prefix-linux
-          key: deps-linux-${{ hashFiles('deps/**', 'cmake/P2pdcSource.cmake', 'src/math/engine/**', 'tools/setup.sh') }}
-      - name: Build dependencies
-        if: steps.deps.outputs.cache-hit != 'true'
-        run: cmake --workflow --preset deps
-      - name: Build and test
-        run: cmake --workflow --preset linux
-
   web:
     runs-on: ubuntu-24.04
     steps:
@@ -84,8 +51,6 @@ jobs:
           path: build/web/site
 
   publish:
-    # The browser version goes out as soon as its own build and checks pass; the Linux job
-    # runs alongside and reports its own result without holding the site back.
     if: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
     needs: [web]
     runs-on: ubuntu-24.04

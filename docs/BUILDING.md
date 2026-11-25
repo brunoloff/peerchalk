@@ -2,7 +2,7 @@
 
 These steps start from a clean checkout. Nothing from other projects is stored in this
 repository: the build downloads everything at pinned versions. GitHub Actions runs the same
-commands on Ubuntu 24.04 for every push (see `.github/workflows/ci.yml`).
+commands on Ubuntu 24.04 for every push (see `.github/workflows/linux.yml`).
 
 ## What you install yourself
 
