@@ -24,6 +24,12 @@
   </developer>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.3.0" date="2026-11-25">
+      <description>
+        <p>Desktop and browser versions find each other through the DHT, Nostr, MQTT and
+        PeerJS at once, and a new Network page maps the connections and checks the servers.</p>
+      </description>
+    </release>
     <release version="0.2.3" date="2026-11-24">
       <description>
         <p>Every stroke now shows on busy pages in the browser, browsers find each other

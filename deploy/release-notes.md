@@ -1,6 +1,19 @@
 A whiteboard that people share directly, computer to computer, with no account and no server
 holding the boards. You can also [try it in the browser](https://brunoloff.github.io/peerchalk/).
 
+## New in 0.3.0
+
+- Every version, desktop and browser, now finds others through the DHT, Nostr relays, MQTT
+  brokers and PeerJS servers at the same time, each with public servers ready to use. When
+  one is blocked or down, the others still work.
+- A new Network page in Settings: a live map of how this device reaches the others, directly
+  or through a relay, with each one's round-trip time, beside lists of the servers in use.
+  Each server shows whether it answers; add or remove servers with + and −, or reset to the
+  defaults.
+- Above your name in the sidebar, small chips show which ways of finding others are working.
+  Click them to open the Network page.
+- The version is shown on the welcome screen too.
+
 ## New in 0.2.3
 
 - In the browser, strokes on a busy page no longer stop appearing after a few dozen. They
