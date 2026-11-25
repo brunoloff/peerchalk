@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.20)
 # The release version lives in VERSION alone; builds add how far they are past it (BuildStamp).
 file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" peerchalk_version LIMIT_COUNT 1)
+# Configure again when VERSION changes, so existing build folders pick up a new version.
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/VERSION")
 project(PeerChalk VERSION ${peerchalk_version} LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
