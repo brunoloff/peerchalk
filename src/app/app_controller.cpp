@@ -34,6 +34,10 @@ void reportShownOnce(QQuickWindow *window) {
 #endif
 }
 
+QString hostedDirectory(const InstanceSlot &slot) {
+    return slot.root() + QStringLiteral("/hosted");
+}
+
 QQuickWindow *rootWindow(QQmlApplicationEngine *engine) {
     if (engine == nullptr || engine->rootObjects().isEmpty())
         return nullptr;
@@ -54,6 +58,10 @@ AppController::AppController(InstanceSlot &slot, QObject *parent)
 }
 
 void AppController::start(const QString &boardLink) {
+    if (hosted::hostedPage()) {
+        startHosted();
+        return;
+    }
     accounts_.store().migrateLegacyData();
     mergeOtherInstances();
     instanceLink_ = sync::InstanceLink::create(slot_);
@@ -73,6 +81,23 @@ void AppController::start(const QString &boardLink) {
         showAccount(current);
     else
         showAccountScreen();
+}
+
+void AppController::startHosted() {
+    hosted_ = std::make_unique<hosted::HostedSession>(hosted::pageBridge(), hostedDirectory(slot_),
+                                                      hosted::HostedSession::Timing{});
+    connect(hosted_.get(), &hosted::HostedSession::opened, this, &AppController::showHostedBoard);
+    hosted_->start();
+}
+
+void AppController::showHostedBoard(const QUuid &board) {
+    inAccount_ = true;
+    load("Main", hostedDirectory(slot_));
+    auto *library = engine_->singletonInstance<Library *>("PeerChalk", "Library");
+    auto *network = engine_->singletonInstance<sync::Network *>("PeerChalk", "Network");
+    hosted_->attach(*library, *network);
+    QMetaObject::invokeMethod(rootWindow(engine_.get()), "openBoard",
+                              Q_ARG(QString, board.toString(QUuid::WithoutBraces)));
 }
 
 // A slot that could not be read is left in place, to be tried again next time.
@@ -107,6 +132,7 @@ void AppController::load(const char *type, const QString &accountDirectory) {
     engine->setProperty("appUpdater", QVariant::fromValue(&updater_));
     engine->setProperty("accountDirectory", accountDirectory);
     engine->setProperty("instanceLink", QVariant::fromValue(instanceLink_.get()));
+    engine->setProperty("hosted", hosted_ != nullptr);
     connect(
         engine.get(), &QQmlApplicationEngine::objectCreationFailed, this,
         [] { QCoreApplication::exit(1); }, Qt::QueuedConnection);

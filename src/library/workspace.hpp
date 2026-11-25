@@ -40,6 +40,8 @@ struct BoardEntry {
     std::vector<SignedOp> ops;
     AccessState state;
     QByteArray linkToken{}; // the secret of the board's link, if known here
+    // Kept in a git repository (docs/board-files.md): members edit without an owner present.
+    bool repository{false};
 
     [[nodiscard]] QString name() const { return state.exists ? state.name : inviteName; }
     [[nodiscard]] bool deleted() const { return state.deleted; }
@@ -51,7 +53,8 @@ struct BoardEntry {
 // may change what). A project is a collection of boards: its members are members of all
 // its boards; its owners add and remove boards they also own. A user may access a project
 // they have a role on, and a board they have a role on or that belongs to a project they
-// may access. Members may edit a board while one of its owners is connected.
+// may access. Members may edit a board while one of its owners is connected, except on
+// repository boards.
 //
 // Data lives in `directory`: workspace.json (owner-only; it holds capabilities) and
 // boards/<id>.yrs. Files from earlier versions are migrated on first load. Failures to
@@ -80,6 +83,9 @@ class Workspace {
     // An owner of the board, or of a project it is in. Members can see and change a board
     // only while one of these is connected.
     [[nodiscard]] bool isBoardOwner(const QByteArray &user, const QUuid &boardId) const;
+    // Repository boards drop the rule above: their members may edit at any time.
+    [[nodiscard]] bool isRepositoryBoard(const QUuid &boardId) const;
+    void markRepositoryBoard(const QUuid &boardId);
     // Boards shown in a project, and boards shown in none of your projects: accessible
     // ones, and ones you joined by invite (which may still await approval).
     [[nodiscard]] std::vector<QUuid> boardsInProject(const QUuid &projectId) const;

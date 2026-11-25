@@ -34,8 +34,8 @@ gtest_discover_tests(peerchalk_repository_tests)
 add_executable(peerchalk_ui_tests qt_test_main.cpp board_canvas_test.cpp board_canvas_pages_test.cpp board_minimap_test.cpp
     main_window_test.cpp library_test.cpp account_manager_test.cpp math_engine_test.cpp rich_text_test.cpp board_pdf_test.cpp
     accounts_window_test.cpp desktop_launcher_test.cpp app_updater_test.cpp board_preview_test.cpp
-    pdf_renderer_test.cpp)
-target_link_libraries(peerchalk_ui_tests PRIVATE peerchalk_uiplugin peerchalk_ui Qt6::QuickControls2 Qt6::Test Qt6::GuiPrivate
+    pdf_renderer_test.cpp hosted_session_test.cpp)
+target_link_libraries(peerchalk_ui_tests PRIVATE peerchalk_uiplugin peerchalk_ui peerchalk_hosted Qt6::QuickControls2 Qt6::Test Qt6::GuiPrivate
     GTest::gtest)
 target_compile_options(peerchalk_ui_tests PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:${peerchalk_warning_flags}>)
@@ -48,7 +48,7 @@ pkg_check_modules(PEERCHALK_TEST_OPENDHT REQUIRED IMPORTED_TARGET opendht)
 find_package(msgpack-cxx CONFIG REQUIRED)
 add_executable(peerchalk_network_tests qt_test_main.cpp network_test.cpp messages_test.cpp
     network_settings_test.cpp server_list_test.cpp stun_message_test.cpp server_checks_test.cpp live_strokes_test.cpp message_parts_test.cpp
-    space_schedule_test.cpp instance_link_test.cpp connection_log_test.cpp)
+    space_schedule_test.cpp instance_link_test.cpp connection_log_test.cpp scribe_test.cpp)
 target_link_libraries(peerchalk_network_tests PRIVATE peerchalk_ui Qt6::Test GTest::gtest
     PkgConfig::PEERCHALK_TEST_OPENDHT msgpack-cxx)
 target_compile_options(peerchalk_network_tests PRIVATE

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "hosted/hosted_session.hpp"
 #include "library/instance_slot.hpp"
 #include "sync/instance_link.hpp"
 #include "ui/account_manager.hpp"
@@ -31,12 +32,16 @@ class AppController : public QObject {
     void showAccount(const QString &id);
     void signOut();
     void load(const char *type, const QString &accountDirectory);
+    // Hosted by a dashboard: waits for its board, then shows only that.
+    void startHosted();
+    void showHostedBoard(const QUuid &board);
 
     InstanceSlot &slot_;
     AccountManager accounts_;
     AppUpdater updater_;
     std::unique_ptr<sync::InstanceLink> instanceLink_;
     std::unique_ptr<QQmlApplicationEngine> engine_;
+    std::unique_ptr<hosted::HostedSession> hosted_;
     bool inAccount_{false};
     bool signingOut_{false};
 };

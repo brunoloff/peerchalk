@@ -28,6 +28,7 @@ enum Type : char {
     InstanceHelloType = 11,
     BlobWantType = 12,
     BlobChunkType = 13
+    // 14 and 15: repository_messages.cpp
 };
 constexpr qsizetype uuidSize = 16;
 constexpr qsizetype partHeaderSize = 1 + 4 + 4;
@@ -110,6 +111,8 @@ struct Encoder {
         qToLittleEndian(part.count, bytes.data() + 5);
         return bytes + part.data;
     }
+    QByteArray operator()(const RepoStatus &status) const { return encodeRepoStatus(status); }
+    QByteArray operator()(const RepoPushed &pushed) const { return encodeRepoPushed(pushed); }
     QByteArray operator()(const UnknownMessage &) const {
         throw std::logic_error("Unknown messages are never sent");
     }
@@ -330,6 +333,8 @@ std::optional<Message> decode(const QByteArray &bytes) {
         return decodeBlobChunk(bytes);
     if (type == InstanceHelloType)
         return InstanceHello{};
+    if (isRepoMessage(type))
+        return decodeRepoMessage(bytes);
     if (!isJsonType(type))
         return UnknownMessage{};
     const std::optional<QJsonObject> object = jsonBody(bytes);

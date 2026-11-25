@@ -50,8 +50,12 @@ QDateTime lastEditedIn(const Workspace &workspace, const QUuid &project) {
 std::map<QString, Network::SpaceSpec> Network::wantedSpaces() const {
     std::map<QString, SpaceSpec> wanted;
     const Workspace &workspace = library_.workspace();
-    wanted[QStringLiteral("personal")] = {
-        SpaceKind::Personal, QUuid(), library_.identityStore().identity().personalCapability(), {}};
+    if (config_.personalSpace)
+        wanted[QStringLiteral("personal")] = {
+            SpaceKind::Personal,
+            QUuid(),
+            library_.identityStore().identity().personalCapability(),
+            {}};
     for (const ProjectEntry &project : workspace.projects())
         if (!project.deleted())
             wanted[projectKey(project.id)] = {SpaceKind::Project, project.id, project.capability,
@@ -65,7 +69,9 @@ std::map<QString, Network::SpaceSpec> Network::wantedSpaces() const {
 
 // Your own devices, the project on screen and the board that is open.
 std::set<QString> Network::essentialSpaces() const {
-    std::set<QString> keys{QStringLiteral("personal")};
+    std::set<QString> keys;
+    if (config_.personalSpace)
+        keys.insert(QStringLiteral("personal"));
     const QUuid current = QUuid::fromString(library_.currentProjectId());
     if (!current.isNull())
         keys.insert(projectKey(current));

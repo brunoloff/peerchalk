@@ -22,6 +22,9 @@ struct NetworkConfig {
     std::vector<p2pdc::DiscoveryBackend> discoveryBackends; // where nodes meet besides the DHT
     // How often another waiting project or board gets a turn when there are too many.
     std::chrono::milliseconds spaceRotation{std::chrono::minutes(2)};
+    // Whether this device meets the user's other devices. Off in PeerChalk hosted by a
+    // dashboard, which holds one repository board and no workspace of its own.
+    bool personalSpace{true};
 
     // The configuration the settings describe, defaulting to the public OpenDHT network
     // through Jami's bootstrap node and proxy (browsers use the proxies, desktops the nodes),

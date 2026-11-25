@@ -37,6 +37,8 @@ qt_add_qml_module(peerchalk_ui URI PeerChalk VERSION 1.0
         ../sync/network_settings.cpp ../sync/network_settings.hpp ../sync/network_settings_page.cpp
         ../sync/network_live.cpp ../sync/live_strokes.cpp ../sync/live_strokes.hpp
         ../sync/network_sync.cpp ../sync/network_spaces.cpp ../sync/network_boards.cpp
+        ../sync/repository_messages.cpp ../sync/scribe.cpp ../sync/scribe.hpp
+        ../sync/repository_scribe.cpp ../sync/repository_scribe.hpp
         ../sync/message_parts.cpp ../sync/message_parts.hpp
         ../sync/network_instances.cpp ../sync/instance_link.hpp ${peerchalk_instance_link}
         ../sync/space_schedule.cpp ../sync/space_schedule.hpp

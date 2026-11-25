@@ -5,6 +5,7 @@
 #include "library/secrets.hpp"
 #include "sync/connection_log.hpp"
 #include "sync/p2pdc_names.hpp"
+#include "sync/repository_scribe.hpp"
 #include "ui/library.hpp"
 
 #include <QtLogging>
@@ -92,6 +93,9 @@ void Network::dispatch(const PeerId &id, Peer &peer, const std::optional<Message
         flush(id);
     } else if (const auto *chunk = std::get_if<BlobChunk>(&*message)) {
         handleBlobChunk(id, peer, *chunk);
+    } else if (std::holds_alternative<RepoStatus>(*message) ||
+               std::holds_alternative<RepoPushed>(*message)) {
+        repository_->receive(toBytes(peer.device), *message);
     } else if (const auto *presence = std::get_if<Presence>(&*message)) {
         applyPresence(peer, *presence);
     } else if (const auto *profile = std::get_if<Profile>(&*message)) {
@@ -159,6 +163,10 @@ void Network::peerAuthenticated(const PeerId &id, Peer &peer) {
     offerAccess(peer);
     offerLinkJoin(peer);
     offerBoardStates(peer);
+    for (const QUuid &board : repository_->localBoards())
+        if (sharesBoard(peer, board))
+            for (const Message &status : repository_->statusFor(board))
+                queue(peer, status);
     for (const QUuid &board : syncableBoards(peer)) {
         peer.dirtyBoards.insert(board);
         requestMissingBlobs(id, peer, board);
@@ -242,7 +250,7 @@ bool Network::syncable(const Peer &peer, const QUuid &board) const {
     if (!sharesBoard(peer, board))
         return false;
     const Workspace &workspace = library_.workspace();
-    return workspace.isBoardOwner(workspace.user(), board) ||
+    return workspace.isRepositoryBoard(board) || workspace.isBoardOwner(workspace.user(), board) ||
            workspace.isBoardOwner(peer.user->userKey, board);
 }
 

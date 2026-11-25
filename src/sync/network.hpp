@@ -25,11 +25,11 @@
 #include <QtQml/qqmlregistration.h>
 
 #include <atomic>
+#include <chrono>
 #include <deque>
 #include <functional>
 #include <map>
 #include <memory>
-#include <chrono>
 #include <optional>
 #include <set>
 
@@ -43,6 +43,7 @@ class Library;
 namespace peerchalk::sync {
 
 class InstanceLink;
+class RepositoryScribe;
 class ServerChecks;
 class ServerList;
 
@@ -150,6 +151,8 @@ class Network : public QObject {
     Q_INVOKABLE QString saveLog(const QUrl &file) const; // desktop and mobile
     Q_INVOKABLE QString downloadLog() const;             // browsers
     Q_INVOKABLE static QString logFileName();
+    // Who commits the repository boards open here (repository_scribe.hpp).
+    [[nodiscard]] RepositoryScribe &repository() { return *repository_; }
 
   signals:
     void logChanged();
@@ -167,6 +170,7 @@ class Network : public QObject {
     void joinRequested(const QString &name, const QString &itemName);
 
   private:
+    friend class RepositoryScribe;
     // Applies a change to the saved server lists and saves them for the next start.
     QString changeServers(const std::function<void(ServerList &)> &change);
 
@@ -386,6 +390,7 @@ class Network : public QObject {
     std::map<std::string, Download> downloads_; // by blob hash, one peer each
     ServerChecks *serverChecks_{nullptr};       // made on the first check
     QVariantMap serverStatus_;
+    std::unique_ptr<RepositoryScribe> repository_;
 };
 
 } // namespace peerchalk::sync

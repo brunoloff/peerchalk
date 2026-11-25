@@ -24,9 +24,10 @@ namespace peerchalk::sync {
 
 // This version of the protocol, and the oldest one it can still talk to. Raise the first
 // for additions older peers can ignore, and the second only for incompatible changes.
-// Version 4 adds page boards and blobs. Until PeerChalk 1.0 there is no compatibility with
-// older versions: they are told to update.
-inline constexpr int protocolVersion = 4;
+// Version 4 adds page boards and blobs; version 5 adds RepoStatus and RepoPushed, which
+// version 4 ignores. Until PeerChalk 1.0 there is no compatibility with older versions: they
+// are told to update.
+inline constexpr int protocolVersion = 5;
 inline constexpr int minSupportedProtocol = 4;
 
 // First message on every connection: who the device is and acts for.
@@ -130,11 +131,32 @@ struct BlobChunk {
     QByteArray data;  // the bytes from offset on, ending at or before total
 };
 
+// Repository boards (docs/board-files.md, protocol 5): whether the sender's device can push
+// the board's branch, so that peers agree on a scribe, sent on connecting and on change.
+struct RepoStatus {
+    QUuid board;
+    bool canPush{false};
+};
+// The branch at `commit` holds the board up to `stateVector` (a Yrs state vector); sent by
+// the scribe after each push.
+inline constexpr qsizetype maxCommitBytes = 32;
+struct RepoPushed {
+    QUuid board;
+    QByteArray commit; // the git commit id, 20 or 32 bytes
+    QByteArray stateVector;
+};
+
 using Message = std::variant<Hello, AccessChanges, Personal, BoardUpdate, Presence, Profile,
                              LiveStroke, BoardState, MessagePart, BoardLinkJoin, InstanceHello,
-                             BlobWant, BlobChunk, UnknownMessage>;
+                             BlobWant, BlobChunk, RepoStatus, RepoPushed, UnknownMessage>;
 
 [[nodiscard]] QByteArray encode(const Message &message);
+// repository_messages.cpp: the codec of RepoStatus and RepoPushed.
+[[nodiscard]] QByteArray encodeRepoStatus(const RepoStatus &status);
+[[nodiscard]] QByteArray encodeRepoPushed(const RepoPushed &pushed);
+// The message, or nullopt when malformed; also nullopt for other types (see isRepoMessage).
+[[nodiscard]] bool isRepoMessage(char type);
+[[nodiscard]] std::optional<Message> decodeRepoMessage(const QByteArray &bytes);
 [[nodiscard]] std::optional<Message> decode(const QByteArray &bytes);
 
 } // namespace peerchalk::sync

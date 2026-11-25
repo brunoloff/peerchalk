@@ -73,7 +73,7 @@ void Network::handleLinkJoin(const Peer &peer, const BoardLinkJoin &join) {
 
 bool Network::boardLive(const QUuid &board) const {
     const Workspace &workspace = library_.workspace();
-    if (workspace.isBoardOwner(workspace.user(), board))
+    if (workspace.isRepositoryBoard(board) || workspace.isBoardOwner(workspace.user(), board))
         return true;
     return std::ranges::any_of(peers_, [&](const auto &entry) {
         const Peer &peer = *entry.second;

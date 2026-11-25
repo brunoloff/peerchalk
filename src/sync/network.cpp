@@ -3,6 +3,7 @@
 #include "sync/connection_log.hpp"
 #include "sync/instance_link.hpp"
 #include "sync/p2pdc_names.hpp"
+#include "sync/repository_scribe.hpp"
 
 #include "ui/library.hpp"
 
@@ -27,7 +28,8 @@ constexpr auto incompatibleRetry = std::chrono::minutes(5);
 
 Network::Network(Library &library, NetworkConfig config, QObject *parent,
                  InstanceLink *instanceLink)
-    : QObject(parent), library_(library), config_(std::move(config)), instanceLink_(instanceLink) {
+    : QObject(parent), library_(library), config_(std::move(config)), instanceLink_(instanceLink),
+      repository_(std::make_unique<RepositoryScribe>(*this)) {
     retryTimer_.setInterval(retryInterval);
     connect(&retryTimer_, &QTimer::timeout, this, [this] {
         reconcileSpaces();
@@ -77,6 +79,7 @@ Network *Network::create(QQmlEngine *engine, QJSEngine *) {
         qWarning("PeerChalk networking is off: %s", error.what());
         config.enabled = false;
     }
+    config.personalSpace = !engine->property("hosted").toBool(); // see NetworkConfig
     auto *link = engine->property("instanceLink").value<InstanceLink *>();
     auto *network = new Network(*library, std::move(config), nullptr, link);
     network->start();

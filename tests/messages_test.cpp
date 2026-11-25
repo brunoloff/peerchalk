@@ -180,5 +180,30 @@ TEST(Messages, RejectsMalformedInput) {
     EXPECT_FALSE(decode(QByteArray("\x05{\"board\":\"nope\"}")).has_value());
 }
 
+TEST(Messages, RepositoryMessagesRoundTripAndRefuseMalformedOnes) {
+    const QUuid board = QUuid::createUuid();
+    const auto status = decode(encode(RepoStatus{board, true}));
+    ASSERT_TRUE(status && std::holds_alternative<RepoStatus>(*status));
+    EXPECT_TRUE(std::get<RepoStatus>(*status).canPush);
+    const RepoPushed pushed{board, QByteArray(20, 'c'), QByteArray::fromHex("0101020a")};
+    const auto decoded = decode(encode(pushed));
+    ASSERT_TRUE(decoded && std::holds_alternative<RepoPushed>(*decoded));
+    EXPECT_EQ(std::get<RepoPushed>(*decoded).commit, pushed.commit);
+    EXPECT_EQ(std::get<RepoPushed>(*decoded).stateVector, pushed.stateVector);
+    QByteArray badCommit = encode(RepoPushed{board, QByteArray(7, 'c'), {}});
+    EXPECT_FALSE(decode(badCommit).has_value());
+    QByteArray badFlag = encode(RepoStatus{board, false});
+    badFlag.back() = '\x07';
+    EXPECT_FALSE(decode(badFlag).has_value());
+    EXPECT_FALSE(decode(encode(RepoStatus{board, true}).left(10)).has_value());
+}
+
+TEST(Messages, ProtocolFourPeersStillTalkToProtocolFive) {
+    Hello older;
+    older.protocol = 4;
+    older.minProtocol = 4;
+    EXPECT_TRUE(protocolsCompatible(older));
+}
+
 } // namespace
 } // namespace peerchalk::sync

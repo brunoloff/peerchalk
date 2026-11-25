@@ -56,6 +56,14 @@ endif()
 
 add_subdirectory(ui)
 
+# PeerChalk hosted by a dashboard, showing one repository board (docs/board-files.md).
+add_library(peerchalk_hosted STATIC hosted/hosted_messages.cpp hosted/hosted_account.cpp
+    hosted/hosted_bridge.cpp hosted/hosted_session.cpp hosted/hosted_session.hpp)
+target_link_libraries(peerchalk_hosted PUBLIC peerchalk_ui peerchalk_repository)
+target_compile_definitions(peerchalk_hosted PRIVATE PEERCHALK_VERSION="${PROJECT_VERSION}")
+target_compile_options(peerchalk_hosted PRIVATE
+    $<$<CXX_COMPILER_ID:GNU,Clang>:${peerchalk_warning_flags}>)
+
 set(peerchalk_icons "${CMAKE_CURRENT_SOURCE_DIR}/../deploy/icons")
 set(peerchalk_platform_sources)
 if(WIN32)
@@ -76,20 +84,22 @@ set_target_properties(peerchalk PROPERTIES
     MACOSX_BUNDLE_ICON_FILE peerchalk.icns
     MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION}
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION})
-target_link_libraries(peerchalk PRIVATE peerchalk_uiplugin peerchalk_ui p2pdc::p2pdc
+target_link_libraries(peerchalk PRIVATE peerchalk_uiplugin peerchalk_ui peerchalk_hosted p2pdc::p2pdc
     Qt6::Gui Qt6::Qml Qt6::Quick Qt6::QuickControls2)
 target_compile_options(peerchalk PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:${peerchalk_warning_flags}>)
 if(EMSCRIPTEN)
+    set(peerchalk_web_hosted "${CMAKE_CURRENT_SOURCE_DIR}/app/web_hosted.js")
     set(peerchalk_web_storage "${CMAKE_CURRENT_SOURCE_DIR}/app/web_storage.js")
     set(peerchalk_web_files "${CMAKE_CURRENT_SOURCE_DIR}/app/web_files.js")
     set(peerchalk_web_math "${CMAKE_CURRENT_SOURCE_DIR}/app/web_math.js")
     set(peerchalk_web_pdf "${CMAKE_CURRENT_SOURCE_DIR}/app/web_pdf.js")
     set(peerchalk_web_checks "${CMAKE_CURRENT_SOURCE_DIR}/app/web_checks.js")
-    target_link_options(peerchalk PRIVATE -lidbfs.js "SHELL:--pre-js \"${peerchalk_web_storage}\""
+    target_link_options(peerchalk PRIVATE -lidbfs.js "SHELL:--pre-js \"${peerchalk_web_hosted}\""
+        "SHELL:--pre-js \"${peerchalk_web_storage}\""
         "SHELL:--pre-js \"${peerchalk_web_files}\"" "SHELL:--pre-js \"${peerchalk_web_math}\""
         "SHELL:--pre-js \"${peerchalk_web_pdf}\"" "SHELL:--pre-js \"${peerchalk_web_checks}\"")
-    set_property(TARGET peerchalk APPEND PROPERTY LINK_DEPENDS "${peerchalk_web_storage}"
+    set_property(TARGET peerchalk APPEND PROPERTY LINK_DEPENDS "${peerchalk_web_hosted}" "${peerchalk_web_storage}"
         "${peerchalk_web_files}" "${peerchalk_web_math}" "${peerchalk_web_pdf}" "${peerchalk_web_checks}")
 endif()
 

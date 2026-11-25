@@ -32,6 +32,15 @@ bool Workspace::isBoardOwner(const QByteArray &user, const QUuid &boardId) const
     });
 }
 
+bool Workspace::isRepositoryBoard(const QUuid &boardId) const {
+    return hasBoard(boardId) && board(boardId).repository;
+}
+
+void Workspace::markRepositoryBoard(const QUuid &boardId) {
+    findBoard(boardId).repository = true;
+    save();
+}
+
 void Workspace::recordBoardLink(const QUuid &id, const QByteArray &hash) {
     BoardEntry &entry = findBoard(id);
     if (entry.state.role(user_) < Role::Owner)

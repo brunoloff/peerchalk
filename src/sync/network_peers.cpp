@@ -2,6 +2,7 @@
 #include "sync/connection_log.hpp"
 #include "sync/network.hpp"
 #include "sync/p2pdc_names.hpp"
+#include "sync/repository_scribe.hpp"
 
 #include "ui/library.hpp"
 
@@ -150,6 +151,7 @@ void Network::disconnectPeer(const PeerId &id, std::uint64_t generation) {
     QTimer::singleShot(0, this, [this, id, generation] {
         if (livePeer(id, generation) != nullptr)
             peers_.erase(id);
+        repository_->reconsider();
         emit peersChanged();
         emit presenceChanged();
     });

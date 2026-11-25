@@ -70,6 +70,7 @@ QJsonObject toJson(const BoardEntry &entry) {
             {"inviteName", entry.inviteName},
             {"edited", entry.edited.toString(Qt::ISODateWithMs)},
             {"linkToken", base64(entry.linkToken)},
+            {"repository", entry.repository},
             {"ops", opsJson(entry.ops)}};
 }
 
@@ -91,7 +92,8 @@ BoardEntry boardFromJson(const QJsonObject &object) {
             QDateTime::fromString(object["edited"].toString(), Qt::ISODateWithMs),
             opsFromJson(object["ops"]),
             {},
-            optionalKey(object, "linkToken")};
+            optionalKey(object, "linkToken"),
+            object["repository"].toBool()};
 }
 
 // Adds the changes not yet in `ops`; returns whether any were new.
@@ -271,6 +273,10 @@ bool Workspace::mergePersonal(const QJsonObject &personal) {
         }
         if (entry.linkToken.isEmpty() && !incoming.linkToken.isEmpty()) {
             entry.linkToken = incoming.linkToken;
+            changed = true;
+        }
+        if (!entry.repository && incoming.repository) {
+            entry.repository = true;
             changed = true;
         }
         changed |= addMissing(entry.ops, incoming.ops);

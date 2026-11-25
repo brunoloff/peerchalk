@@ -1,9 +1,19 @@
-// Linked into the browser build with --pre-js. Browsers give the app an in-memory file
-// system, so this keeps its data in IndexedDB. Any number of tabs can run at once: each
-// claims a numbered slot with a database of its own (guarded by a Web Lock), loads the other
-// slots to merge them when the app starts, and removes those whose tabs have closed.
+// Linked into the browser build with --pre-js, after web_hosted.js. Browsers give the app an
+// in-memory file system, so this keeps its data in IndexedDB. Any number of tabs can run at
+// once: each claims a numbered slot with a database of its own (guarded by a Web Lock), loads
+// the other slots to merge them when the app starts, and removes those whose tabs have closed.
 (() => {
   const baseRoot = "/peerchalk";
+  // Hosted by a dashboard (web_hosted.js), the app keeps nothing: the dashboard keeps the board.
+  if (globalThis.peerchalkHosted) {
+    window.peerchalkStorage = {
+      state: () => ({ index: 0, root: baseRoot, others: [] }),
+      finishMerge: () => {},
+      othersRunning: () => false,
+    };
+    Module.preRun = [].concat(Module.preRun || [], () => FS.mkdir(baseRoot));
+    return;
+  }
   const lockPrefix = "peerchalk-instance-";
   const saveIntervalMs = 1000;
   const runningCheckMs = 2000;
