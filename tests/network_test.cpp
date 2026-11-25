@@ -427,8 +427,9 @@ TEST_F(NetworkTest, AnOwnerApprovesWhileTheAdminIsOffline) {
 TEST(BrowserInterop, DISABLED_OwnerServesALink) {
     QTemporaryDir dir;
     Library library(dir.path());
-    sync::Network network(library,
-                          sync::NetworkConfig::from(sync::NetworkSettings{}.withEnvironment()));
+    sync::NetworkSettings settings = sync::NetworkSettings{}.withEnvironment();
+    settings.enabled = true; // the tests' main() turns networking off
+    sync::Network network(library, sync::NetworkConfig::from(settings));
     network.start();
     library.createProject(QStringLiteral("Interop"));
     const QString id = library.createBoard(QStringLiteral("Desktop board"));
