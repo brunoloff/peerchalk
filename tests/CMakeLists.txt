@@ -25,8 +25,8 @@ target_compile_options(peerchalk_library_tests PRIVATE
 gtest_discover_tests(peerchalk_library_tests)
 
 add_executable(peerchalk_repository_tests repository_files_test.cpp repository_loader_test.cpp
-    repository_writer_test.cpp)
-target_link_libraries(peerchalk_repository_tests PRIVATE peerchalk_repository GTest::gtest_main)
+    repository_writer_test.cpp board_tool_test.cpp)
+target_link_libraries(peerchalk_repository_tests PRIVATE peerchalk_board_tool GTest::gtest_main)
 target_compile_options(peerchalk_repository_tests PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:${peerchalk_warning_flags}>)
 gtest_discover_tests(peerchalk_repository_tests)

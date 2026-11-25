@@ -42,6 +42,18 @@ target_link_libraries(peerchalk_repository PUBLIC peerchalk_library peerchalk_bo
 target_compile_options(peerchalk_repository PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:${peerchalk_warning_flags}>)
 
+# peerchalk-board: repository boards for other programs, such as a dashboard (no GUI).
+add_library(peerchalk_board_tool STATIC tools/board_tool.cpp)
+target_link_libraries(peerchalk_board_tool PUBLIC peerchalk_repository)
+target_compile_options(peerchalk_board_tool PRIVATE
+    $<$<CXX_COMPILER_ID:GNU,Clang>:${peerchalk_warning_flags}>)
+if(NOT EMSCRIPTEN)
+    add_executable(peerchalk-board tools/board_tool_main.cpp)
+    target_link_libraries(peerchalk-board PRIVATE peerchalk_board_tool)
+    target_compile_options(peerchalk-board PRIVATE
+        $<$<CXX_COMPILER_ID:GNU,Clang>:${peerchalk_warning_flags}>)
+endif()
+
 add_subdirectory(ui)
 
 set(peerchalk_icons "${CMAKE_CURRENT_SOURCE_DIR}/../deploy/icons")
