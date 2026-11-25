@@ -117,13 +117,12 @@ std::vector<ServerEntry> ServerList::discoveryEntries() const {
     const QStringList defaultDht =
         browser_ ? proxiesIn(defaults::discovery()) : defaults::bootstrap();
     for (const QString &node : dht)
-        rows.push_back({ServerKind::Dht, node, defaultDht.contains(node), false, {}});
+        rows.push_back({ServerKind::Dht, node, defaultDht.contains(node), {}});
     for (const QString &line : discoveryLines()) {
         if (line.startsWith(proxyPrefix))
             continue;
         const QString address = line.section(QLatin1Char(' '), 1).trimmed();
-        rows.push_back(
-            {kindOf(line), address, defaults::discovery().contains(line), !browser_, {}});
+        rows.push_back({kindOf(line), address, defaults::discovery().contains(line), {}});
     }
     return rows;
 }
@@ -131,12 +130,12 @@ std::vector<ServerEntry> ServerList::discoveryEntries() const {
 std::vector<ServerEntry> ServerList::firewallEntries() const {
     std::vector<ServerEntry> rows;
     for (const QString &server : listOf(settings_.stun, defaults::stun(), commas()))
-        rows.push_back({ServerKind::Stun, server, defaults::stun().contains(server), false, {}});
+        rows.push_back({ServerKind::Stun, server, defaults::stun().contains(server), {}});
     if (settings_.turn.trimmed().compare(defaults::noTurn(), Qt::CaseInsensitive) == 0)
         return rows;
     for (const QString &server : listOf(settings_.turn, defaults::turn(), commas()))
         rows.push_back({ServerKind::Turn, turnAddress(server), defaults::turn().contains(server),
-                        false, server.left(server.lastIndexOf(QLatin1Char('@')))});
+                        server.left(server.lastIndexOf(QLatin1Char('@')))});
     return rows;
 }
 

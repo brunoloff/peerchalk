@@ -29,8 +29,10 @@ deploy/web/build.sh
 bin/peerchalk-web
 ```
 
-Browsers find peers through discovery servers, all at once: by default Jami's OpenDHT proxy,
-PeerChalk's own and two Nostr relays (Settings → Network → Discovery servers, one per line). Your identity and boards stay in that site's browser storage, and
+Devices find each other through discovery servers, all at once: by default the OpenDHT
+network (desktops join it, browsers reach it through Jami's proxy and PeerChalk's own), two
+Nostr relays, HiveMQ's MQTT broker and the public PeerJS server (Settings → Network →
+Discovery servers). In browsers, your identity and boards stay in that site's storage, and
 each `--port` is a separate user. Any number of tabs and desktop windows can be open at
 once, even on the same board: each is its own instance and they update each other directly.
 

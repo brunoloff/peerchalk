@@ -22,11 +22,11 @@ inline QStringList turn() {
     return {QStringLiteral("peerchalk:peerchalk-open-relay@89.168.35.4:3478")};
 }
 
-// Where the browser build meets other devices (p2pdc's discovery backends), one entry each:
+// Where devices meet besides the DHT (p2pdc's discovery backends), one entry each:
 // Jami's DHT proxy, then PeerChalk's own (Jami's has resolved to a dead address in parts of
 // Asia); two Nostr relays and HiveMQ's public MQTT broker, which work over WebSocket where
 // streaming HTTP is blocked; and the public PeerJS server, which only relays WebRTC
-// signalling between browsers.
+// signalling. Desktops join the DHT themselves and skip the proxies.
 inline QStringList discovery() {
     return {QStringLiteral("opendht https://dhtproxy.jami.net https://89-168-35-4.sslip.io"),
             QStringLiteral("nostr wss://nos.lol"), QStringLiteral("nostr wss://relay.primal.net"),

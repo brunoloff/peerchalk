@@ -31,7 +31,7 @@ QtObject {
     }
 
     function collect(status, online, revision) {
-        const servers = Network.servers("discovery").filter(s => !s.browserOnly);
+        const servers = Network.servers("discovery");
         const found = [];
         for (const kind of ["dht", "nostr", "mqtt", "peerjs"]) {
             const ofKind = servers.filter(s => s.kind === kind);

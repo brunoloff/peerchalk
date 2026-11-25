@@ -422,11 +422,13 @@ TEST_F(NetworkTest, AnOwnerApprovesWhileTheAdminIsOffline) {
 
 // Run by hand against a browser (--gtest_also_run_disabled_tests): an owner on the public
 // network writes a board link to the file named by PEERCHALK_INTEROP_LINK, waits for the
-// visitor's stroke and answers with one of its own.
+// visitor's stroke and answers with one of its own. PEERCHALK_DISCOVERY and the other
+// PEERCHALK_ settings variables choose the servers, for instance PeerJS alone.
 TEST(BrowserInterop, DISABLED_OwnerServesALink) {
     QTemporaryDir dir;
     Library library(dir.path());
-    sync::Network network(library, sync::NetworkConfig::from({}));
+    sync::Network network(library,
+                          sync::NetworkConfig::from(sync::NetworkSettings{}.withEnvironment()));
     network.start();
     library.createProject(QStringLiteral("Interop"));
     const QString id = library.createBoard(QStringLiteral("Desktop board"));

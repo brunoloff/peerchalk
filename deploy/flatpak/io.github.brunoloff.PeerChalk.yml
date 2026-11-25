@@ -81,7 +81,7 @@ modules:
       - &p2pdc
         type: git
         url: https://github.com/brunoloff/p2pdc.git
-        commit: 592885383e0a33ddcc849a6867610ce1cf6a646f
+        commit: 848dc13ae90353a9b190dafae958358a8f85e385
         dest: p2pdc
 
   - name: libdatachannel

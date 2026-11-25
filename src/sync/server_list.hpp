@@ -24,7 +24,6 @@ struct ServerEntry {
     ServerKind kind{ServerKind::Dht};
     QString address;         // what to show and check; a TURN server's login left out
     bool isDefault{false};   // one of PeerChalk's defaults
-    bool browserOnly{false}; // used only by the browser version, on desktops
     QString login;           // a TURN server's user:password, for checks; never shown
     friend bool operator==(const ServerEntry &, const ServerEntry &) = default;
 };
@@ -32,8 +31,8 @@ struct ServerEntry {
 // The servers network settings name, as lists one can add to, remove from and reset.
 // Settings keep their text form; a list equal to the defaults is saved empty, so that new
 // defaults reach people who never changed it. On desktops the DHT is reached through
-// bootstrap nodes; browsers reach it through OpenDHT proxies, and alone use Nostr, MQTT and
-// PeerJS servers (until p2pdc's native nodes do).
+// bootstrap nodes, browsers reach it through OpenDHT proxies; both use the Nostr, MQTT and
+// PeerJS servers.
 class ServerList {
   public:
     ServerList(NetworkSettings settings, bool browser);

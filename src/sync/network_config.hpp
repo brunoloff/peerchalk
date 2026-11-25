@@ -19,13 +19,14 @@ struct NetworkConfig {
     std::uint32_t networkId{0}; // 0: the public OpenDHT network
     bool loopbackOnly{false};   // bind to 127.0.0.1 and ::1 only (local tests)
     p2pdc::IceConfig ice;
-    std::vector<p2pdc::BrowserBackend> browserBackends; // where the browser build meets peers
+    std::vector<p2pdc::DiscoveryBackend> discoveryBackends; // where nodes meet besides the DHT
     // How often another waiting project or board gets a turn when there are too many.
     std::chrono::milliseconds spaceRotation{std::chrono::minutes(2)};
 
     // The configuration the settings describe, defaulting to the public OpenDHT network
-    // through Jami's bootstrap node and proxy, then PeerChalk's own (deploy/dht-proxy/), and
-    // in browsers also two Nostr relays, HiveMQ's MQTT broker and the public PeerJS server;
+    // through Jami's bootstrap node and proxy (browsers use the proxies, desktops the nodes),
+    // then PeerChalk's own (deploy/dht-proxy/), and also two Nostr relays, HiveMQ's MQTT broker
+    // and the public PeerJS server;
     // Cloudflare's and Google's public STUN servers and PeerChalk's relay as TURN server ("none"
     // for no TURN server). Throws std::invalid_argument naming the setting when a value is
     // malformed.

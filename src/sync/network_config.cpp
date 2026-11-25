@@ -37,15 +37,15 @@ p2pdc::TurnServer turnServer(const QString &turn) {
 
 // One backend per line (or separated by ';'), in p2pdc's one-line form; blank lines and lines
 // starting with '#' are skipped.
-std::vector<p2pdc::BrowserBackend> discoveryBackends(const QString &text) {
+std::vector<p2pdc::DiscoveryBackend> parseDiscovery(const QString &text) {
     const QString list =
         text.trimmed().isEmpty() ? defaults::discovery().join(QLatin1Char('\n')) : text;
-    std::vector<p2pdc::BrowserBackend> backends;
+    std::vector<p2pdc::DiscoveryBackend> backends;
     for (const QString &line : list.split(QRegularExpression(QStringLiteral("[\\n;]")))) {
         const QString entry = line.trimmed();
         if (entry.isEmpty() || entry.startsWith(QLatin1Char('#')))
             continue;
-        const auto backend = p2pdc::parse_browser_backend(entry.toStdString());
+        const auto backend = p2pdc::parse_discovery_backend(entry.toStdString());
         if (!backend)
             throw std::invalid_argument(
                 "Discovery servers: \"" + entry.toStdString() +
@@ -53,7 +53,7 @@ std::vector<p2pdc::BrowserBackend> discoveryBackends(const QString &text) {
                 "\"peerjs URL [key]\"");
         backends.push_back(*backend);
     }
-    if (backends.empty() || backends.size() > p2pdc::max_browser_backends)
+    if (backends.empty() || backends.size() > p2pdc::max_discovery_backends)
         throw std::invalid_argument("Discovery servers must list 1 to 8 servers");
     return backends;
 }
@@ -88,7 +88,7 @@ NetworkConfig NetworkConfig::from(const NetworkSettings &settings) {
         for (const QString &entry : turn.split(QLatin1Char(','), Qt::SkipEmptyParts))
             config.ice.servers.emplace_back(turnServer(entry.trimmed()));
     }
-    config.browserBackends = discoveryBackends(settings.discovery);
+    config.discoveryBackends = parseDiscovery(settings.discovery);
     return config;
 }
 

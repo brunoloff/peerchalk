@@ -3,6 +3,8 @@
 
 #include <QNetworkDatagram>
 #include <QSignalSpy>
+#include <QTcpServer>
+#include <QTcpSocket>
 #include <QTest>
 #include <QUdpSocket>
 
@@ -64,6 +66,27 @@ TEST(ServerChecksTest, DhtNodesAreLookedUp) {
                                         {"nowhere", ServerKind::Dht, "node.invalid:4222", {}}});
     EXPECT_TRUE(found.at("here"));
     EXPECT_FALSE(found.at("nowhere"));
+}
+
+TEST(ServerChecksTest, WebSocketServersGetATlsHandshakeAtTheirHostAndPort) {
+    QTcpServer plain; // accepts, then hangs up: no TLS, so the handshake fails
+    ASSERT_TRUE(plain.listen(QHostAddress::LocalHost));
+    int accepted = 0;
+    QObject::connect(&plain, &QTcpServer::newConnection, [&] {
+        while (QTcpSocket *socket = plain.nextPendingConnection()) {
+            ++accepted;
+            socket->disconnectFromHost();
+        }
+    });
+    const QString base = QStringLiteral("wss://127.0.0.1:%1").arg(plain.serverPort());
+    ServerChecks checks;
+    const auto found =
+        results(checks, {{"nostr", ServerKind::Nostr, base, {}},
+                         {"mqtt", ServerKind::Mqtt, base + "/mqtt", {}},
+                         {"peerjs", ServerKind::PeerJs, base + "/peerjs peerjs", {}}});
+    EXPECT_EQ(accepted, 3);
+    for (const char *kind : {"nostr", "mqtt", "peerjs"})
+        EXPECT_FALSE(found.at(kind)) << kind;
 }
 
 TEST(ServerChecksTest, AnotherCheckAbandonsTheFirst) {

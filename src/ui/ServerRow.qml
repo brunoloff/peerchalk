@@ -7,12 +7,11 @@ import QtQuick.Layouts
 Rectangle {
     id: row
 
-    // {kind, address, isDefault, browserOnly}, as Network.servers gives it.
+    // {kind, address, isDefault}, as Network.servers gives it.
     required property var server
     required property int index
     property var result
-    readonly property string note: server.browserOnly ? qsTr("Browser version only, for now")
-                                 : server.isDefault ? qsTr("Default") : qsTr("Added by you")
+    readonly property string note: server.isDefault ? qsTr("Default") : qsTr("Added by you")
 
     signal removeRequested(int index)
 

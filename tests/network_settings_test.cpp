@@ -42,12 +42,13 @@ TEST_F(NetworkSettingsTest, DefaultsToThePublicNetwork) {
     EXPECT_EQ(turn->host, "89.168.35.4");
     EXPECT_EQ(turn->port, 3478);
     EXPECT_EQ(turn->username, "peerchalk");
-    EXPECT_EQ(config.browserBackends,
-              (std::vector<p2pdc::BrowserBackend>{
-                  p2pdc::OpenDhtProxies{{"https://dhtproxy.jami.net", "https://89-168-35-4.sslip.io"}},
-                  p2pdc::NostrRelay{"wss://nos.lol"}, p2pdc::NostrRelay{"wss://relay.primal.net"},
-                  p2pdc::MqttBroker{"wss://broker.hivemq.com:8884/mqtt"},
-                  p2pdc::PeerJsServer{"wss://0.peerjs.com/peerjs", "peerjs"}}));
+    EXPECT_EQ(
+        config.discoveryBackends,
+        (std::vector<p2pdc::DiscoveryBackend>{
+            p2pdc::OpenDhtProxies{{"https://dhtproxy.jami.net", "https://89-168-35-4.sslip.io"}},
+            p2pdc::NostrRelay{"wss://nos.lol"}, p2pdc::NostrRelay{"wss://relay.primal.net"},
+            p2pdc::MqttBroker{"wss://broker.hivemq.com:8884/mqtt"},
+            p2pdc::PeerJsServer{"wss://0.peerjs.com/peerjs", "peerjs"}}));
 }
 
 TEST_F(NetworkSettingsTest, NoneTurnsTheRelayOff) {
@@ -66,8 +67,8 @@ TEST_F(NetworkSettingsTest, DiscoveryServersAreReadOnePerLine) {
     settings.discovery = QStringLiteral(
         "  opendht https://one.example https://two.example/base\n\n# a comment\nmqtt wss://broker.example/mqtt ; "
         "peerjs ws://127.0.0.1:9000/peerjs key\n");
-    EXPECT_EQ(NetworkConfig::from(settings).browserBackends,
-              (std::vector<p2pdc::BrowserBackend>{
+    EXPECT_EQ(NetworkConfig::from(settings).discoveryBackends,
+              (std::vector<p2pdc::DiscoveryBackend>{
                   p2pdc::OpenDhtProxies{{"https://one.example", "https://two.example/base"}},
                   p2pdc::MqttBroker{"wss://broker.example/mqtt"},
                   p2pdc::PeerJsServer{"ws://127.0.0.1:9000/peerjs", "key"}}));

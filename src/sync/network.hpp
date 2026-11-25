@@ -111,8 +111,8 @@ class Network : public QObject {
     Q_INVOKABLE QVariantMap settings() const;
     // Checks and saves settings for the next start; returns what is wrong, or "".
     Q_INVOKABLE QString saveSettings(const QVariantMap &settings);
-    // The servers of a group ("discovery" or "firewall") as rows {kind, address, isDefault,
-    // browserOnly}; kind is "dht", "nostr", "mqtt", "peerjs", "stun" or "turn".
+    // The servers of a group ("discovery" or "firewall") as rows {kind, address, isDefault};
+    // kind is "dht", "nostr", "mqtt", "peerjs", "stun" or "turn".
     Q_INVOKABLE QVariantList servers(const QString &group) const;
     // These change the server lists and save them for the next start; each returns what is
     // wrong, or "".

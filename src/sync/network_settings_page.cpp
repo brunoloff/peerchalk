@@ -67,8 +67,7 @@ QVariantList Network::servers(const QString &group) const {
         rows.push_back(
             QVariantMap{{QStringLiteral("kind"), QString::fromLatin1(serverKindName(entry.kind))},
                         {QStringLiteral("address"), entry.address},
-                        {QStringLiteral("isDefault"), entry.isDefault},
-                        {QStringLiteral("browserOnly"), entry.browserOnly}});
+                        {QStringLiteral("isDefault"), entry.isDefault}});
     return rows;
 }
 

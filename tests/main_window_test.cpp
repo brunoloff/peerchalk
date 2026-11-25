@@ -257,10 +257,15 @@ TEST_F(MainWindowTest, TheNetworkPageListsServersBesideAMapOfConnections) {
     EXPECT_TRUE(item("discoveryServers")->isVisible());
     EXPECT_TRUE(item("firewallServers")->isVisible());
     EXPECT_EQ(item("discoveryServers")->property("servers").toList().size(), 6)
-        << "two DHT nodes, then two Nostr relays, MQTT and PeerJS for browsers";
+        << "two DHT nodes, then two Nostr relays, MQTT and PeerJS";
     EXPECT_EQ(item("firewallServers")->property("servers").toList().size(), 3)
         << "two STUN servers and PeerChalk's relay";
     const QQuickItem *map = item("networkMap");
+    QStringList methods; // the sidebar chips show the same, then the relay
+    for (const QVariant &method : map->property("methods").toList())
+        methods << method.toMap().value("kind").toString();
+    EXPECT_EQ(methods, (QStringList{"dht", "nostr", "mqtt", "peerjs"}))
+        << "desktops use every kind of discovery server";
     EXPECT_GT(map->mapToScene({}).x(), item("discoveryServers")->mapToScene({}).x())
         << "wide windows show the map beside the settings";
     window_->resize(1000, 800);

@@ -42,7 +42,7 @@ QStringList iceServers(const IceConfig &ice) {
     return servers;
 }
 
-QString joined(const std::vector<p2pdc::BrowserBackend> &backends) {
+QString joined(const std::vector<p2pdc::DiscoveryBackend> &backends) {
     QStringList list;
     for (const auto &backend : backends)
         list << QString::fromStdString(p2pdc::to_string(backend));
@@ -80,7 +80,7 @@ void Network::logConfiguration() const {
     logInfo(QStringLiteral("network"),
             QStringLiteral("DHT network %1, bootstrap %2, discovery %3; %4")
                 .arg(config_.networkId)
-                .arg(bootstrap.join(QStringLiteral(", ")), joined(config_.browserBackends),
+                .arg(bootstrap.join(QStringLiteral(", ")), joined(config_.discoveryBackends),
                      iceServers(config_.ice).join(QStringLiteral(", "))));
 }
 

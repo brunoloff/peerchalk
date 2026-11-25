@@ -138,7 +138,7 @@ void Network::start() {
     DiscoveryConfig discovery;
     discovery.network_id = config_.networkId;
     discovery.bootstrap_servers = config_.bootstrap;
-    discovery.browser_backends = config_.browserBackends;
+    discovery.discovery_backends = config_.discoveryBackends;
     discovery.max_connections = 64;
     if (config_.loopbackOnly)
         discovery.bind_addresses = NativeBindAddresses{"127.0.0.1", "::1"};

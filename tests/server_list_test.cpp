@@ -19,17 +19,19 @@ int turnServers(const NetworkSettings &settings) {
 TEST(ServerListTest, ListsTheDefaultsForDesktopsAndBrowsers) {
     const ServerList desktop({}, false);
     const auto found = desktop.entries(ServerGroup::Discovery);
-    ASSERT_EQ(found.size(), 6U); // two DHT nodes, then two Nostr relays, MQTT and PeerJS for browsers
-    EXPECT_EQ(found[0], (ServerEntry{ServerKind::Dht, "bootstrap.jami.net:4222", true, false, {}}));
-    EXPECT_EQ(found[2], (ServerEntry{ServerKind::Nostr, "wss://nos.lol", true, true, {}}));
-    EXPECT_EQ(found[4], (ServerEntry{ServerKind::Mqtt, "wss://broker.hivemq.com:8884/mqtt", true, true, {}}));
-    EXPECT_EQ(found[5], (ServerEntry{ServerKind::PeerJs, "wss://0.peerjs.com/peerjs peerjs", true, true, {}}));
+    ASSERT_EQ(found.size(), 6U); // two DHT nodes, then two Nostr relays, MQTT and PeerJS
+    EXPECT_EQ(found[0], (ServerEntry{ServerKind::Dht, "bootstrap.jami.net:4222", true, {}}));
+    EXPECT_EQ(found[2], (ServerEntry{ServerKind::Nostr, "wss://nos.lol", true, {}}));
+    EXPECT_EQ(found[4],
+              (ServerEntry{ServerKind::Mqtt, "wss://broker.hivemq.com:8884/mqtt", true, {}}));
+    EXPECT_EQ(found[5],
+              (ServerEntry{ServerKind::PeerJs, "wss://0.peerjs.com/peerjs peerjs", true, {}}));
     const ServerList browser({}, true);
     EXPECT_EQ(browser.entries(ServerGroup::Discovery)[1],
-              (ServerEntry{ServerKind::Dht, "https://89-168-35-4.sslip.io", true, false, {}}));
+              (ServerEntry{ServerKind::Dht, "https://89-168-35-4.sslip.io", true, {}}));
     const auto firewall = desktop.entries(ServerGroup::Firewall);
     ASSERT_EQ(firewall.size(), 3U);
-    EXPECT_EQ(firewall[2], (ServerEntry{ServerKind::Turn, "89.168.35.4:3478", true, false,
+    EXPECT_EQ(firewall[2], (ServerEntry{ServerKind::Turn, "89.168.35.4:3478", true,
                                         "peerchalk:peerchalk-open-relay"}))
         << "a TURN login is kept apart from the address";
 }
