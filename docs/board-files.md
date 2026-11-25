@@ -1,230 +1,378 @@
-# Board files — plan for PeerChalk 0.4
+# Repository boards — plan for PeerChalk 0.4
 
-Version 0.4 lets a board be saved to a file and opened from one. Files carry everything the
-board needs and can later be kept in a repository. A second deliverable, `peerchalk-pdf`, turns
-a board file into a PDF, as a command-line program and as a WebAssembly module, for other
-tools to call.
+PeerChalk 0.4 lets boards live in a git repository, so a group that already shares a repository
+also shares its boards there. The first user is the VPvsVNP research dashboard: a local Go web
+server inside the group's repository, which lists the repository's boards and shows them in an
+embedded PeerChalk. Two people who open the same board at once find each other and edit it live,
+exactly as in the app; the edits reach the repository on their own.
 
-The main goal is that a new kind of content (a stroke type, an image, a shape) needs no
-separate save, load or conversion code.
+0.4 also keeps the earlier plan's single-file form, `.peerchalk`, now as the export or packed form
+of the same content, and the standalone `peerchalk-pdf` converter.
 
-## Decisions
+## Summary
 
-1. **A saved board is the board's own Yrs document.** Every board is already a Yrs document.
-   Peers exchange it, and this device keeps it as `boards/<id>.yrs`. Strokes, text boxes,
-   columns, pages and page strokes all live in it. The file stores that document
-   (`Board::encodeState`) as its content, so anything that syncs is saved, with no code for
-   each type.
-2. **Opening a file merges.** If this device already has the board (same board id), opening
-   the file applies it to the board like a peer's changes, so nothing on either side is lost.
-   Otherwise the file opens as a board of its own. The user can always choose "open as a copy",
-   which gives the board a new id.
-3. **Files hold content, never access.** No roles, members, access log, link secrets or
-   device keys. Whoever opens a file becomes the admin of their own copy, unless it merges
-   into a board they already have, where nothing about access changes.
-4. **No hand-written JSON or XML as the stored content.** It would read well in diffs, but every
-   type would need its own writer and reader, and merging two edited copies would become our
-   problem instead of Yrs's. Formats meant for reading by people or other programs are
-   exports that PeerChalk never reads back (PDF now; SVG or a JSON snapshot if ever wanted).
+- Boards live on a branch of their own, `peerchalk-boards`, written with git plumbing. The user's
+  checkout, current branch and index are never touched.
+- Every file on that branch is either immutable (named by its SHA-256) or owned by one device
+  (only that device writes it). A merge of two versions of the branch is therefore a union, and
+  never conflicts.
+- While people edit together, one of them, the **scribe**, commits and pushes for everyone.
+- Who may do what is PeerChalk's existing signed access log (admin, owners, members), stored as
+  immutable files. PeerChalk loads only content signed by members' devices and connects only to
+  members' devices.
+- The dashboard runs PeerChalk's browser build in a frame, in a **hosted mode** without accounts,
+  and talks to it with `postMessage`. Git is the dashboard's job; live sync is PeerChalk's.
+- A small command-line tool, **`peerchalk-board`**, does for the dashboard what needs PeerChalk's
+  own code: reading Yrs documents, checking signatures, sealing secrets.
 
-## File format: `.peerchalk`
+## The branch
 
-A zip archive. Entries are stored without compression where compressing gains little
-(`board.yrs` and PDFs) and written in a fixed order with fixed timestamps, so saving the same
-board twice gives the same bytes.
+- Name: `peerchalk-boards`, an orphan branch (no common history with the repository's other
+  branches). It holds only the layout below.
+- The dashboard reads it with `git ls-tree` and `git cat-file --batch`, and writes it with
+  `hash-object -w`, `mktree`, `commit-tree` and `update-ref refs/heads/peerchalk-boards`. It
+  never checks the branch out, and builds trees without an index (or with a temporary one through
+  `GIT_INDEX_FILE` under `.git/peerchalk/`).
+- **Pushing:** fetch `origin peerchalk-boards`; if the remote moved, union merge (below) and
+  commit the merge with both parents; push; if the push is rejected because someone pushed
+  meanwhile, start again, up to five times with a short random wait. Pushing never forces.
+- **Union merge**, path by path, against the merge base:
+  - a path one side left as it was in the base takes the other side's version, deletion included;
+  - an immutable file is the same on both sides whenever it exists (its name is its hash), so
+    it exists unless one side deleted it;
+  - an owned file changed on both sides takes the version of its owner's side: our own device's
+    file from our side, any other device's from theirs. If our own file was changed elsewhere
+    (the same device key in two clones, which setup prevents), ours wins and the dashboard
+    warns;
+  - a path that is neither immutable nor owned is malformed: kept from our side, with a warning.
+- **Branch protection:** we recommend protecting `peerchalk-boards` on GitHub (no force pushes, no
+  deletion). The dashboard's README says how. Nothing depends on it: see "Deleted entries".
 
-```
-manifest.json       written first, see below
-board.yrs           the whole Yrs document, v1 update encoding
-blobs/<sha256>      every file the board uses (today: the PDFs pages show), named by hash
-preview.png         optional: the first page or the board's start, at most 512 px wide
-```
-
-`manifest.json`:
-
-```json
-{
-  "format": "peerchalk-board",
-  "formatVersion": 1,
-  "schemaVersion": 1,
-  "app": "0.4.0",
-  "board": "6f1c…-uuid",
-  "name": "Lecture 3",
-  "kind": "pages",
-  "saved": "2027-01-10T14:03:00Z",
-  "blobs": ["9b2e…", "…"]
-}
-```
-
-- `formatVersion` covers the archive layout, and `schemaVersion` covers what the Yrs document
-  holds (see Schema). A reader refuses a newer `formatVersion` and opens a newer
-  `schemaVersion`, keeping what it does not understand (see "Unknown entries").
-- Opening checks everything: blob names must be hashes that match their contents, the manifest
-  must name exactly the blobs present, and sizes are limited (the Yrs document and each blob,
-  as for peers today). A file is as untrusted as a peer.
-- **An unpacked form** is the same layout in a folder named `<name>.peerchalk/`, for
-  repositories that would rather not store an archive. Reading accepts both forms, and saving
-  keeps whichever form was opened.
-
-## Schema: one place that says what a board holds
-
-What the document holds is spread across `board.cpp`, `board_text.cpp` and `board_pages*.cpp`
-today. A new `src/board/board_schema.hpp` gathers it, and the format code relies only on it:
-
-- the names of the document's top-level parts (`strokes`, `textBoxes`, `layout`, `columns`,
-  `pageStrokes`) and, for each, what its entries are and how they are encoded, with a link to
-  the code that reads them;
-- `boardSchemaVersion`, raised whenever the document gains something older versions would
-  misread;
-- **`boardBlobs(const Board &)`**: every blob the board depends on. It replaces direct uses
-  of `BoardPages::pdfBlobs()`. A future item that uses a file (an image, an audio note) adds
-  itself here, and saving, syncing and blob cleanup all call this one function.
-
-### Adding a new kind of content
-
-1. Store it in the Yrs document, as any new content must be for peers to see it. Saving then
-   includes it with no further work.
-2. If it uses files, add them to `boardBlobs`.
-3. If older versions would misread it, raise `boardSchemaVersion`.
-4. Add it to the test board, then run the format tests (see Tests), which generate a new
-   fixture.
-
-### Unknown entries
-
-Today a stroke entry that cannot be decoded becomes an empty stroke in the mirror. It stays
-untouched in the document, so a save writes it back. From 0.4 that is a rule for every part of
-the document:
-- readers leave entries they do not understand in the document;
-- they never rewrite or delete them, except when the user erases them;
-- they never write an unknown entry back in a different form.
-
-The test board includes entries of an invented future kind to check this.
-
-## Saving and opening
-
-- `src/library/board_file.{hpp,cpp}`, the archive itself, with no Qt GUI:
-  - `writeBoardFile(const Board &, const BoardFileInfo &, BlobLookup) -> QByteArray`
-  - `readBoardFile(QByteArray) -> BoardFileContents`, which holds the manifest, the Yrs bytes
-    and the blobs, all checked
-  - plus the folder form of each.
-- The zip code is small: stored and deflated entries only, read and written by our own code
-  over zlib. zlib is the one new dependency. It is tiny, permissively licensed, builds for
-  every target including WebAssembly (Emscripten ships it), and goes in `deps/` at a pinned
-  version.
-- `Workspace` gains `importBoard(BoardFileContents, ImportMode)`, where `ImportMode` is merge
-  or copy, and the app gains `exportBoard(id)`.
-- **Desktop:** "Save to file…" and "Open file…" in the board menu and on the welcome page, with
-  native file dialogs, and `peerchalk file.peerchalk` on the command line. AppImage, Flatpak,
-  Windows and macOS register the `.peerchalk` type (MIME type `application/x-peerchalk-board`).
-- **Browser:** saving downloads the file and opening uploads one, through the existing
-  `web_files.js`. Dropping a file on the page opens it too.
-
-## Converting to PDF: `peerchalk-pdf`
+## Files
 
 ```
-peerchalk-pdf [options] <board.peerchalk | folder | -> [-o out.pdf | -o -]
-  --column <id>        only this column (page boards)
-  --pages <from>-<to>  only these pages of that column, counting from 1
-  --version            prints the tool and newest board format versions it reads
+people/<user-key>.json             a person: name, user key, device certificates; owned by that user
+boards/<id>/board.json             board id, creator, format version; immutable (written once)
+boards/<id>/access/<sha256>.op     one signed access entry (AccessOp payload and signature)
+boards/<id>/snapshots/<sha256>.yrs a signed compacted state
+boards/<id>/changes/<device>.yrs   signed, owned by that device: all it knows beyond the snapshots
+boards/<id>/blobs/<sha256>         PDFs and other files the board uses
+boards/<id>/secrets/<epoch>/<user> the board's network secret, sealed to that member
 ```
 
-- Exit codes: 0 means done, 1 means a bad command line, 2 means the file could not be read
-  (not a board, damaged, or too new), and 3 means the PDF could not be made (for example a
-  missing PDF). Errors go to stderr as one line, or as JSON with `--json-errors`, for programs
-  that call the tool.
-- **The same renderer as the app.** The drawing code in `src/ui/board_pdf*.cpp`
-  (`renderBoardPdf`) uses QtGui only (QPainter, QPdfWriter, QTextDocument), not QML. It moves
-  into a library, `peerchalk_export`, together with the board, math and PDFium code it
-  needs. The app and the tool both link it, so a board looks the same either way.
-- **Fonts:** the tool bundles the fonts text boxes use, so the output does not depend on the
-  fonts of the machine it runs on.
-- **Desktop program:** a `QGuiApplication` on the `offscreen` platform, so it runs with no
-  display, including on servers and in CI. It ships beside `peerchalk` in every desktop
-  package and as its own small archive for each platform in the GitHub release.
-- **WebAssembly module:** `peerchalk-pdf.mjs` and `.wasm`, built from the same code with Qt for
-  WebAssembly:
+Keys in paths are lowercase hex: user keys and device keys are 32-byte Ed25519 public keys, and
+hashes are SHA-256 of the file's whole contents.
 
-  ```js
-  import { loadConverter } from './peerchalk-pdf.mjs';
-  const convert = await loadConverter();                // fetches the .wasm and fonts
-  const pdf = await convert(boardBytes, { column, from, to }); // Uint8Array
+- **`people/<user-key>.json`:** `{"format": "peerchalk-person", "version": 1, "name": ...,
+  "userKey": ..., "devices": [{"payload": ..., "signature": ...}], "signature": ...}`. The
+  devices are PeerChalk's existing device certificates (`signatures.hpp`). The whole file is
+  signed by the user key, and only that person's dashboard writes it. It gives names to keys in
+  the dashboard and lets owners pick people to add; access never depends on it.
+- **`board.json`:** `{"format": "peerchalk-repository-board", "version": 1, "board": <uuid>,
+  "creator": <user key>}`. The creator is the access log's trust anchor (as an invite's creator
+  is today). The board's **name** lives in the Yrs document (`meta.name`), so renaming is an edit
+  like any other; the access log's `Create` carries the first name, for boards that have no
+  content yet.
+- **Signed content files** (`snapshots/`, `changes/`) share one envelope:
+
+  ```
+  "PCRB" 0x01                      magic and envelope version
+  u32 header length, header        compact JSON, below
+  u32 body length, body            a Yrs v1 update
+  64 bytes                         Ed25519 signature by the device key over everything before
   ```
 
-  Formulas are laid out by the math module, as in the browser app. Released as an archive on
-  GitHub; npm later if wanted.
+  The header is `{"board": <uuid>, "kind": "snapshot"|"changes", "device": <device key>,
+  "certificate": {payload, signature}, "covers": [<snapshot hashes>], "clients": [<Yrs client
+  ids>], "stateVector": <base64>}`. The certificate ties the device to a user, so a file can be
+  checked on its own. `covers` lists the snapshots the body is relative to (for a change file) or
+  that it replaces (for a snapshot). `clients` lists the Yrs client ids this device has written
+  with, for "each device answers for its own client ids" below.
+- **Blobs** are checked against their names; they are not signed, since only signed content can
+  refer to them.
+- **Secrets:** a board's network secret (its p2pdc discovery capability) for one epoch, sealed to
+  one member's user key (see "Sealing to user keys"). Epoch 0 is the creator's; each removal
+  starts a new epoch.
 
-### Limit to settle early: where the WebAssembly module can run
+### Loading
 
-Qt for WebAssembly needs a web page: it does not run in Node.js or in a Web Worker. The app
-already exports PDFs in browsers this way, so a browser module is safe. A module for Node.js
-or servers is not: it would need text layout without Qt, which is the part most likely to look
-different from the app. The plan is:
+Loading a board applies every accepted snapshot and change file to an empty Yrs document. Yrs
+merges updates in any order, and applying one twice changes nothing, so the result does not depend
+on how the files were merged.
 
-1. **0.4:** the desktop program everywhere, and the module for web pages. Programs on servers
-   use the desktop program.
-2. **Later, only if it is needed:** a renderer without Qt for Node.js and workers. PDFium
-   draws the paths, strokes and formulas, which are already triangles. Text would need HarfBuzz
-   for shaping and our own line breaking, with tests comparing its PDFs against the app's
-   renderer page by page.
+### Compaction
 
-## Repository sync (after 0.4)
+A device with the board loaded writes a snapshot of its whole state (`covers` lists the snapshots
+it loaded), deletes those snapshots, and empties its own change file in the same commit. Other
+devices empty their own change file once an accepted snapshot's state vector covers it.
+Two concurrent compactions leave two snapshots after the union merge; both are valid, nothing is
+lost, and the next compaction folds them together. The dashboard compacts when a board's change
+files total more than 1 MiB, or when asked.
 
-Yrs data does not diff well as text, but it merges without conflicts, which matters more here.
+## Roles and what PeerChalk enforces
 
-- **Git merge driver:** `peerchalk-pdf` has a sibling, `peerchalk-board merge <base> <ours>
-  <theirs>`. It applies both sides' Yrs documents to one board and writes the result, so two
-  people editing the same board offline never get a merge conflict. Set it up with a line in
-  `.gitattributes` (`*.peerchalk merge=peerchalk`) and in `git config`. The same program can
-  offer `peerchalk-board info` (prints the manifest) and `peerchalk-board check` (validates a
-  file).
-- **Watched files:** a board opened from a file can stay linked to it. PeerChalk saves to the
-  file after changes, and when the file changes on disk (git pull, Syncthing, Dropbox) it
-  merges the new contents in, the way it merges a peer's changes. This needs a file watcher
-  (`QFileSystemWatcher` on desktops; browsers cannot watch files) and the merge path above.
-- Linking a whole repository, where every board file in a folder appears as a project, builds on
-  both and is left for later.
+Each board has an admin (its creator), who appoints owners; owners add members. This is the
+existing signed access log (`access_log.hpp`, `access_rules.cpp`), each entry stored as an
+immutable `access/<sha256>.op`. The rule that members edit only while an owner is connected is
+dropped for repository boards: members may edit at any time.
+
+- **Content:** PeerChalk applies a snapshot or change file only if its envelope signature is
+  valid, its certificate names its device, and the certificate's user is a member or above.
+  Everything else is skipped with a warning naming the file (shown in the dashboard).
+- **Live:** in a repository board's session PeerChalk syncs only with devices whose user is a
+  member or above (the existing `sharesBoard` check, without the owner rule).
+- **Removing someone:** the owner's device first writes a snapshot of everything it knows, then
+  the removal entry (`SetRole` with role None), which gains a field naming that snapshot. Once the
+  removal is in the log, every file signed by that person's devices is ignored; the snapshot
+  keeps what they wrote before. The owner then writes a new epoch of the network secret, sealed
+  to the remaining members, so the removed person can no longer find the session.
+- **Deleted entries:** the access log is the union of every access file ever committed to the
+  branch, read from its history (`git log --diff-filter=A` on `boards/<id>/access/`), plus every
+  entry this clone has seen (kept in `.git/peerchalk/seen/`). Deleting an entry, even with a
+  force push, changes nothing; the dashboard warns that it happened. The same holds for
+  `board.json`: its first committed version is the one that counts.
+
+## The scribe
+
+In a live session, one device commits for everyone.
+
+- **Who:** the connected device with the lowest device key (bytewise) whose user is a member or
+  above and whose dashboard can push. Every device works this out from what it knows, so there is
+  no vote: a device that sees itself as the lowest eligible key is the scribe. Two scribes for a
+  moment (a split, a late hello) only make two commits, which union merge combines.
+- **What:** about every 30 seconds while there are edits, and once the session is idle for 5
+  seconds, the scribe has its dashboard commit its own change file, which holds everything the
+  session knows beyond the snapshots, and push. Then it tells the session what it pushed.
+- **Others** do not commit while a scribe is present. Each device still saves its own change file
+  locally after every edit, outside the repository's files (`.git/peerchalk/pending/`), so a
+  crash loses nothing.
+- **Each device answers for its own Yrs client ids.** When a device leaves or closes, it checks
+  whether the latest "pushed" announcement covers its client ids. If not, it asks the scribe to
+  push now and waits up to 10 seconds; failing that, it commits and pushes its own change file
+  itself if it can, and otherwise keeps it pending for the next time.
+- **Alone,** a device is its own scribe. A member whose dashboard cannot push edits fine while a
+  scribe is present; alone, their edits wait in the pending file until a scribe appears (live sync
+  then hands them over) or until they can push.
+- **Commits** carry the scribe's own git identity, with the session's authors since the last
+  commit as `Co-authored-by:` trailers (name and, when their `people/` file gives one, email).
+  Message: `Board <name>: edits by <names>`.
+
+### Over PeerChalk's sync messages
+
+Protocol 5 adds two messages, which protocol 4 peers ignore as `UnknownMessage`:
+
+```
+RepoStatus { board, canPush: bool, pushed: optional<Pushed> }   on connecting and on change
+RepoPushed { board, commit: 20 bytes, stateVector: bytes }      after each push, and relayed
+```
+
+`RepoStatus` says whether the sender can be the scribe. `RepoPushed` says that the branch at
+`commit` holds the board up to `stateVector`; a device whose client ids are covered by it has
+nothing left to answer for. Both go only to peers that share the board (`sharesBoard`), and are
+checked like everything else received: a `RepoPushed` from a device that is not the scribe is
+still believed only for what it claims about the state vector, never for who is scribe.
+
+## Hosted mode: PeerChalk in the dashboard
+
+The dashboard serves PeerChalk's browser build and shows it in a frame (`<iframe
+src="/peerchalk/<version>/index.html?hosted=1">`, same origin as the dashboard). With `hosted=1`
+PeerChalk:
+
+- shows no accounts or welcome screens, only the board it is given, and no other boards;
+- keeps nothing in IndexedDB (the dashboard keeps everything), and claims no instance slot;
+- uses the user identity and device key the dashboard gives it, and the default discovery servers
+  (or the ones `open` names);
+- talks to the dashboard only through `window.parent.postMessage`, checking that messages come
+  from its own origin.
+
+### Messages
+
+Every message is `{type, ...}`. Binary values are `Uint8Array`s (structured clone, no base64).
+Keys and hashes are lowercase hex strings.
+
+Dashboard → PeerChalk:
+
+| type | fields | when |
+|---|---|---|
+| `open` | `protocol: 1`, `board: {id, files: {path: Uint8Array}}`, `access: [Uint8Array]` (every entry, history and seen ones included), `secret: Uint8Array`, `identity: {userKey, name, colorIndex, deviceSeed, recipientSecret, certificate: {payload, signature}}`, `canPush`, `servers?` | once, after `ready` |
+| `update` | `files: {path: Uint8Array \| null}`, `access: [Uint8Array]`, `canPush?` | after a pull brings new files |
+| `pushed` | `revision`, `commit` | the commit asked for has been pushed |
+| `pushFailed` | `revision`, `error` | pushing failed (the files stay pending) |
+| `signed` | `request`, `signature` | answer to `sign` |
+| `close` | — | the user leaves the page: flush, then answer `closed` |
+
+PeerChalk → dashboard:
+
+| type | fields | when |
+|---|---|---|
+| `ready` | `protocol: 1`, `version` | the module has started |
+| `save` | `board`, `revision`, `changes: Uint8Array` (its own change file), `blobs: {hash: Uint8Array}`, `access: [Uint8Array]`, `snapshot?: {bytes, deletes: [hash]}`, `push: bool`, `authors: [{userKey, name}]` | half a second after edits stop, and when scribing (`push: true`) |
+| `sign` | `request`, `payload` | an access entry needs the user key's signature |
+| `warning` | `text`, `path?` | a file was skipped, a peer was refused |
+| `closed` | — | answer to `close`, after the last `save` |
+
+The user seed never enters the frame: access entries are rare, and the dashboard signs them. The
+device's secrets do, because p2pdc needs them for the live connection.
+
+## The dashboard (VPvsVNP)
+
+- **Boards tab:** the repository's boards (name, last edit, who), "New board", and a page per
+  board with the frame. The list comes from `peerchalk-board list`, cached per branch commit.
+- **Sync setting:** "Sync boards automatically" (on by default): pull the branch every minute
+  while a board is open and every 10 minutes otherwise, and push when PeerChalk asks. The Boards
+  tab shows the last push (time, commit, result). Off, the dashboard only commits locally; the
+  Push button then also pushes `peerchalk-boards`.
+- **Credentials:** pushing and fetching run the user's own `git` with `GIT_TERMINAL_PROMPT=0`,
+  so they use whatever credentials git already has, and fail with a message instead of asking.
+- **Identity:**
+  - the user identity (user seed, `identity.json`, as in PeerChalk) lives in the user's
+    configuration folder, `<UserConfigDir>/peerchalk-board/`, shared by all their clones. It is
+    created on first use, or imported from PeerChalk with its existing transfer code
+    (`peerchalk-identity:1:…`, "Link a device" in the app);
+  - the device key lives in `.git/peerchalk/device.json`, one per clone, so two clones are two
+    devices (and two dashboards on one computer can edit together). The dashboard writes the
+    device's certificate into the person's `people/` file.
+- **Serving PeerChalk:** `dashboard/peerchalk.json` (committed) pins a PeerChalk version and the
+  SHA-256 of each file the dashboard needs from that GitHub release: `peerchalk-web-<v>.zip` and
+  `peerchalk-board-<os>-<arch>`. The dashboard downloads them on first use into
+  `<UserCacheDir>/peerchalk-board/<v>/`, checks the hashes, and serves the web build at
+  `/peerchalk/<v>/`. `PEERCHALK_DIST=<folder>` uses a local build instead, for development and
+  tests. Nothing big is committed to the group's repository.
+
+## `peerchalk-board`
+
+A command-line program built from PeerChalk's library code (Qt Core, Yrs, p2pdc's crypto; no GUI).
+It reads a board folder (the dashboard exports `boards/<id>/` from the branch into
+`.git/peerchalk/tree/`) and prints JSON.
+
+```
+peerchalk-board identity init|import <code>|show [--dir D]
+peerchalk-board person <repo-folder> --device-dir D          writes people/<user>.json
+peerchalk-board create <folder> --name N --device-dir D      a new boards/<id>/
+peerchalk-board list <boards-folder> [--access A]            id, name, edited, people, warnings
+peerchalk-board check <board-folder> [--access A]            every file, accepted or why not
+peerchalk-board open-secret <board-folder> --dir D           the network secret, for `open`
+peerchalk-board sign --dir D                                 signs standard input with the user key
+peerchalk-board export <board-folder> -o board.peerchalk     the single-file form
+peerchalk-board import board.peerchalk <folder> --device-dir D
+```
+
+`--access A` adds a folder of access entries (history and seen ones) to those in the board's own
+folder. Exit codes: 0 done, 1 bad command line, 2 unreadable input, 3 refused (signatures, rights).
+
+### Sealing to user keys
+
+Secrets are sealed to a member's **user** key, so any of their devices can open them and a new
+device needs nothing re-sealed. p2pdc gains `seal_to_signing_key` and `Identity::open_sealed`,
+which convert Ed25519 keys to X25519 (libsodium's `crypto_sign_ed25519_pk_to_curve25519` and
+`…_sk_to_curve25519`) and use its sealed boxes, on a p2pdc branch of its own.
+
+## Opening a repository board in the app
+
+The standalone app does not list repository boards, but can open one: "Open board folder…" on a
+`boards/<id>/` folder (from a checkout or worktree of `peerchalk-boards`). It joins the live
+session with the user's own identity, reads the folder's files, and writes only its own change
+file there; committing is left to the user. This comes after the dashboard milestones.
+
+## The single-file form: `.peerchalk`
+
+The earlier plan's zip archive stays, as the export or packed form of the same content:
+`manifest.json`, `board.yrs` (the whole Yrs document), `blobs/<sha256>`, and optional
+`preview.png`, written in a fixed order with fixed timestamps so the same board always gives the
+same bytes. It carries no access, secrets or keys: whoever opens one becomes the admin of their
+copy, or merges it into the same board if they already have it. The app saves and opens it;
+`peerchalk-board export` and `import` convert between it and a repository board. The git merge
+driver of the earlier plan is no longer needed.
+
+The schema rules of the earlier plan also stay: `src/board/board_schema.hpp` names the document's
+parts and `boardSchemaVersion`; `boardBlobs(const Board &)` lists every blob a board uses;
+readers keep entries they do not understand; fixtures for every schema version are kept forever.
+
+## `peerchalk-pdf`
+
+Unchanged from the earlier plan: `peerchalk-pdf [--column ID] [--pages A-B] <board.peerchalk |
+board folder | -> [-o out.pdf]`, with the app's own renderer moved into a `peerchalk_export`
+library; a desktop program (offscreen Qt platform, bundled fonts) and a WebAssembly module for web
+pages (`loadConverter()`), not for Node.js or workers. It also reads a repository board folder.
 
 ## Tests
 
-- **Round trip:** save the test board, open the file into a new board, and require the same
-  Yrs document and the same blobs. Then save again and require the same bytes.
-- **Test board:** one board built in code with every kind of content: pen and highlighter
-  strokes, text boxes with formulas, an infinite board and a page board with columns,
-  subheadings, PDF pages and page strokes, plus entries of an invented future kind.
-- **Fixtures:** `tests/fixtures/boards/schema-<n>.peerchalk`, one for each schema version, kept
-  forever. Every version must open every older fixture and keep its contents. A test fails when
-  `boardSchemaVersion` is raised without a fixture for the new version.
-- **Untrusted files:** truncated and altered archives, blob hashes that do not match, missing
-  or extra blobs, oversized parts, a newer `formatVersion`, and zip paths with `..` or absolute
-  paths. Each must be refused with a clear error and no crash.
-- **Merge:** two copies edited apart and then merged by opening and by the git driver must give
-  the same board as live sync would.
-- **`peerchalk-pdf`:**
-  - the PDF of the test board matches `renderBoardPdf` from the app, compared by rendering
-    both with PDFium;
-  - the exit codes and `-` for stdin and stdout work;
-  - the desktop program runs on Linux, macOS and Windows in CI, and the module runs in headless
-    Chromium in the browser CI job.
+PeerChalk (Qt Test, under `tests/`):
+
+- **Envelope and loading:** a valid file is applied; a forged signature, an unsigned file, a
+  certificate for another device, a certificate whose user is not a member, a header naming
+  another board, and a truncated file are each skipped with the right warning. Loading files in
+  every order gives the same document.
+- **Roles:** a removal entry deleted from the branch still counts (union with history and the seen
+  cache); after a removal, the removed person's change files are ignored and the snapshot keeps
+  their earlier work; a member removed mid-session is disconnected and their later files are
+  ignored; a removal without its snapshot is refused.
+- **Compaction:** two concurrent compactions merged by union keep every edit; a device empties
+  its change file only once a snapshot covers it.
+- **Scribe:** the election as a pure function (lowest eligible key; non-members and devices
+  that cannot push are skipped; ties and changes as peers come and go); `RepoStatus` and
+  `RepoPushed` encode, decode, and are ignored by protocol 4.
+- **Hosted bridge:** `open`, `update` and `save` round trips in a headless Chromium run of the
+  browser build.
+- **`peerchalk-board`:** each command's output and exit codes; sealing and opening a secret.
+
+Dashboard (Go tests, in `dashboard/`), against temporary bare repositories:
+
+- writing the branch never changes the checkout, the current branch or the index;
+- union merge: owned files of different devices, both sides adding immutable files, one side
+  deleting covered snapshots, a malformed path; the result for every pair of histories is the
+  union;
+- rejected pushes: someone pushes between fetch and push, and the retry succeeds; five rejections
+  give up and keep the commit locally;
+- a deleted access entry and a force-pushed branch are noticed and reported;
+- the pinned download refuses a file whose hash does not match.
+
+End to end (`dashboard/tests/e2e`, run by hand and in the dashboard's CI if it gets one): a bare
+repository, two clones, two dashboards on two ports, a local PeerJS server and MQTT broker for
+discovery, and headless Chromium driving both frames. Both draw on one board at once and see each
+other's strokes; both close; the branch then holds every stroke, from a scribe's commits, with no
+conflict, and a fresh clone loads the same board.
 
 ## Milestones
 
-1. **Schema:** `board_schema.hpp`, `boardBlobs`, the test board, and the rule for unknown
-   entries.
-2. **Format:** `board_file` with both forms, its tests, and the first fixture.
-3. **App:** saving and opening on desktop and in the browser, merge or copy, and file
-   associations.
-4. **Converter:** the `peerchalk_export` library, the desktop `peerchalk-pdf`, and the
-   WebAssembly module, each with packaging and CI.
-5. **Release 0.4.**
-6. **After 0.4:** `peerchalk-board merge` and the git setup, then watched files.
+1. **p2pdc: sealing to user keys** (branch of its own), with tests.
+2. **Repository format in PeerChalk:** `src/repository/` — the envelope, `board.json`, `people`,
+   loading with enforcement, removal with its snapshot, compaction; the board name in the
+   document. Unit tests above.
+3. **`peerchalk-board`:** identity, person, create, list, check, open-secret, sign.
+4. **Dashboard git layer:** reading and writing the branch, union merge, push with retry, history
+   union of access entries, pending files. Go tests.
+5. **Hosted mode and the scribe in PeerChalk:** the `postMessage` bridge, a hosted library with
+   one board, the repository-board sync rule, `RepoStatus` and `RepoPushed`, the election.
+6. **Dashboard boards tab:** list, new board, the frame, serving a pinned or local build, the
+   sync setting and last push. The end-to-end test. *This is where two clones edit live and the
+   scribe pushes.*
+7. **People in the dashboard:** adding members and owners, removal with snapshot and a new
+   secret epoch, warnings shown.
+8. **Compaction** done by the dashboard.
+9. **Releasing the pieces:** `peerchalk-web-<v>.zip` and `peerchalk-board-<os>-<arch>` in the
+   release workflow; `dashboard/peerchalk.json` pinned to it.
+10. **The app:** "Open board folder…".
+11. **Single file and `peerchalk-pdf`:** schema, `.peerchalk`, saving and opening in the app,
+    the converter.
+12. **Release 0.4.**
 
 ## Risks
 
-- **Yrs encoding:** the v1 update encoding is Yjs's documented wire format, and our pinned
-  Yrs already depends on it for sync, so files are no riskier than peers. Fixtures catch a
-  change.
-- **File size:** the document keeps a small marker for each deleted item, so a board with
-  years of erasing grows slowly. If that ever matters, "save compacted" can write a fresh
-  document holding only the current content. A compacted file merges as a new copy.
-- **Fonts and layout:** the PDF depends on the bundled fonts and Qt's layout, so the tool
-  pins both with the app.
+- **History growth:** the scribe rewrites a change file every 30 seconds while people edit, and
+  git keeps every version. Git's delta compression helps, since each version mostly extends the
+  last; compaction keeps change files small. If it still grows too fast, the scribe commits less
+  often and squashes its own unpushed commits before pushing.
+- **Edits outside the rules:** a member's change file may carry edits by others, merged in live,
+  which is how the scribe works. An edit made by someone just removed, merged by a member who had
+  not yet heard of the removal, can therefore survive. Live sync refuses non-members as soon as
+  the removal arrives, so the window is short.
+- **Trust in the dashboard:** the frame trusts its own origin, so anything that can run script on
+  the dashboard's address can act as the user on boards. The dashboard listens only on
+  `127.0.0.1` and its API needs a token; the PeerChalk pages need neither, since they hold
+  nothing until `open`.
+- **Two scribes:** in a split session each side has a scribe; both push, and union merge combines
+  them. Only the number of commits suffers.
+- **Browser build size:** about 32 MB, downloaded once per pinned version.
+- **Yrs encoding:** the v1 update encoding is Yjs's documented wire format, which sync already
+  depends on; fixtures catch a change.
