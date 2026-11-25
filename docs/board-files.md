@@ -57,11 +57,12 @@ boards/<id>/access/<sha256>.op     one signed access entry (AccessOp payload and
 boards/<id>/snapshots/<sha256>.yrs a signed compacted state
 boards/<id>/changes/<device>.yrs   signed, owned by that device: all it knows beyond the snapshots
 boards/<id>/blobs/<sha256>         PDFs and other files the board uses
-boards/<id>/secrets/<epoch>/<user> the board's network secret, sealed to that member
+boards/<id>/secrets/<epoch>/<signer>/<user>  the board's network secret, sealed to that member
 ```
 
-Keys in paths are lowercase hex: user keys and device keys are 32-byte Ed25519 public keys, and
-hashes are SHA-256 of the file's whole contents.
+Keys in paths are lowercase hex: user keys and device keys are 32-byte Ed25519 public keys.
+Hashes are SHA-256: of the whole file for snapshots and blobs, and of the signed payload for
+access entries (so an entry has one name however it reached a device).
 
 - **`people/<user-key>.json`:** `{"format": "peerchalk-person", "version": 1, "name": ...,
   "userKey": ..., "devices": [{"payload": ..., "signature": ...}], "signature": ...}`. The
@@ -84,15 +85,20 @@ hashes are SHA-256 of the file's whole contents.
 
   The header is `{"board": <uuid>, "kind": "snapshot"|"changes", "device": <device key>,
   "certificate": {payload, signature}, "covers": [<snapshot hashes>], "clients": [<Yrs client
-  ids>], "stateVector": <base64>}`. The certificate ties the device to a user, so a file can be
+  ids>], "stateVector": <base64>}`. The state vector is everything the device knew when it
+  wrote the file: a change file's body builds on snapshots, so the body alone can show less.
+  The device uses it to decide when its own file is covered; for snapshots, readers measure
+  the body itself, so a forged state vector can make nobody delete anything. The certificate ties the device to a user, so a file can be
   checked on its own. `covers` lists the snapshots the body is relative to (for a change file) or
   that it replaces (for a snapshot). `clients` lists the Yrs client ids this device has written
   with, for "each device answers for its own client ids" below.
 - **Blobs** are checked against their names; they are not signed, since only signed content can
   refer to them.
 - **Secrets:** a board's network secret (its p2pdc discovery capability) for one epoch, sealed to
-  one member's user key (see "Sealing to user keys"). Epoch 0 is the creator's; each removal
-  starts a new epoch.
+  one member's user key (see "Sealing to user keys") and signed by whoever sealed it: the
+  creator for epoch 0, an owner after that. Each removal starts a new epoch. The signer is in
+  the path, so two owners who start the same epoch at once never write the same file;
+  everyone uses the secret from the lowest signer key that sealed one to them.
 
 ### Loading
 
@@ -103,8 +109,8 @@ on how the files were merged.
 ### Compaction
 
 A device with the board loaded writes a snapshot of its whole state (`covers` lists the snapshots
-it loaded), deletes those snapshots, and empties its own change file in the same commit. Other
-devices empty their own change file once an accepted snapshot's state vector covers it.
+it loaded), deletes those snapshots, and deletes its own change file in the same commit. Other
+devices delete their own change file once the accepted snapshots cover its state vector.
 Two concurrent compactions leave two snapshots after the union merge; both are valid, nothing is
 lost, and the next compaction folds them together. The dashboard compacts when a board's change
 files total more than 1 MiB, or when asked.
@@ -168,9 +174,13 @@ RepoPushed { board, commit: 20 bytes, stateVector: bytes }      after each push,
 
 `RepoStatus` says whether the sender can be the scribe. `RepoPushed` says that the branch at
 `commit` holds the board up to `stateVector`; a device whose client ids are covered by it has
-nothing left to answer for. Both go only to peers that share the board (`sharesBoard`), and are
-checked like everything else received: a `RepoPushed` from a device that is not the scribe is
-still believed only for what it claims about the state vector, never for who is scribe.
+nothing left to answer for. Both go only to peers that share the board (`sharesBoard`); sessions
+are a full mesh, so neither is relayed. A `RepoPushed` only ever makes a device skip a push it
+would otherwise ask for: believing a false one at worst leaves its edits pending locally until
+the next time.
+
+The election and the timers live in `sync/repository_scribe.cpp` and `hosted/hosted_session.cpp`;
+`Network` only routes the two messages and tells the scribe when peers come and go.
 
 ## Hosted mode: PeerChalk in the dashboard
 
@@ -180,8 +190,8 @@ PeerChalk:
 
 - shows no accounts or welcome screens, only the board it is given, and no other boards;
 - keeps nothing in IndexedDB (the dashboard keeps everything), and claims no instance slot;
-- uses the user identity and device key the dashboard gives it, and the default discovery servers
-  (or the ones `open` names);
+- uses the user identity and device key the dashboard gives it, and the default discovery servers;
+- stays out of the user's personal space, so their own devices never swap workspaces with it;
 - talks to the dashboard only through `window.parent.postMessage`, checking that messages come
   from its own origin.
 
@@ -194,11 +204,10 @@ Dashboard → PeerChalk:
 
 | type | fields | when |
 |---|---|---|
-| `open` | `protocol: 1`, `board: {id, files: {path: Uint8Array}}`, `access: [Uint8Array]` (every entry, history and seen ones included), `secret: Uint8Array`, `identity: {userKey, name, colorIndex, deviceSeed, recipientSecret, certificate: {payload, signature}}`, `canPush`, `servers?` | once, after `ready` |
+| `open` | `protocol: 1`, `board: {id, files: {path: Uint8Array}}` (the branch's files with this clone's pending ones on top), `access: [Uint8Array]` (every entry, history and seen ones included), `secret: Uint8Array`, `identity: {transferCode, deviceSeed, recipientSecret, deviceName, name, colorIndex}`, `canPush`, `clients: [string]` (Yrs client ids this device used before) | once, after `ready` |
 | `update` | `files: {path: Uint8Array \| null}`, `access: [Uint8Array]`, `canPush?` | after a pull brings new files |
 | `pushed` | `revision`, `commit` | the commit asked for has been pushed |
 | `pushFailed` | `revision`, `error` | pushing failed (the files stay pending) |
-| `signed` | `request`, `signature` | answer to `sign` |
 | `close` | — | the user leaves the page: flush, then answer `closed` |
 
 PeerChalk → dashboard:
@@ -206,13 +215,15 @@ PeerChalk → dashboard:
 | type | fields | when |
 |---|---|---|
 | `ready` | `protocol: 1`, `version` | the module has started |
-| `save` | `board`, `revision`, `changes: Uint8Array` (its own change file), `blobs: {hash: Uint8Array}`, `access: [Uint8Array]`, `snapshot?: {bytes, deletes: [hash]}`, `push: bool`, `authors: [{userKey, name}]` | half a second after edits stop, and when scribing (`push: true`) |
-| `sign` | `request`, `payload` | an access entry needs the user key's signature |
-| `warning` | `text`, `path?` | a file was skipped, a peer was refused |
+| `save` | `board`, `revision`, `files: {path: Uint8Array \| null}` (its own change file, the access entries it knows, later blobs and compactions), `clients: [string]`, `push: bool`, `authors: [{name}]` | half a second after edits stop, and when scribing (`push: true`) |
+| `warning` | `text` | a file was skipped, a message was refused |
 | `closed` | — | answer to `close`, after the last `save` |
 
-The user seed never enters the frame: access entries are rare, and the dashboard signs them. The
-device's secrets do, because p2pdc needs them for the live connection.
+The identity enters the frame whole, as PeerChalk's transfer code plus the device's secrets: the
+frame is the dashboard's own origin, so keeping the user seed outside it would protect nothing,
+and the app signs access entries itself. A page that closes takes its frame with it, so the
+dashboard's page also sends a beacon (`POST /board/<id>/closed`) on `pagehide`, and the dashboard
+then commits and pushes that clone's pending files itself.
 
 ## The dashboard (VPvsVNP)
 
@@ -226,12 +237,12 @@ device's secrets do, because p2pdc needs them for the live connection.
   so they use whatever credentials git already has, and fail with a message instead of asking.
 - **Identity:**
   - the user identity (user seed, `identity.json`, as in PeerChalk) lives in the user's
-    configuration folder, `<UserConfigDir>/peerchalk-board/`, shared by all their clones. It is
-    created on first use, or imported from PeerChalk with its existing transfer code
-    (`peerchalk-identity:1:…`, "Link a device" in the app);
-  - the device key lives in `.git/peerchalk/device.json`, one per clone, so two clones are two
-    devices (and two dashboards on one computer can edit together). The dashboard writes the
-    device's certificate into the person's `people/` file.
+    configuration folder, `<UserConfigDir>/peerchalk-board/` (or `PEERCHALK_BOARD_USER_DIR`),
+    shared by all their clones. It is created on first use, or imported from PeerChalk with its
+    existing transfer code (`peerchalk-identity:1:…`, "Link a device" in the app);
+  - the device key lives in `.git/peerchalk/device/device.json`, one per clone, so two clones
+    are two devices (and two dashboards on one computer can edit together). The dashboard writes
+    the device's certificate into the person's `people/` file when the Boards tab opens.
 - **Serving PeerChalk:** `dashboard/peerchalk.json` (committed) pins a PeerChalk version and the
   SHA-256 of each file the dashboard needs from that GitHub release: `peerchalk-web-<v>.zip` and
   `peerchalk-board-<os>-<arch>`. The dashboard downloads them on first use into
@@ -242,23 +253,24 @@ device's secrets do, because p2pdc needs them for the live connection.
 ## `peerchalk-board`
 
 A command-line program built from PeerChalk's library code (Qt Core, Yrs, p2pdc's crypto; no GUI).
-It reads a board folder (the dashboard exports `boards/<id>/` from the branch into
-`.git/peerchalk/tree/`) and prints JSON.
+Boards come as JSON on standard input, `{"files": {path under boards/<id>/: base64}, "access":
+[base64 entries from the history]}`, so it never touches git; every answer is one JSON object.
 
 ```
-peerchalk-board identity init|import <code>|show [--dir D]
-peerchalk-board person <repo-folder> --device-dir D          writes people/<user>.json
-peerchalk-board create <folder> --name N --device-dir D      a new boards/<id>/
-peerchalk-board list <boards-folder> [--access A]            id, name, edited, people, warnings
-peerchalk-board check <board-folder> [--access A]            every file, accepted or why not
-peerchalk-board open-secret <board-folder> --dir D           the network secret, for `open`
-peerchalk-board sign --dir D                                 signs standard input with the user key
-peerchalk-board export <board-folder> -o board.peerchalk     the single-file form
-peerchalk-board import board.peerchalk <folder> --device-dir D
+peerchalk-board --user-dir U --device-dir D <command>
+  identity                            this device's keys and certificate
+  identity-import <transfer code>     become the user of PeerChalk's "Link a device" code
+  device-secrets [--name N]           what a hosted PeerChalk needs (private)
+  person --name N [--email E]         this person's people/<user>.json
+  create --name N [--display-name D]  a new board's files
+  list     (stdin {"boards": {id: board}})  name, role, people, strokes, warnings of each
+  open     (stdin board)              one board, with its network secret if sealed to you
+  set-role (stdin board) --user K --role member|owner [--name N]
+later: remove, compact, export, import
 ```
 
-`--access A` adds a folder of access entries (history and seen ones) to those in the board's own
-folder. Exit codes: 0 done, 1 bad command line, 2 unreadable input, 3 refused (signatures, rights).
+Exit codes: 0 done, 1 bad command line or input, 2 unreadable files, 3 refused (signatures,
+rights).
 
 ### Sealing to user keys
 

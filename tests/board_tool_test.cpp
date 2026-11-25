@@ -44,6 +44,7 @@ TEST(BoardTool, CreatesOpensListsAndAppoints) {
     const QJsonObject opened = run(ada, "open", {}, input);
     EXPECT_EQ(opened["name"].toString(), QStringLiteral("Lecture"));
     EXPECT_EQ(opened["role"].toString(), QStringLiteral("admin"));
+    EXPECT_EQ(opened["strokes"].toInt(), 0);
     EXPECT_FALSE(opened["secret"].toString().isEmpty());
     EXPECT_TRUE(run(ben, "open", {}, input)["secret"].isNull());
 

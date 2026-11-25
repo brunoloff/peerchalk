@@ -55,6 +55,8 @@ QJsonArray warningsJson(const LoadedBoard &board) {
 }
 
 QJsonObject summary(const LoadedBoard &board, const QByteArray &me) {
+    Board document;
+    document.apply(byteView(board.state));
     QJsonArray people;
     for (const auto &[user, role] : board.access.roles) {
         const auto name = board.access.names.find(user);
@@ -71,6 +73,7 @@ QJsonObject summary(const LoadedBoard &board, const QByteArray &me) {
             {"epoch", board.latestEpoch()},
             {"snapshots", static_cast<int>(board.snapshots.size())},
             {"changes", static_cast<int>(board.changes.size())},
+            {"strokes", static_cast<int>(document.strokes().size())},
             {"warnings", warningsJson(board)}};
 }
 
