@@ -89,7 +89,7 @@ modules:
     build-commands:
       - patch -p1 -i p2pdc/patches/libdatachannel-v0.23.2-p2pdc.patch
       - cmake -S . -B _build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/app
-        -DCMAKE_INSTALL_LIBDIR=lib -DUSE_NICE=ON -DNO_MEDIA=ON -DNO_WEBSOCKET=ON -DNO_EXAMPLES=ON
+        -DCMAKE_INSTALL_LIBDIR=lib -DUSE_NICE=ON -DNO_MEDIA=ON -DNO_WEBSOCKET=OFF -DNO_EXAMPLES=ON
         -DNO_TESTS=ON
       - cmake --build _build --target datachannel
       - cmake --install _build
@@ -98,6 +98,28 @@ modules:
         url: https://github.com/paullouisageneau/libdatachannel.git
         commit: 9e6a13abbb6846c003d817d0387b6706466e2b03 # v0.23.2
       - *p2pdc
+
+  # Nostr signatures and JSON for p2p-discovery-connect's Nostr, MQTT and PeerJS backends.
+  - name: secp256k1
+    buildsystem: cmake-ninja
+    config-opts: [-DCMAKE_INSTALL_LIBDIR=lib, -DSECP256K1_ENABLE_MODULE_SCHNORRSIG=ON,
+                  -DSECP256K1_ENABLE_MODULE_EXTRAKEYS=ON, -DSECP256K1_ENABLE_MODULE_ECDH=OFF,
+                  -DSECP256K1_ENABLE_MODULE_RECOVERY=OFF, -DSECP256K1_ENABLE_MODULE_ELLSWIFT=OFF,
+                  -DSECP256K1_ENABLE_MODULE_MUSIG=OFF, -DSECP256K1_BUILD_TESTS=OFF,
+                  -DSECP256K1_BUILD_EXHAUSTIVE_TESTS=OFF, -DSECP256K1_BUILD_BENCHMARK=OFF,
+                  -DSECP256K1_BUILD_EXAMPLES=OFF]
+    sources:
+      - type: archive
+        url: https://github.com/bitcoin-core/secp256k1/archive/refs/tags/v0.7.0.tar.gz
+        sha256: 073d19064f3600014750d6949b31a0c957aa7b98920fb4aaa495be07e8e7cd00
+
+  - name: nlohmann-json
+    buildsystem: cmake-ninja
+    config-opts: [-DJSON_BuildTests=OFF, -DJSON_Install=ON]
+    sources:
+      - type: archive
+        url: https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz
+        sha256: 42f6e95cad6ec532fd372391373363b62a14af6d771056dbfc86160e6dfff7aa
 
   - name: yrs
     buildsystem: simple
