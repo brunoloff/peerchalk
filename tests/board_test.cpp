@@ -167,5 +167,15 @@ TEST(BoardSync, RejectsMalformedUpdates) {
     EXPECT_TRUE(board.strokes().empty());
 }
 
+TEST(BoardMeta, NameTravelsWithTheDocument) {
+    Board board;
+    EXPECT_EQ(board.name(), "");
+    board.setName("Lecture 3");
+    Board copy;
+    ASSERT_TRUE(copy.apply(board.encodeState()));
+    EXPECT_EQ(copy.name(), "Lecture 3");
+    EXPECT_NE(copy.clientId(), board.clientId());
+}
+
 } // namespace
 } // namespace peerchalk

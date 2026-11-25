@@ -134,6 +134,25 @@ TEST_F(AccessLogTest, OwnersSetBoardLinksAndRemovalsAreRemembered) {
     EXPECT_TRUE(current().linkHash.isEmpty());
 }
 
+TEST_F(AccessLogTest, RemovalsCarryTheirSnapshot) {
+    AccessOp op;
+    op.kind = ResourceKind::Board;
+    op.resource = id_;
+    op.clock = 9;
+    op.signer = admin_.key();
+    op.action = Action::SetRole;
+    op.user = member_.key();
+    op.role = Role::None;
+    op.snapshot = QByteArray(32, 's');
+    const SignedOp signedOp = signOp(op, admin_.identity.signer());
+    const std::optional<SignedOp> verified = verifyOp(signedOp.payload, signedOp.signature);
+    ASSERT_TRUE(verified.has_value());
+    EXPECT_EQ(verified->op.snapshot, op.snapshot);
+    op.snapshot = QByteArray("short"); // not a SHA-256
+    const SignedOp malformed = signOp(op, admin_.identity.signer());
+    EXPECT_FALSE(verifyOp(malformed.payload, malformed.signature).has_value());
+}
+
 TEST_F(AccessLogTest, TamperedChangesDoNotVerify) {
     QByteArray payload = ops_.front().payload;
     payload.replace("Thesis", "Thesiz");

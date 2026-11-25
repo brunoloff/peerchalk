@@ -2,7 +2,8 @@
 add_library(peerchalk_board STATIC board/stroke.cpp board/stroke_mesh.cpp board/viewport.cpp
     board/board.cpp board/board_text.cpp board/rich_text.cpp board/stroke_codec.cpp board/stroke_builder.cpp
     board/page_layout.cpp board/page_map.cpp board/board_pages.cpp board/board_page_strokes.cpp
-    board/board_pages_native.cpp board/board_page_moves.cpp board/board_page_pdfs.cpp)
+    board/board_pages_native.cpp board/board_page_moves.cpp board/board_page_pdfs.cpp
+    board/board_meta.cpp)
 target_include_directories(peerchalk_board PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(peerchalk_board PRIVATE peerchalk_yrs)
 target_compile_options(peerchalk_board PRIVATE
@@ -29,6 +30,16 @@ target_include_directories(peerchalk_library PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}
 target_include_directories(peerchalk_library SYSTEM PRIVATE "${SODIUM_INCLUDE_DIR}")
 target_link_libraries(peerchalk_library PUBLIC Qt6::Core PRIVATE peerchalk_board p2pdc::p2pdc)
 target_compile_options(peerchalk_library PRIVATE
+    $<$<CXX_COMPILER_ID:GNU,Clang>:${peerchalk_warning_flags}>)
+
+# Boards kept in a git repository (docs/board-files.md): their files, checks and writers.
+add_library(peerchalk_repository STATIC repository/encoding.cpp repository/state_vector.cpp
+    repository/signed_content.cpp repository/board_files.cpp repository/board_loader.cpp
+    repository/board_writer.cpp)
+target_include_directories(peerchalk_repository PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+target_link_libraries(peerchalk_repository PUBLIC peerchalk_library peerchalk_board
+    PRIVATE p2pdc::p2pdc)
+target_compile_options(peerchalk_repository PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:${peerchalk_warning_flags}>)
 
 add_subdirectory(ui)

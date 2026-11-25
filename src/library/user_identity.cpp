@@ -48,15 +48,12 @@ QByteArray newRecipientSecret() {
     return secret.bytes;
 }
 
-QByteArray publicKey(const SecretBytes &seed) {
-    const p2pdc::Identity identity =
-        unwrap(p2pdc::Identity::import_seed(seed.view()), "the signing seed is unusable");
-    return toBytes(identity.public_key());
-}
-
 } // namespace
 
-UserIdentity::UserIdentity(QString directory) : directory_(std::move(directory)) {
+UserIdentity::UserIdentity(QString directory) : UserIdentity(directory, directory) {}
+
+UserIdentity::UserIdentity(QString userDirectory, QString deviceDirectory)
+    : directory_(std::move(userDirectory)), deviceDirectory_(std::move(deviceDirectory)) {
     loadUser();
     loadDevice();
 }
@@ -92,7 +89,7 @@ void UserIdentity::loadUser() {
 }
 
 void UserIdentity::loadDevice() {
-    const QString file = path(directory_, "device.json");
+    const QString file = path(deviceDirectory_, "device.json");
     std::optional<QJsonObject> stored = readJsonObject(file, formatVersion);
     if (!stored) {
         const SecretBytes seed{newSigningSeed()};
@@ -107,7 +104,9 @@ void UserIdentity::loadDevice() {
         const SecretBytes secret{base64Field(*stored, QStringLiteral("recipientSecret"), seedSize)};
         unwrap(p2pdc::RecipientKeyPair::import_secret_key(secret.view()),
                "the recipient secret is unusable");
-        deviceKey_ = publicKey(seed);
+        device_ = std::make_unique<p2pdc::Identity>(
+            unwrap(p2pdc::Identity::import_seed(seed.view()), "the device seed is unusable"));
+        deviceKey_ = toBytes(device_->public_key());
         deviceName_ = (*stored)[QStringLiteral("name")].toString();
     } catch (const std::exception &error) {
         throw std::runtime_error(file.toStdString() + ": " + error.what());
@@ -128,9 +127,26 @@ DeviceCertificate UserIdentity::deviceCertificate() const {
     return certifyDevice(userKey_, deviceKey_, deviceName_, signer());
 }
 
+QByteArray UserIdentity::signAsDevice(const QByteArray &message) const {
+    return toBytes(unwrap(device_->sign(byteView(message)), "Could not sign with the device key"));
+}
+
+Signer UserIdentity::deviceSigner() const {
+    return [this](const QByteArray &message) { return signAsDevice(message); };
+}
+
+QByteArray UserIdentity::openSealed(const QByteArray &sealed, qsizetype maxSize) const {
+    const p2pdc::RecipientKeyPair pair = unwrap(p2pdc::RecipientKeyPair::from_identity(*user_),
+                                                "Could not derive the user's recipient key");
+    const SecretBytes opened{
+        toBytes(unwrap(pair.open_sealed(byteView(sealed), static_cast<std::size_t>(maxSize)),
+                       "The sealed secret is not for this user, or it was altered"))};
+    return opened.bytes;
+}
+
 void UserIdentity::withDeviceSecrets(
     const std::function<void(std::span<const std::byte>, std::span<const std::byte>)> &use) const {
-    const QString file = path(directory_, "device.json");
+    const QString file = path(deviceDirectory_, "device.json");
     const std::optional<QJsonObject> stored = readJsonObject(file, formatVersion);
     if (!stored)
         throw std::runtime_error(file.toStdString() + ": missing");

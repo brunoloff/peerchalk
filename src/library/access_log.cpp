@@ -54,6 +54,8 @@ QJsonObject toJson(const AccessOp &op) {
         object["user"] = base64(op.user);
     if (op.action == AccessOp::Action::SetRole)
         object["role"] = roleNames.at(static_cast<std::size_t>(op.role));
+    if (op.action == AccessOp::Action::SetRole && !op.snapshot.isEmpty())
+        object["snapshot"] = base64(op.snapshot);
     if (op.action == AccessOp::Action::SetLink && !op.linkHash.isEmpty())
         object["linkHash"] = base64(op.linkHash);
     if (op.action == AccessOp::Action::SetBoard) {
@@ -61,6 +63,21 @@ QJsonObject toJson(const AccessOp &op) {
         object["included"] = op.included;
     }
     return object;
+}
+
+// A SetRole change's role and, for removals from repository boards, the snapshot.
+bool parseRole(const QJsonObject &object, AccessOp &op) {
+    const int role = indexOf(roleNames, object["role"].toString());
+    if (role < 0)
+        return false;
+    op.role = static_cast<Role>(role);
+    if (!object.contains("snapshot"))
+        return true;
+    const std::optional<QByteArray> snapshot = key(object["snapshot"]);
+    if (!snapshot)
+        return false;
+    op.snapshot = *snapshot;
+    return true;
 }
 
 // The action-specific fields of a parsed change; false when they are missing.
@@ -75,12 +92,8 @@ bool parseFields(const QJsonObject &object, AccessOp &op) {
             return false;
         op.user = *user;
     }
-    if (op.action == Action::SetRole) {
-        const int role = indexOf(roleNames, object["role"].toString());
-        if (role < 0)
-            return false;
-        op.role = static_cast<Role>(role);
-    }
+    if (op.action == Action::SetRole && !parseRole(object, op))
+        return false;
     if (op.action == Action::SetBoard) {
         op.board = QUuid::fromString(object["board"].toString());
         op.included = object["included"].toBool();

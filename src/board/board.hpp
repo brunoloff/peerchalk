@@ -5,6 +5,7 @@
 #include "board/text_box.hpp"
 
 #include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <map>
 #include <memory>
@@ -74,6 +75,13 @@ class Board {
     bool apply(ByteView update);
     // The whole document as one update, for saving; apply() loads it into a new board.
     [[nodiscard]] Bytes encodeState() const;
+    // The Yrs client id this replica writes with.
+    [[nodiscard]] std::uint64_t clientId() const;
+
+    // The board's name, kept in the document ("meta" map) for boards stored in a repository;
+    // empty when none was set. setName must not be called from the change listener.
+    [[nodiscard]] std::string name() const;
+    void setName(const std::string &name);
 
     // Called after every change to the board, local or from a peer, while the change is
     // still being committed: the listener must not start another change or read the

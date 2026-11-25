@@ -35,6 +35,9 @@ struct AccessOp {
     QUuid board;           // SetBoard (projects only)
     bool included{false};  // SetBoard
     QByteArray linkHash;   // SetLink (boards only): the valid link's hash; empty turns it off
+    // SetRole with role None on a repository board: the SHA-256 of the snapshot its signer
+    // wrote just before, which keeps what the removed person wrote until then.
+    QByteArray snapshot;
 };
 
 // A change together with the exact bytes its signer signed.

@@ -21,10 +21,12 @@ namespace peerchalk {
 // - the device key (Ed25519) and recipient secret (X25519) belong to this installation
 //   only; p2pdc authenticates connections with them, and the user key certifies them.
 // identity.json holds the user seed and device.json the device secrets, both owner-only
-// and not encrypted. Both are created on first use. Failures throw std::runtime_error.
+// and not encrypted. Both are created on first use, in one directory or, for a device that
+// shares its user with others on one computer, in two. Failures throw std::runtime_error.
 class UserIdentity {
   public:
     explicit UserIdentity(QString directory);
+    UserIdentity(QString userDirectory, QString deviceDirectory);
     ~UserIdentity();
     UserIdentity(const UserIdentity &) = delete;
     UserIdentity &operator=(const UserIdentity &) = delete;
@@ -40,6 +42,12 @@ class UserIdentity {
     [[nodiscard]] QByteArray sign(const QByteArray &message) const;
     [[nodiscard]] Signer signer() const;
     [[nodiscard]] DeviceCertificate deviceCertificate() const;
+    // Signs with the device key, for statements only this device makes.
+    [[nodiscard]] QByteArray signAsDevice(const QByteArray &message) const;
+    [[nodiscard]] Signer deviceSigner() const;
+    // Opens a box sealed to the user key (p2pdc::seal_to_signing_key); throws
+    // std::runtime_error when it was sealed to someone else or altered.
+    [[nodiscard]] QByteArray openSealed(const QByteArray &sealed, qsizetype maxSize) const;
 
     // Calls use(signingSeed, recipientSecret) with this device's secrets in buffers that
     // are wiped afterwards, e.g. to create a p2pdc node.
@@ -60,7 +68,9 @@ class UserIdentity {
     void useUserSeed(const QByteArray &seed);
 
     QString directory_;
+    QString deviceDirectory_;
     std::unique_ptr<p2pdc::Identity> user_;
+    std::unique_ptr<p2pdc::Identity> device_;
     QByteArray userKey_;
     QByteArray personalCapability_;
     QByteArray deviceKey_;

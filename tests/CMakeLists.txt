@@ -19,10 +19,17 @@ gtest_discover_tests(peerchalk_pdf_tests)
 add_executable(peerchalk_library_tests codes_test.cpp workspace_test.cpp
     identity_store_test.cpp signatures_test.cpp access_log_test.cpp files_test.cpp
     account_store_test.cpp backup_test.cpp instance_slot_test.cpp blob_store_test.cpp)
-target_link_libraries(peerchalk_library_tests PRIVATE peerchalk_library GTest::gtest_main)
+target_link_libraries(peerchalk_library_tests PRIVATE peerchalk_library p2pdc::p2pdc GTest::gtest_main)
 target_compile_options(peerchalk_library_tests PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:${peerchalk_warning_flags}>)
 gtest_discover_tests(peerchalk_library_tests)
+
+add_executable(peerchalk_repository_tests repository_files_test.cpp repository_loader_test.cpp
+    repository_writer_test.cpp)
+target_link_libraries(peerchalk_repository_tests PRIVATE peerchalk_repository GTest::gtest_main)
+target_compile_options(peerchalk_repository_tests PRIVATE
+    $<$<CXX_COMPILER_ID:GNU,Clang>:${peerchalk_warning_flags}>)
+gtest_discover_tests(peerchalk_repository_tests)
 
 add_executable(peerchalk_ui_tests qt_test_main.cpp board_canvas_test.cpp board_canvas_pages_test.cpp board_minimap_test.cpp
     main_window_test.cpp library_test.cpp account_manager_test.cpp math_engine_test.cpp rich_text_test.cpp board_pdf_test.cpp
