@@ -24,6 +24,13 @@
   </developer>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.4.0" date="2026-11-26">
+      <description>
+        <p>Every board has a connection button that shows whether you reach the others and,
+        when you do not, explains why and what to try. Other web apps can now embed
+        PeerChalk boards kept in a git repository.</p>
+      </description>
+    </release>
     <release version="0.3.0" date="2026-11-25">
       <description>
         <p>Desktop and browser versions find each other through the DHT, Nostr, MQTT and

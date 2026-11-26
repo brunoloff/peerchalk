@@ -1,6 +1,20 @@
 A whiteboard that people share directly, computer to computer, with no account and no server
 holding the boards. You can also [try it in the browser](https://brunoloff.github.io/peerchalk/).
 
+## New in 0.4.0
+
+- Every board has a connection button beside its name. Its dot shows at a glance whether
+  you reach the others: green when you do (or nobody else has the board open), blue while
+  PeerChalk is still finding them, red when something is wrong. It opens a pane that says
+  in plain words what is going on and what to try, such as another network or turning off
+  a VPN. The pane also shows who is on the board and how each person is connected, the
+  servers PeerChalk uses, and a log you can copy or download. Phones have it too.
+- Other web apps can now show a PeerChalk board inside their own pages, with the board's
+  files kept in a git repository rather than in PeerChalk (docs/embedding.md). The VPvsVNP
+  dashboard is the first to do so. Each release includes the browser build and the
+  `peerchalk-board` program such apps download.
+- Works with 0.3: both versions still draw together on the same boards.
+
 ## New in 0.3.0
 
 - Every version, desktop and browser, now finds others through the DHT, Nostr relays, MQTT
