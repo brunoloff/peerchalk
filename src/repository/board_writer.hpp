@@ -68,6 +68,9 @@ struct Compaction {
                                        const std::vector<std::uint64_t> &clients,
                                        const QByteArray &newCapability);
 
+// A fresh network secret, for removeMember's new epoch.
+[[nodiscard]] QByteArray freshCapability();
+
 // The latest network secret sealed to this identity's user, or nullopt when there is none.
 [[nodiscard]] std::optional<QByteArray> openSecret(const LoadedBoard &loaded,
                                                    const UserIdentity &identity);

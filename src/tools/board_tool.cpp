@@ -7,6 +7,7 @@
 
 #include <functional>
 #include <map>
+#include <memory>
 
 namespace peerchalk::tools {
 namespace {
@@ -38,13 +39,24 @@ std::pair<BoardFiles, std::vector<QByteArray>> boardInput(const QJsonObject &obj
     return {files, access};
 }
 
-LoadedBoard loadInput(const QJsonObject &object) {
-    const auto [files, access] = boardInput(object);
+LoadedBoard loadFiles(const BoardFiles &files, const std::vector<QByteArray> &access) {
     try {
         return loadBoard(files, access);
     } catch (const FileError &error) {
         throw RefusedError(error.what());
     }
+}
+
+LoadedBoard loadInput(const QJsonObject &object) {
+    const auto [files, access] = boardInput(object);
+    return loadFiles(files, access);
+}
+
+// The board's merged document (a Board neither copies nor moves).
+std::unique_ptr<Board> documentOf(const LoadedBoard &board) {
+    auto document = std::make_unique<Board>();
+    document->apply(byteView(board.state));
+    return document;
 }
 
 QJsonArray warningsJson(const LoadedBoard &board) {
@@ -55,8 +67,7 @@ QJsonArray warningsJson(const LoadedBoard &board) {
 }
 
 QJsonObject summary(const LoadedBoard &board, const QByteArray &me) {
-    Board document;
-    document.apply(byteView(board.state));
+    const std::unique_ptr<Board> document = documentOf(board);
     QJsonArray people;
     for (const auto &[user, role] : board.access.roles) {
         const auto name = board.access.names.find(user);
@@ -73,7 +84,7 @@ QJsonObject summary(const LoadedBoard &board, const QByteArray &me) {
             {"epoch", board.latestEpoch()},
             {"snapshots", static_cast<int>(board.snapshots.size())},
             {"changes", static_cast<int>(board.changes.size())},
-            {"strokes", static_cast<int>(document.strokes().size())},
+            {"strokes", static_cast<int>(document->strokes().size())},
             {"warnings", warningsJson(board)}};
 }
 
@@ -183,6 +194,73 @@ QJsonObject setRole(const Invocation &call, UserIdentity &id) {
     }
 }
 
+// --clients a,b,c: the Yrs client ids this device used on the board.
+std::vector<std::uint64_t> clientsOption(const Invocation &call) {
+    std::vector<std::uint64_t> clients;
+    for (const QString &each : call.options.value("clients").split(',', Qt::SkipEmptyParts)) {
+        bool ok = false;
+        clients.push_back(each.trimmed().toULongLong(&ok));
+        if (!ok)
+            throw UsageError("--clients takes client ids separated by commas");
+    }
+    return clients;
+}
+
+QString prefixOf(const LoadedBoard &board) {
+    return "boards/" + board.info.board.toString(QUuid::WithoutBraces) + "/";
+}
+
+QJsonObject removeUser(const Invocation &call, UserIdentity &id) {
+    const LoadedBoard board = loadInput(call.input);
+    const std::optional<QByteArray> user = fromHex(requireOption(call, "user"), 32);
+    if (!user)
+        throw UsageError("remove needs --user <hex key>");
+    if (board.access.role(*user) == Role::None)
+        throw RefusedError("that person has no role on this board");
+    try {
+        return {{"files", filesJson(removeMember(*documentOf(board), board, authorOf(id), *user,
+                                                 clientsOption(call), freshCapability()),
+                                    prefixOf(board))}};
+    } catch (const std::invalid_argument &error) {
+        throw RefusedError(error.what());
+    }
+}
+
+// The bytes in change files that the snapshots do not cover yet: what compacting would fold.
+qint64 uncoveredBytes(const LoadedBoard &board, const BoardFiles &files) {
+    qint64 total = 0;
+    for (const AcceptedContent &change : board.changes)
+        if (!changesCovered(board, change.device))
+            total += files.at(change.path).size();
+    return total;
+}
+
+// compact [--above BYTES] [--clients ...]: folds everything into one snapshot when the
+// change files the snapshots do not cover hold more than BYTES (default 0), and otherwise
+// deletes this device's change file once snapshots cover it.
+QJsonObject compactBoard(const Invocation &call, UserIdentity &id) {
+    const auto [files, access] = boardInput(call.input);
+    const LoadedBoard board = loadFiles(files, access);
+    bool ok = true;
+    const qint64 above = call.options.value("above", "0").toLongLong(&ok);
+    if (!ok || above < 0)
+        throw UsageError("--above takes a number of bytes");
+    const qint64 bytes = uncoveredBytes(board, files);
+    const Author author = authorOf(id);
+    if (bytes > above && board.access.role(author.userKey) >= Role::Member) {
+        const Compaction done = compact(*documentOf(board), board, author, clientsOption(call));
+        return {{"files", filesJson(done.files, prefixOf(board))},
+                {"compacted", true},
+                {"changeBytes", bytes}};
+    }
+    FileChanges tidy;
+    const QString own = changeFilePath(author.certificate.deviceKey);
+    if (files.contains(own) && changesCovered(board, author.certificate.deviceKey))
+        tidy[own] = std::nullopt;
+    return {
+        {"files", filesJson(tidy, prefixOf(board))}, {"compacted", false}, {"changeBytes", bytes}};
+}
+
 using Command = std::function<QJsonObject(const Invocation &, UserIdentity &)>;
 
 const std::map<QString, std::pair<Command, bool>> &commands() {
@@ -194,7 +272,9 @@ const std::map<QString, std::pair<Command, bool>> &commands() {
         {QStringLiteral("create"), {create, false}},
         {QStringLiteral("list"), {list, true}},
         {QStringLiteral("open"), {open, true}},
-        {QStringLiteral("set-role"), {setRole, true}}};
+        {QStringLiteral("set-role"), {setRole, true}},
+        {QStringLiteral("remove"), {removeUser, true}},
+        {QStringLiteral("compact"), {compactBoard, true}}};
     return table;
 }
 

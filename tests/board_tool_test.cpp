@@ -93,5 +93,81 @@ TEST(BoardTool, HandsOverWhatAHostedPeerChalkNeeds) {
     EXPECT_TRUE(me["path"].toString().startsWith("people/"));
 }
 
+// Ada's board with Ben as a member: the input, and Ben's key.
+struct SharedBoard {
+    QString board;
+    QJsonObject input;
+    QString benKey;
+};
+
+SharedBoard shareWithBen(Person &ada, Person &ben) {
+    const QJsonObject created = run(ada, "create", {{"name", "Lecture"}});
+    SharedBoard shared{created["board"].toString(), {}, run(ben, "identity")["userKey"].toString()};
+    shared.input = boardInput(created["files"].toObject(), shared.board);
+    const QJsonObject appointed =
+        run(ada, "set-role", {{"user", shared.benKey}, {"role", "member"}, {"name", "Ben"}},
+            shared.input);
+    shared.input = merged(
+        shared.input, boardInput(appointed["files"].toObject(), shared.board)["files"].toObject());
+    return shared;
+}
+
+// Applies an answer's files ({path: base64 or null}) to a board's input.
+QJsonObject applied(QJsonObject input, const QJsonObject &answer, const QString &board) {
+    QJsonObject files = input["files"].toObject();
+    const QJsonObject changes = boardInput(answer["files"].toObject(), board)["files"].toObject();
+    for (auto it = changes.begin(); it != changes.end(); ++it) {
+        if (it.value().isNull())
+            files.remove(it.key());
+        else
+            files[it.key()] = it.value();
+    }
+    input["files"] = files;
+    return input;
+}
+
+TEST(BoardTool, RemovingSomeoneSealsANewSecretToTheOthers) {
+    Person ada;
+    Person ben;
+    SharedBoard shared = shareWithBen(ada, ben);
+    const QJsonValue before = run(ada, "open", {}, shared.input)["secret"];
+    EXPECT_THROW((void)run(ben, "remove", {{"user", run(ada, "identity")["userKey"].toString()}},
+                           shared.input),
+                 RefusedError); // a member removes nobody
+    const QJsonObject removed =
+        run(ada, "remove", {{"user", shared.benKey}, {"clients", "7,8"}}, shared.input);
+    shared.input = applied(shared.input, removed, shared.board);
+    const QJsonObject opened = run(ada, "open", {}, shared.input);
+    EXPECT_EQ(opened["epoch"].toInt(), 1);
+    EXPECT_NE(opened["secret"], before);
+    EXPECT_EQ(opened["snapshots"].toInt(), 1);
+    EXPECT_EQ(run(ben, "open", {}, shared.input)["role"].toString(), QStringLiteral("none"));
+    EXPECT_THROW((void)run(ada, "remove", {{"user", shared.benKey}}, shared.input), RefusedError);
+    EXPECT_THROW((void)run(ada, "remove", {}, shared.input), UsageError);
+}
+
+TEST(BoardTool, CompactsOnlyAboveTheThresholdAndThenTidies) {
+    Person ada;
+    Person ben;
+    SharedBoard shared = shareWithBen(ada, ben);
+    const QJsonObject kept = run(ada, "compact", {{"above", "1000000"}}, shared.input);
+    EXPECT_FALSE(kept["compacted"].toBool());
+    EXPECT_GT(kept["changeBytes"].toInt(), 0); // the change file holding the board's name
+    EXPECT_TRUE(kept["files"].toObject().isEmpty());
+
+    EXPECT_THROW((void)run(ada, "compact", {{"clients", "x"}}, shared.input), UsageError);
+    const QJsonObject compacted = run(ada, "compact", {{"clients", "7"}}, shared.input);
+    EXPECT_TRUE(compacted["compacted"].toBool());
+    shared.input = applied(shared.input, compacted, shared.board);
+    const QJsonObject opened = run(ada, "open", {}, shared.input);
+    EXPECT_EQ(opened["snapshots"].toInt(), 1);
+    EXPECT_EQ(opened["changes"].toInt(), 0);
+    EXPECT_EQ(opened["name"].toString(), QStringLiteral("Lecture"));
+    const QJsonObject again = run(ada, "compact", {}, shared.input);
+    EXPECT_FALSE(again["compacted"].toBool()); // nothing left to fold
+    EXPECT_EQ(again["changeBytes"].toInt(), 0);
+    EXPECT_THROW((void)run(ada, "compact", {{"above", "-1"}}, shared.input), UsageError);
+}
+
 } // namespace
 } // namespace peerchalk::tools

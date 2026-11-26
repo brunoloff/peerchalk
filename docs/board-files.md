@@ -269,8 +269,15 @@ peerchalk-board --user-dir U --device-dir D <command>
   list     (stdin {"boards": {id: board}})  name, role, people, strokes, warnings of each
   open     (stdin board)              one board, with its network secret if sealed to you
   set-role (stdin board) --user K --role member|owner [--name N]
-later: remove, compact, export, import
+  remove   (stdin board) --user K [--clients C]   snapshot, removal, new secret epoch
+  compact  (stdin board) [--above BYTES] [--clients C]
+later: export, import
 ```
+
+`compact` folds the board into one snapshot when the change files the snapshots do not yet
+cover hold more than `BYTES` (default 0), and answers `compacted: false` otherwise; either way
+it deletes this device's own change file once snapshots cover it. `--clients` lists the Yrs
+client ids this device used, comma-separated.
 
 Exit codes: 0 done, 1 bad command line or input, 2 unreadable files, 3 refused (signatures,
 rights).

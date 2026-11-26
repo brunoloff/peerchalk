@@ -156,6 +156,8 @@ FileChanges removeMember(const Board &document, const LoadedBoard &loaded, const
     return files;
 }
 
+QByteArray freshCapability() { return newCapability(); }
+
 std::optional<QByteArray> openSecret(const LoadedBoard &loaded, const UserIdentity &identity) {
     for (auto epoch = loaded.secrets.rbegin(); epoch != loaded.secrets.rend(); ++epoch) {
         const BoardSecret *chosen = nullptr;
