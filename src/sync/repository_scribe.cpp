@@ -36,10 +36,19 @@ std::vector<ScribeCandidate> RepositoryScribe::candidates(const QUuid &board) co
 }
 
 bool RepositoryScribe::isScribe(const QUuid &board) const {
+    const std::optional<QByteArray> device = scribe(board);
+    return device && *device == network_.library_.identityStore().identity().deviceKey();
+}
+
+std::optional<QByteArray> RepositoryScribe::scribe(const QUuid &board) const {
     if (!local_.contains(board))
-        return false;
-    const std::optional<QByteArray> scribe = electScribe(candidates(board));
-    return scribe && *scribe == network_.library_.identityStore().identity().deviceKey();
+        return std::nullopt;
+    return electScribe(candidates(board));
+}
+
+QDateTime RepositoryScribe::lastPushedAt(const QUuid &board) const {
+    const auto found = pushedAt_.find(board);
+    return found == pushedAt_.end() ? QDateTime() : found->second;
 }
 
 void RepositoryScribe::reconsider() {
@@ -73,6 +82,7 @@ void RepositoryScribe::announcePushed(const QUuid &board, const QByteArray &comm
                                       const QByteArray &stateVector) {
     const RepoPushed message{board, commit, stateVector};
     pushed_[board] = message;
+    pushedAt_[board] = QDateTime::currentDateTimeUtc();
     for (const auto &[id, peer] : network_.peers_) {
         if (peer->ready && peer->user && network_.sharesBoard(*peer, board)) {
             network_.queue(*peer, message);
@@ -94,6 +104,7 @@ void RepositoryScribe::receive(const QByteArray &device, const Message &message)
     } else if (const auto *pushed = std::get_if<RepoPushed>(&message);
                pushed && local_.contains(pushed->board)) {
         pushed_[pushed->board] = *pushed;
+        pushedAt_[pushed->board] = QDateTime::currentDateTimeUtc();
         emit this->pushed(pushed->board, pushed->commit, pushed->stateVector);
     }
 }

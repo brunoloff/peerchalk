@@ -18,6 +18,9 @@ here. Work lives on three local branches, none pushed yet:
 - [x] 5. Hosted mode and the scribe in PeerChalk
 - [x] 6. Dashboard Boards tab, and the end-to-end test (two clones, two dashboards, live)
 - [x] Dashboard binaries out of the repository: pinned releases (`dashboard/release.txt`)
+- [x] Embedding: Back leads to the host ([docs/embedding.md](docs/embedding.md)); the board's
+      connection button and pane, with advice and the log; the dashboard's board page at full
+      width; the board list filtered to your boards, with pins
 
 ## Publishing what is done
 
@@ -46,7 +49,8 @@ here. Work lives on three local branches, none pushed yet:
 
 - [ ] Blobs and PDFs in saves (hosted saves carry strokes only).
 - [ ] Board names and co-author trailers in the scribe's commit messages.
-- [ ] Hide PeerChalk's home navigation in hosted mode.
+- [ ] The connection pane on phones (the phone layout has no title panel, so no button yet).
+- [ ] Embedded, PeerChalk still builds its home page under the board; skip it entirely.
 - [ ] A hermetic end-to-end test that does not use the public discovery servers.
 - [ ] The dashboard's tray panics on exit when there is no session bus (older than this work;
       it breaks Restart in that case).

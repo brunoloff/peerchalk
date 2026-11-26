@@ -70,7 +70,8 @@ OpenMessage parseOpen(const QJsonObject &message) {
                      identity["name"].toString().trimmed(),
                      identity["colorIndex"].toInt(),
                      message["canPush"].toBool(),
-                     clientsOf(message["clients"])};
+                     clientsOf(message["clients"]),
+                     message["host"].toObject()["backLabel"].toString().trimmed()};
     if (open.board.isNull() || open.transferCode.isEmpty())
         throw MessageError("open needs a board id and an identity");
     return open;

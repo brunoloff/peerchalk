@@ -59,6 +59,7 @@ Item {
     readonly property bool inspectorDocked: !inspectorAutoHide && width >= 720
     property bool inspectorRevealed: false
     property bool inspectorRevealedByTap: false
+    property bool networkShown: false // the connection pane, over the side panel
     readonly property bool inspectorShown: inspectorDocked || inspectorRevealed
 
     function revealInspector(byTap: bool) {
@@ -152,13 +153,18 @@ Item {
         }
 
         BoardTitlePanel {
+            id: titlePanel
+
             anchors.left: parent.left
             anchors.top: parent.top
             anchors.margins: Theme.gap
             visible: !page.phone
             canvas: canvas
             boardName: page.boardName
+            boardId: page.boardId
             others: page.people.length
+            networkOpen: page.networkShown
+            onNetworkToggled: page.networkShown = !page.networkShown
             onBack: page.leave()
             onReported: message => exportToast.show(message)
         }
@@ -373,6 +379,17 @@ Item {
         running: page.inspectorRevealed && !page.inspectorDocked && !page.inspectorRevealedByTap
             && !inspectorHover.hovered && !edgeHover.hovered
         onTriggered: page.inspectorRevealed = false
+    }
+
+    BoardNetworkPane {
+        objectName: "boardNetworkPane"
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        anchors.right: parent.right
+        width: Math.min(implicitWidth, parent.width)
+        visible: page.networkShown && !page.phone
+        status: titlePanel.connection
+        onCloseRequested: page.networkShown = false
     }
 
     BoardShortcuts {

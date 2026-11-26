@@ -70,9 +70,12 @@ class HostedSessionTest : public ::testing::Test {
         session_->start();
     }
     // Opens the board and signs in as the app would.
-    void openAndAttach(bool canPush) {
+    void openAndAttach(bool canPush, const QJsonObject &host = {}) {
         QSignalSpy opened(session_.get(), &HostedSession::opened);
-        bridge_->inbox.append(openMessage(ada_, board_, canPush, QStringLiteral("Ada")));
+        QJsonObject open = openMessage(ada_, board_, canPush, QStringLiteral("Ada"));
+        if (!host.isEmpty())
+            open["host"] = host;
+        bridge_->inbox.append(open);
         ASSERT_TRUE(opened.wait(2000));
         library_ = std::make_unique<Library>(account_.path());
         sync::NetworkConfig config;
@@ -147,6 +150,39 @@ TEST_F(HostedSessionTest, WithoutPushRightsEditsWaitLocally) {
     bridge_->inbox.append({{"type", "close"}});
     ASSERT_TRUE(QTest::qWaitFor([&] { return bridge_->last("closed").has_value(); }));
     EXPECT_TRUE((*bridge_->last("save"))["push"].toBool()); // asks to push what is unpushed
+}
+
+TEST_F(HostedSessionTest, BackSavesThenAsksTheHostToLeave) {
+    openAndAttach(true, {{"backLabel", " Boards "}});
+    EXPECT_EQ(session_->backLabel(), QStringLiteral("Boards"));
+    draw();
+    bridge_->posted.clear();
+    session_->requestBack();
+    ASSERT_EQ(bridge_->posted.size(), 2);
+    EXPECT_EQ(bridge_->posted[0]["type"].toString(), "save");
+    EXPECT_EQ(bridge_->posted[1]["type"].toString(), "back");
+}
+
+TEST_F(HostedSessionTest, WithoutAHostLabelThereIsNoWayBack) {
+    openAndAttach(true);
+    EXPECT_TRUE(session_->backLabel().isEmpty());
+}
+
+TEST_F(HostedSessionTest, TheBoardsConnectionShowsItsPeopleAndScribe) {
+    openAndAttach(true);
+    const QVariantMap status = network_->boardConnection(board_.id.toString(QUuid::WithoutBraces));
+    EXPECT_EQ(status["state"].toString(), "offline"); // this network never starts
+    const QVariantList people = status["people"].toList();
+    ASSERT_EQ(people.size(), 1);
+    EXPECT_TRUE(people[0].toMap()["you"].toBool());
+    EXPECT_EQ(people[0].toMap()["state"].toString(), "away");
+    const QVariantMap repository = status["repository"].toMap();
+    EXPECT_TRUE(repository["open"].toBool());
+    EXPECT_TRUE(repository["scribe"].toBool());
+    EXPECT_TRUE(repository["pushedAt"].toString().isEmpty());
+    const QVariantMap other = network_->boardConnection(QUuid::createUuid().toString());
+    EXPECT_FALSE(other["repository"].toMap()["open"].toBool());
+    EXPECT_TRUE(other["people"].toList().isEmpty());
 }
 
 TEST_F(HostedSessionTest, RefusesBadOpensAndOutsiders) {

@@ -45,6 +45,10 @@ class HostedSession : public QObject {
     // use of them until detach.
     void attach(Library &library, sync::Network &network);
     [[nodiscard]] QUuid board() const { return board_; }
+    // Where the board's Back button leads (the host's "open" said), or "" for no button.
+    [[nodiscard]] QString backLabel() const { return open_ ? open_->backLabel : QString(); }
+    // The user pressed Back: the host leaves the board (it sends "close" as it does).
+    void requestBack();
 
   signals:
     // The account in accountDirectory is ready: sign in to it and show the board.

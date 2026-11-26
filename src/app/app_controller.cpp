@@ -1,6 +1,7 @@
 #include "app/app_controller.hpp"
 
 #include "sync/network.hpp"
+#include "ui/host_link.hpp"
 #include "ui/library.hpp"
 
 #include <QCoreApplication>
@@ -96,6 +97,9 @@ void AppController::showHostedBoard(const QUuid &board) {
     auto *library = engine_->singletonInstance<Library *>("PeerChalk", "Library");
     auto *network = engine_->singletonInstance<sync::Network *>("PeerChalk", "Network");
     hosted_->attach(*library, *network);
+    auto *host = engine_->singletonInstance<HostLink *>("PeerChalk", "HostLink");
+    host->setBackLabel(hosted_->backLabel());
+    connect(host, &HostLink::backRequested, hosted_.get(), &hosted::HostedSession::requestBack);
     QMetaObject::invokeMethod(rootWindow(engine_.get()), "openBoard",
                               Q_ARG(QString, board.toString(QUuid::WithoutBraces)));
 }

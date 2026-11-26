@@ -141,6 +141,8 @@ class Network : public QObject {
     Q_INVOKABLE void setPresenceView(const QString &boardId, const QRectF &view);
     // Other devices showing a board: {device, name, colorIndex, x, y, cursor, view}.
     Q_INVOKABLE QVariantList boardPresence(const QString &boardId) const;
+    // The board's network pane (network_board_status.cpp): {state, facts, people, repository}.
+    Q_INVOKABLE QVariantMap boardConnection(const QString &boardId) const;
 
     // The troubleshooting log: a summary of the current state, then the log itself. lastLines
     // limits the log to its most recent lines; 0 means all of it.
@@ -171,6 +173,7 @@ class Network : public QObject {
 
   private:
     friend class RepositoryScribe;
+    friend struct BoardStatus; // network_board_status.cpp
     // Applies a change to the saved server lists and saves them for the next start.
     QString changeServers(const std::function<void(ServerList &)> &change);
 

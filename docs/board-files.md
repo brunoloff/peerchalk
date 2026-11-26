@@ -184,6 +184,8 @@ The election and the timers live in `sync/repository_scribe.cpp` and `hosted/hos
 
 ## Hosted mode: PeerChalk in the dashboard
 
+How another app embeds PeerChalk in general is in [embedding.md](embedding.md).
+
 The dashboard serves PeerChalk's browser build and shows it in a frame (`<iframe
 src="/peerchalk/<version>/index.html?hosted=1">`, same origin as the dashboard). With `hosted=1`
 PeerChalk:
@@ -204,7 +206,7 @@ Dashboard → PeerChalk:
 
 | type | fields | when |
 |---|---|---|
-| `open` | `protocol: 1`, `board: {id, files: {path: Uint8Array}}` (the branch's files with this clone's pending ones on top), `access: [Uint8Array]` (every entry, history and seen ones included), `secret: Uint8Array`, `identity: {transferCode, deviceSeed, recipientSecret, deviceName, name, colorIndex}`, `canPush`, `clients: [string]` (Yrs client ids this device used before) | once, after `ready` |
+| `open` | `protocol: 1`, `board: {id, files: {path: Uint8Array}}` (the branch's files with this clone's pending ones on top), `access: [Uint8Array]` (every entry, history and seen ones included), `secret: Uint8Array`, `identity: {transferCode, deviceSeed, recipientSecret, deviceName, name, colorIndex}`, `canPush`, `clients: [string]` (Yrs client ids this device used before), `host?: {backLabel}` (where the board's Back button leads, such as "Boards"; without it there is no Back button) | once, after `ready` |
 | `update` | `files: {path: Uint8Array \| null}`, `access: [Uint8Array]`, `canPush?` | after a pull brings new files |
 | `pushed` | `revision`, `commit` | the commit asked for has been pushed |
 | `pushFailed` | `revision`, `error` | pushing failed (the files stay pending) |
@@ -217,6 +219,7 @@ PeerChalk → dashboard:
 | `ready` | `protocol: 1`, `version` | the module has started |
 | `save` | `board`, `revision`, `files: {path: Uint8Array \| null}` (its own change file, the access entries it knows, later blobs and compactions), `clients: [string]`, `push: bool`, `authors: [{name}]` | half a second after edits stop, and when scribing (`push: true`) |
 | `warning` | `text` | a file was skipped, a message was refused |
+| `back` | — | the user pressed Back, after a last `save`: the host leaves the board (and sends `close` as the page goes) |
 | `closed` | — | answer to `close`, after the last `save` |
 
 The identity enters the frame whole, as PeerChalk's transfer code plus the device's secrets: the

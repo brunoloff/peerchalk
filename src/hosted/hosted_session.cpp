@@ -224,6 +224,12 @@ void HostedSession::close() {
     bridge_->post({{"type", "closed"}});
 }
 
+void HostedSession::requestBack() {
+    if (library_)
+        save(false); // the host has this device's edits before it leaves
+    bridge_->post({{"type", "back"}});
+}
+
 void HostedSession::fail(const QString &text) {
     qWarning("PeerChalk hosted: %s", qPrintable(text));
     bridge_->post({{"type", "warning"}, {"text", text}});

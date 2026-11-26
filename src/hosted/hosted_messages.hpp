@@ -43,6 +43,8 @@ struct OpenMessage {
     int colorIndex{0};
     bool canPush{false};
     std::vector<std::uint64_t> clients; // Yrs client ids this device wrote the board with
+    // host.backLabel: where the board's Back button leads, such as "Boards"; empty: no button.
+    QString backLabel;
 };
 [[nodiscard]] OpenMessage parseOpen(const QJsonObject &message);
 

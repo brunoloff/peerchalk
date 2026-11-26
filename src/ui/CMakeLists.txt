@@ -1,6 +1,6 @@
 # Qt Quick items and QML exposed as the PeerChalk module. The module is static,
 # so the executable imports its plugin with Q_IMPORT_QML_PLUGIN(PeerChalkPlugin).
-set_source_files_properties(Theme.qml Icons.qml Format.qml NetworkSummary.qml
+set_source_files_properties(Theme.qml Icons.qml Format.qml NetworkSummary.qml ConnectionAdvice.qml
     PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 qt_add_library(peerchalk_ui STATIC)
 # Browsers save and choose files through web_files.cpp instead of system dialogs.
@@ -39,6 +39,8 @@ qt_add_qml_module(peerchalk_ui URI PeerChalk VERSION 1.0
         ../sync/network_sync.cpp ../sync/network_spaces.cpp ../sync/network_boards.cpp
         ../sync/repository_messages.cpp ../sync/scribe.cpp ../sync/scribe.hpp
         ../sync/repository_scribe.cpp ../sync/repository_scribe.hpp
+        ../sync/board_diagnosis.cpp ../sync/board_diagnosis.hpp ../sync/network_board_status.cpp
+        host_link.cpp host_link.hpp
         ../sync/message_parts.cpp ../sync/message_parts.hpp
         ../sync/network_instances.cpp ../sync/instance_link.hpp ${peerchalk_instance_link}
         ../sync/space_schedule.cpp ../sync/space_schedule.hpp
@@ -73,6 +75,8 @@ qt_add_qml_module(peerchalk_ui URI PeerChalk VERSION 1.0
         PdfExportFlow.qml PageInspector.qml PaperDialog.qml PaperButtonBox.qml
         PdfWaitingPill.qml ExportPagesDialog.qml
         PhoneBoardChrome.qml PageSheet.qml BoardTitlePanel.qml
+        BoardNetworkButton.qml BoardNetworkPane.qml BoardNetworkPeople.qml ConnectionAdvice.qml
+        ConnectionLogSection.qml
         AccountsWindow.qml AccountRow.qml AccountMenu.qml AccountChooser.qml ContinueButton.qml
         WelcomeLogo.qml VersionLabel.qml WelcomeAbout.qml WelcomeFact.qml ReadyMark.qml UpdateStatus.qml UpdateBadge.qml
         AccountPane.qml BackupFlow.qml PassphraseDialog.qml

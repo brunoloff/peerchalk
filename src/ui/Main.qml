@@ -9,7 +9,9 @@ ApplicationWindow {
     id: window
 
     function openBoard(boardId: string) {
-        stack.push(boardPage, { boardId: boardId });
+        // Embedded, the board is all there is: it appears at once, without sliding over home.
+        stack.push(boardPage, { boardId: boardId },
+                   HostLink.embedded ? StackView.Immediate : StackView.PushTransition);
     }
 
     // Opens the board link this app was started with, if any.
@@ -51,7 +53,8 @@ ApplicationWindow {
         id: boardPage
 
         BoardPage {
-            onBack: stack.pop()
+            // Embedded, Back leaves the board for the host's page; there is no home screen.
+            onBack: HostLink.embedded ? HostLink.back() : stack.pop()
         }
     }
 

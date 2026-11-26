@@ -3,6 +3,7 @@
 #include "sync/messages.hpp"
 #include "sync/scribe.hpp"
 
+#include <QDateTime>
 #include <QObject>
 #include <QUuid>
 
@@ -26,10 +27,14 @@ class RepositoryScribe : public QObject {
     void setLocal(const QUuid &board, bool canPush);
     void closeLocal(const QUuid &board);
     [[nodiscard]] bool isScribe(const QUuid &board) const;
+    // The device that commits for the session on this board, if one can.
+    [[nodiscard]] std::optional<QByteArray> scribe(const QUuid &board) const;
     // Tells the session that the branch at commit holds the board up to stateVector.
     void announcePushed(const QUuid &board, const QByteArray &commit,
                         const QByteArray &stateVector);
     [[nodiscard]] std::optional<RepoPushed> lastPushed(const QUuid &board) const;
+    // When lastPushed was heard of; null if never.
+    [[nodiscard]] QDateTime lastPushedAt(const QUuid &board) const;
 
     // From Network: a peer's message, and a peer that is ready to hear this device's status.
     void receive(const QByteArray &device, const Message &message);
@@ -50,6 +55,7 @@ class RepositoryScribe : public QObject {
     std::map<QUuid, bool> local_;                       // board -> canPush
     std::map<QUuid, std::map<QByteArray, bool>> peers_; // board -> device -> canPush
     std::map<QUuid, RepoPushed> pushed_;
+    std::map<QUuid, QDateTime> pushedAt_;
     std::map<QUuid, bool> wasScribe_;
 };
 
