@@ -35,9 +35,9 @@ here. Work lives on three local branches, none pushed yet:
 
 ## Publishing what is done
 
-- [ ] Push p2pdc `seal-to-signing-keys` (PeerChalk's `cmake/P2pdcSource.cmake` pins its commit, so
+- [x] Push p2pdc `seal-to-signing-keys` (PeerChalk's `cmake/P2pdcSource.cmake` pins its commit, so
       it goes first).
-- [ ] Push PeerChalk `claude/repo-boards-f83b55`.
+- [x] Push PeerChalk `claude/repo-boards-f83b55` (to `main`, as 0.4.0).
 - [ ] Release PeerChalk with these pieces (a version tag runs `release.yml`); check that the
       macOS and Windows `peerchalk-board` packages pass their run check there, which has
       never run.
