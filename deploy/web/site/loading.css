@@ -95,3 +95,10 @@ pre { white-space: pre-wrap; word-break: break-word; font-size: 12px; background
   .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 32px; }
   .card { flex: none; width: 400px; min-height: 480px; padding: 28px 30px; gap: 18px; }
 }
+
+/* Embedded in another app (loader.js): the progress card alone, centred, with no introduction,
+   no promise of accounts and no link to PeerChalk's issues. */
+.hosted .intro, .hosted .later, .hosted #report { display: none; }
+.hosted .page { width: min(420px, 100% - 32px); min-height: 100%; padding: 24px 0;
+                flex-direction: column; justify-content: center; }
+.hosted .card { width: auto; min-height: 0; }

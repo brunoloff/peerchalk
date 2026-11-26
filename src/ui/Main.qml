@@ -4,7 +4,8 @@ import QtQuick
 import QtQuick.Controls
 import PeerChalk
 
-// The app window: a stack of pages that starts at the home screen.
+// The app window: a stack of pages that starts at the home screen. Embedded in another app
+// (HostLink), there is no home screen: the stack holds only the board the host opens.
 ApplicationWindow {
     id: window
 
@@ -31,7 +32,7 @@ ApplicationWindow {
     width: 1280
     height: 800
     visible: true
-    title: stack.depth > 1 && stack.currentItem.objectName === "boardPage"
+    title: stack.currentItem?.objectName === "boardPage"
         ? qsTr("%1 — PeerChalk").arg((stack.currentItem as BoardPage).boardName)
         : qsTr("PeerChalk")
     color: Theme.background
@@ -43,7 +44,13 @@ ApplicationWindow {
 
         objectName: "stack"
         anchors.fill: parent
-        initialItem: HomePage {
+        initialItem: HostLink.embedded ? null : homePage
+    }
+
+    Component {
+        id: homePage
+
+        HomePage {
             onOpenBoard: boardId => window.openBoard(boardId)
             onOpenSettings: tab => window.openSettings(tab)
         }
@@ -78,8 +85,9 @@ ApplicationWindow {
         }
     }
 
-    Connections {
+    Connections { // embedded, the host decides who joins its boards: there are no Requests
         target: Network
+        enabled: !HostLink.embedded
 
         function onJoinRequested(name: string, itemName: string) {
             toast.show(qsTr("%1 asks to join “%2”. Approve them under Requests.").arg(name).arg(itemName));

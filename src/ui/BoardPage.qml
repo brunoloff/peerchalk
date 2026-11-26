@@ -177,7 +177,9 @@ Item {
             visible: page.phone
             canvas: canvas
             boardName: page.boardName
-            live: page.access === "edit"
+            boardId: page.boardId
+            networkOpen: page.networkShown
+            onNetworkToggled: page.networkShown = !page.networkShown
             onBack: page.leave()
             onReported: message => exportToast.show(message)
             onImportRequested: pageChrome.importPdf("")
@@ -386,9 +388,9 @@ Item {
         anchors.top: parent.top
         anchors.bottom: parent.bottom
         anchors.right: parent.right
-        width: Math.min(implicitWidth, parent.width)
-        visible: page.networkShown && !page.phone
-        status: titlePanel.connection
+        width: page.phone ? parent.width : Math.min(implicitWidth, parent.width)
+        visible: page.networkShown
+        status: page.phone ? phoneChrome.connection : titlePanel.connection
         onCloseRequested: page.networkShown = false
     }
 

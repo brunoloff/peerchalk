@@ -1,7 +1,10 @@
 // Starts PeerChalk in the page and shows how far it got. Each phase has a time limit; when one
 // runs over, or something fails, the page explains what may be wrong and offers the details for
-// a report. The app reports its own phases through window.peerchalkLoader.
+// a report. The app reports its own phases through window.peerchalkLoader. Embedded in another
+// app (?hosted=1, docs/embedding.md), the page is only the progress card, without PeerChalk's
+// own introduction, so it fits the host's page until the board appears.
 (() => {
+  const hosted = new URLSearchParams(location.search).get("hosted") === "1";
   const issueUrl = "https://github.com/brunoloff/peerchalk/issues/new";
   const maxIssueDetails = 6000;
   // name, label, what it is doing (for messages), time limit in ms
@@ -328,8 +331,18 @@
     }
   }
 
+  // Embedded: the progress alone, about the board rather than about PeerChalk.
+  function quietForHost() {
+    document.body.classList.add("hosted");
+    document.querySelector(".card h2").textContent = "Opening the board";
+  }
+
   window.peerchalkLoader = { phase, ready, note, details };
-  markFirstVisit();
-  offerApp();
+  if (hosted) {
+    quietForHost();
+  } else {
+    markFirstVisit();
+    offerApp();
+  }
   start();
 })();

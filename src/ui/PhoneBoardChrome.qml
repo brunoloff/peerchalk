@@ -4,20 +4,26 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-// A board on a phone: a bar across the top with the board's name and, on page boards, a tab
-// per column; the page number in view; and the tools along the bottom, where a thumb reaches
-// them. Settings open as a sheet from the bottom.
+// A board on a phone: a bar across the top with the board's name, its connection button and,
+// on page boards, a tab per column; the page number in view; and the tools along the bottom,
+// where a thumb reaches them. Settings open as a sheet from the bottom.
 Item {
     id: chrome
 
     required property BoardCanvas canvas
     required property string boardName
-    required property bool live // drawing is possible, the owners being here
+    required property string boardId
+    property bool networkOpen: false
+    // Network.boardConnection, for the board's network pane.
+    readonly property alias connection: networkButton.status
+    // Embedded, Back leads to the host, if it offers that.
+    readonly property string backTarget: HostLink.embedded ? HostLink.backLabel : qsTr("the project")
     readonly property real headerBottom: header.height
     readonly property var columns: canvas.pageColumns
     readonly property var current: canvas.currentPage
 
     signal back()
+    signal networkToggled()
     signal reported(string message)
     // Asks for a PDF to add as a column at the end.
     signal importRequested()
@@ -53,7 +59,8 @@ Item {
                 spacing: 4
 
                 RailButton {
-                    text: qsTr("Back to the project")
+                    visible: chrome.backTarget.length > 0
+                    text: qsTr("Back to %1").arg(chrome.backTarget)
                     iconPath: Icons.chevronLeft
                     onClicked: chrome.back()
                 }
@@ -66,13 +73,13 @@ Item {
                     color: Theme.ink
                 }
 
-                Rectangle {
-                    implicitWidth: 8
-                    implicitHeight: 8
-                    radius: 4
-                    color: chrome.live ? "#16A34A" : Theme.muted
-                    Accessible.role: Accessible.Indicator
-                    Accessible.name: chrome.live ? qsTr("Synced") : qsTr("Offline")
+                BoardNetworkButton {
+                    id: networkButton
+
+                    objectName: "phoneNetworkButton"
+                    boardId: chrome.boardId
+                    paneOpen: chrome.networkOpen
+                    onClicked: chrome.networkToggled()
                 }
 
                 RailButton {

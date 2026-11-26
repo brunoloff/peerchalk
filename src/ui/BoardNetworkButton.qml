@@ -27,7 +27,7 @@ RailButton {
 
     Timer {
         interval: button.paneOpen ? 1000 : 2000
-        running: true
+        running: button.visible // the phone's and the desktop's buttons are never both shown
         repeat: true
         onTriggered: button.refresh()
     }
