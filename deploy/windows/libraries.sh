@@ -4,8 +4,8 @@
 
 # Copies the DLLs that the program and its DLLs load from MSYS2 or the dependency prefix, until
 # nothing new turns up. Windows' own DLLs stay out.
-copy_libraries() { # folder prefix
-    local folder=$1 prefix=$2 added=1 dll
+copy_libraries() { # folder dependencies
+    local folder=$1 dependencies=$2 added=1 dll
     while [ "$added" -gt 0 ]; do
         added=0
         while IFS= read -r dll; do
@@ -13,8 +13,8 @@ copy_libraries() { # folder prefix
             cp "$dll" "$folder/"
             added=$((added + 1))
         done < <(find "$folder" -name '*.exe' -o -name '*.dll' | while read -r file; do
-            PATH="$prefix/bin:$PATH" ldd "$file" | awk '{print $3}' |
-                grep -iE '^(/ucrt64/bin|'"$prefix"'/bin)/' || true
+            PATH="$dependencies/bin:$PATH" ldd "$file" | awk '{print $3}' |
+                grep -iE '^(/ucrt64/bin|'"$dependencies"'/bin)/' || true
         done | sort -u)
     done
 }
