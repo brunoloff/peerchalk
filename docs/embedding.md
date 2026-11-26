@@ -7,10 +7,13 @@ repository; the message format and the rules for those boards are in
 
 ## What the host does
 
-1. **Serve the browser build from its own origin**: `deploy/web/prepare-site.sh <base path>
-   <folder>` makes the site; the host serves that folder, for example under `/peerchalk/`.
-   PeerChalk checks that every message comes from its own origin, so the frame and the host's
-   page must share it.
+1. **Serve the browser build from its own origin**, under `/peerchalk/`. Each release has it
+   as `peerchalk-web-<version>.zip` (the site at the archive's top, made for that path; see
+   `SHA256SUMS` for its hash), and a host that keeps boards in files also wants
+   `peerchalk-board-<version>-<system>-<arch>.zip`: the program at its top, with the libraries
+   it loads. From sources, `deploy/web/build.sh /peerchalk/` then `deploy/web/package.sh`,
+   and `deploy/board-tool/package.sh`, make them in `dist/`. PeerChalk checks that every
+   message comes from its own origin, so the frame and the host's page must share it.
 2. **Show it in a frame** with `?hosted=1`:
 
    ```html
@@ -18,6 +21,8 @@ repository; the message format and the rules for those boards are in
    ```
 
    Hosted, PeerChalk shows no accounts, home screen or settings: only the board it is given.
+   While it loads, the page shows only its progress, titled "Opening the board", without
+   PeerChalk's own introduction.
    It stores nothing in the browser (no IndexedDB), stays out of the user's own devices'
    space, and uses the default discovery servers.
 3. **Talk to it with `postMessage`**, on the frame's `contentWindow`, with the page's own
