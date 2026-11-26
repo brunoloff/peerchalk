@@ -38,14 +38,14 @@ here. Work lives on three local branches, none pushed yet:
 - [x] Push p2pdc `seal-to-signing-keys` (PeerChalk's `cmake/P2pdcSource.cmake` pins its commit, so
       it goes first).
 - [x] Push PeerChalk `claude/repo-boards-f83b55` (to `main`, as 0.4.0).
-- [ ] Release PeerChalk with these pieces (a version tag runs `release.yml`); check that the
-      macOS and Windows `peerchalk-board` packages pass their run check there, which has
-      never run.
-- [ ] `dashboard/pin-peerchalk.sh <version>` in VPvsVNP, commit `dashboard/peerchalk.json`;
+- [x] Release PeerChalk 0.4.0 with these pieces; every package, macOS and Windows
+      `peerchalk-board` included, passed its run check.
+- [x] `dashboard/pin-peerchalk.sh <version>` in VPvsVNP, commit `dashboard/peerchalk.json`;
       rebuild the dashboard binaries (`dashboard/build.sh`; the pinned 20261126 ones are older
       than this work) and upload them as their release, *before* pushing `dashboard-boards`
       (`build.sh` prints the command).
-- [ ] Merge and push VPvsVNP `dashboard-boards`. After pulling, everyone runs
+- [x] Merge and push VPvsVNP `dashboard-boards` (dashboard binaries now released from the
+      public brunoloff/vpvsvnp-dashboard, since VPvsVNP is private). After pulling, everyone runs
       `dashboard/run install` again (old launchers point at the removed `dashboard/bin/`).
 - [ ] Try `dashboard\run.cmd` on a Windows machine: it was written but not run.
 
@@ -61,6 +61,10 @@ here. Work lives on three local branches, none pushed yet:
 - [ ] Board names and co-author trailers in the scribe's commit messages.
 - [ ] After a removal, frames already open keep the old network secret until they reopen:
       `update` could carry the new one.
+- [ ] The dashboard's frame endpoints hand a user's keys to any local program (its pages need
+      no login either); a browser session token would close that.
+- [ ] `Network.boardConnection` reads the network settings from disk every 1-2 s per open
+      board; cache them.
 - [ ] A hermetic end-to-end test that does not use the public discovery servers.
 - [ ] The dashboard's tray panics on exit when there is no session bus (older than this work;
       it breaks Restart in that case).
