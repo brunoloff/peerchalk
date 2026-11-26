@@ -95,8 +95,8 @@ access entries (so an entry has one name however it reached a device).
 - **Blobs** are checked against their names; they are not signed, since only signed content can
   refer to them.
 - **Secrets:** a board's network secret (its p2pdc discovery capability) for one epoch, sealed to
-  one member's user key (see "Sealing to user keys") and signed by whoever sealed it: the
-  creator for epoch 0, an owner after that. Each removal starts a new epoch. The signer is in
+  one member's user key (see "Sealing to user keys") and signed by whoever sealed it, the
+  creator or an owner, who hand on the secret they hold. Each removal starts a new epoch. The signer is in
   the path, so two owners who start the same epoch at once never write the same file;
   everyone uses the secret from the lowest signer key that sealed one to them.
 
@@ -328,7 +328,7 @@ PeerChalk (Qt Test, under `tests/`):
 - **Roles:** a removal entry deleted from the branch still counts (union with history and the seen
   cache); after a removal, the removed person's change files are ignored and the snapshot keeps
   their earlier work; a member removed mid-session is disconnected and their later files are
-  ignored; a removal without its snapshot is refused.
+  ignored; a removal that names no snapshot is refused.
 - **Compaction:** two concurrent compactions merged by union keep every edit; a device empties
   its change file only once a snapshot covers it.
 - **Scribe:** the election as a pure function (lowest eligible key; non-members and devices

@@ -15,7 +15,8 @@ Panel {
     // Network.boardConnection, for the board's network pane.
     readonly property alias connection: networkButton.status
     // Embedded, the project is the host's business: Back leads to the host, if it offers that.
-    readonly property string backTarget: HostLink.embedded ? HostLink.backLabel : Library.currentProjectName
+    readonly property string backTarget: HostLink.embedded ? HostLink.backLabel
+        : Library.currentProjectName.length > 0 ? Library.currentProjectName : qsTr("the project")
     readonly property string place: HostLink.embedded ? "" : Library.currentProjectName + " · "
 
     signal back()

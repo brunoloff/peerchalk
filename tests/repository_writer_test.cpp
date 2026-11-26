@@ -49,6 +49,32 @@ TEST_F(WriterTest, ChangeFilesHoldOnlyWhatSnapshotsLack) {
     EXPECT_EQ(loaded.snapshots.size(), 1U);
 }
 
+// Erasing adds nothing to a Yrs state vector: a change file holding only erasures must
+// still count as not covered, or tidying it away would bring the strokes back.
+TEST_F(WriterTest, ChangeFilesWithOnlyErasuresAreNotCovered) {
+    draw(files_, member_, line(0, 10));
+    testing::apply(files_, compactAs(files_, owner_).files);
+    LoadedBoard loaded = loadBoard(files_, {});
+    ASSERT_TRUE(changesCovered(loaded, member_.key()));
+    const std::unique_ptr<Board> document = documentOf(loaded);
+    ASSERT_EQ(document->eraseNear({5.0F, 0.0F}, 2.0F), 1U);
+    files_[changeFilePath(member_.key())] =
+        changeFile(*document, loaded, member_.author, {document->clientId()});
+    loaded = loadBoard(files_, {});
+    EXPECT_EQ(strokeCount(loaded), 0U);
+    EXPECT_FALSE(changesCovered(loaded, member_.key()));
+}
+
+// Owners, not only the board's creator, hand its secret to the people they add.
+TEST_F(WriterTest, OwnersHandTheSecretToThoseTheyAdd) {
+    const Device late;
+    testing::apply(files_, setRole(loadBoard(files_, {}), owner_.author, capability_, late.user(),
+                                   QStringLiteral("late"), Role::Member));
+    const LoadedBoard loaded = loadBoard(files_, {});
+    EXPECT_TRUE(loaded.warnings.empty());
+    EXPECT_EQ(openSecret(loaded, late.identity), capability_);
+}
+
 TEST_F(WriterTest, ConcurrentCompactionsMergeWithoutLoss) {
     draw(files_, member_, line(0, 10));
     testing::apply(files_, compactAs(files_, owner_).files); // a first snapshot

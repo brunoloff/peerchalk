@@ -43,8 +43,8 @@ struct NewBoard {
 [[nodiscard]] QByteArray changeFile(const Board &document, const LoadedBoard &loaded,
                                     const Author &author,
                                     const std::vector<std::uint64_t> &clients);
-// Whether the accepted snapshots already hold everything in the device's change file, so
-// that the device may delete it.
+// Whether the accepted snapshots already hold everything in the device's change file,
+// deletions included, so that the device may delete it.
 [[nodiscard]] bool changesCovered(const LoadedBoard &loaded, const QByteArray &device);
 
 // A snapshot of the whole document that replaces the loaded snapshots and the author's own

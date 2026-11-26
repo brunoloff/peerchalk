@@ -115,7 +115,8 @@ void loadContent(LoadedBoard &board, Board &document, const QString &path, const
                                  content.header.certificate.userKey,
                                  state,
                                  content.header.covers,
-                                 content.header.clients};
+                                 content.header.clients,
+                                 content.body};
         (kind == ContentKind::Snapshot ? board.snapshots : board.changes)
             .push_back(std::move(accepted));
     } catch (const FileError &error) {
@@ -128,8 +129,8 @@ void loadSecret(LoadedBoard &board, const QString &path, const QByteArray &bytes
         const BoardSecret secret = decodeSecretFile(bytes);
         if (secret.board != board.info.board || path != secretsFolder + secretFileName(secret))
             throw FileError("the secret is not where it belongs");
-        const bool mayWrite = secret.epoch == 0 ? secret.signer == board.info.creator
-                                                : board.access.role(secret.signer) >= Role::Owner;
+        // Owners hand the secret to those they add; the creator is the admin, above them.
+        const bool mayWrite = board.access.role(secret.signer) >= Role::Owner;
         if (!mayWrite)
             throw FileError("its signer may not hand out the board's secret");
         board.secrets[secret.epoch].push_back(secret);

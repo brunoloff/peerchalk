@@ -30,6 +30,7 @@ struct AcceptedContent {
     StateVector state; // snapshots: what the body holds; changes: what the device knew
     std::vector<QByteArray> covers;
     std::vector<std::uint64_t> clients;
+    QByteArray body; // the Yrs update it holds
 };
 
 // The result of loading a repository board.

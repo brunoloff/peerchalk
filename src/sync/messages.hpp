@@ -157,6 +157,8 @@ using Message = std::variant<Hello, AccessChanges, Personal, BoardUpdate, Presen
 // The message, or nullopt when malformed; also nullopt for other types (see isRepoMessage).
 [[nodiscard]] bool isRepoMessage(char type);
 [[nodiscard]] std::optional<Message> decodeRepoMessage(const QByteArray &bytes);
+// The board a RepoStatus or RepoPushed is about; nullopt for other messages.
+[[nodiscard]] std::optional<QUuid> repositoryBoardOf(const Message &message);
 [[nodiscard]] std::optional<Message> decode(const QByteArray &bytes);
 
 } // namespace peerchalk::sync

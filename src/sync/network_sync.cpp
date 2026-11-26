@@ -93,9 +93,9 @@ void Network::dispatch(const PeerId &id, Peer &peer, const std::optional<Message
         flush(id);
     } else if (const auto *chunk = std::get_if<BlobChunk>(&*message)) {
         handleBlobChunk(id, peer, *chunk);
-    } else if (std::holds_alternative<RepoStatus>(*message) ||
-               std::holds_alternative<RepoPushed>(*message)) {
-        repository_->receive(toBytes(peer.device), *message);
+    } else if (const auto board = repositoryBoardOf(*message)) {
+        if (sharesBoard(peer, *board)) // only those on the board take part in its scribing
+            repository_->receive(toBytes(peer.device), *message);
     } else if (const auto *presence = std::get_if<Presence>(&*message)) {
         applyPresence(peer, *presence);
     } else if (const auto *profile = std::get_if<Profile>(&*message)) {

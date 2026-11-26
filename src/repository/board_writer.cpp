@@ -105,7 +105,18 @@ QByteArray changeFile(const Board &document, const LoadedBoard &loaded, const Au
 
 bool changesCovered(const LoadedBoard &loaded, const QByteArray &device) {
     const auto own = std::ranges::find(loaded.changes, device, &AcceptedContent::device);
-    return own == loaded.changes.end() || covers(loaded.snapshotState(), own->state);
+    if (own == loaded.changes.end())
+        return true;
+    if (!covers(loaded.snapshotState(), own->state))
+        return false;
+    // Deletions move no state vector, so the file is covered only if applying it to the
+    // snapshots changes nothing.
+    Board snapshots;
+    for (const AcceptedContent &snapshot : loaded.snapshots)
+        snapshots.apply(byteView(snapshot.body));
+    const Bytes before = snapshots.encodeState();
+    snapshots.apply(byteView(own->body));
+    return snapshots.encodeState() == before;
 }
 
 Compaction compact(const Board &document, const LoadedBoard &loaded, const Author &author,

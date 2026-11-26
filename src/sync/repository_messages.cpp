@@ -44,4 +44,12 @@ std::optional<Message> decodeRepoMessage(const QByteArray &bytes) {
     return RepoPushed{board, rest.mid(1, commitSize), rest.mid(1 + commitSize)};
 }
 
+std::optional<QUuid> repositoryBoardOf(const Message &message) {
+    if (const auto *status = std::get_if<RepoStatus>(&message))
+        return status->board;
+    if (const auto *pushed = std::get_if<RepoPushed>(&message))
+        return pushed->board;
+    return std::nullopt;
+}
+
 } // namespace peerchalk::sync
